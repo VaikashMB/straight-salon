@@ -1,6 +1,6 @@
 import compression from 'compression';
 import cors from 'cors';
-import express, { json, Router, type Express } from 'express';
+import express, { json, type Express, type Router } from 'express';
 import helmet from 'helmet';
 import { docsRouter, generateOpenApiDocument } from './docs/openapi.js';
 import { createHealthController } from './modules/health/health.controller.js';
@@ -28,6 +28,8 @@ export interface AppDeps {
   readiness: ReadinessService;
   metrics: Metrics;
   config: AppConfig;
+  // Business modules, mounted at /api/v1 (built by modules/index.ts buildApiRouter).
+  apiRouter: Router;
 }
 
 // Express app factory without listen(), so tests can drive it with Supertest.
@@ -52,9 +54,7 @@ export function createApp(deps: AppDeps): Express {
   if (config.metricsEnabled) app.get('/metrics', metricsHandler(metrics));
   if (config.swaggerEnabled) app.use(docsRouter(generateOpenApiDocument(config.version)));
 
-  // Business modules mount here from Phase 3 onwards.
-  const api = Router();
-  app.use(API_BASE_PATH, api);
+  app.use(API_BASE_PATH, deps.apiRouter);
 
   app.use(notFoundHandler);
   app.use(createErrorHandler(logger));

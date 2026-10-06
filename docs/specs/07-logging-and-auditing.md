@@ -89,7 +89,7 @@ Every create/update/delete/state-change of a business entity, plus security even
 }
 ```
 - `before`/`after` contain only the relevant (changed) fields, with the same PII redaction as logs for `users` (email/phone masked: `a***@x.com`, `+9198******12`).
-- Written via `auditService.record(entry, session)` **inside the same Mongo transaction** as the change, so an action is never committed without its audit row (and vice versa).
+- Written via `auditService.record(entry, session)` **inside the same Mongo transaction** as the change, so an action is never committed without its audit row (and vice versa). Security events that change no data (`auth.login_failed`, `auth.refresh_reuse_detected`, `auth.logout`) are written without a transaction. Each detected refresh-token reuse is audited, so replaying several revoked tokens gives several rows.
 - `diff` produced by a shared utility comparing plain objects (deep, path list).
 
 ### 2.3 Immutability

@@ -23,7 +23,9 @@ backend/
 │   │   ├── globalSetup.ts    # start MongoMemoryReplSet, set env; returns teardown
 │   │   └── testApp.ts        # builds app with test deps (fake clock, in-memory bus, mock providers)
 │   ├── factories/            # buildUser(), buildService(), buildBooking() ... (fishery or hand-written)
-│   ├── helpers/auth.ts       # loginAs(role) -> bearer token
+│   ├── helpers/auth.ts       # createUser(), loginAs(role) -> bearer token; CSRF header constant
+│   │                         # (test/setup/testApp.ts: buildApiTestApp() = full API, ioredis-mock with a
+│   │                         #  unique host per app (instances on one host share data), bcrypt cost 4)
 │   ├── helpers/logger.ts     # captureLogger(): real pino logger writing JSON lines to memory
 │   └── integration/          # *.int.test.ts per module
 └── src/**/__tests__/*.test.ts  # unit tests next to code

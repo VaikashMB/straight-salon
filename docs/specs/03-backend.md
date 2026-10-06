@@ -12,7 +12,7 @@
 | Queue | BullMQ |
 | Auth | `jose` (JWT; also covers the planned RS256 move), `bcrypt` (prebuilt binaries; `bcryptjs` is the drop-in fallback if the Alpine build fails) |
 | Logging | `pino`, `pino-pretty` (dev only). HTTP access log is a ~30-line middleware (`shared/http/accessLog.ts`), not `pino-http`: the spec needs the route *pattern* and exactly the fields in 07 §1.3; `pino-http` logs raw URLs/headers by default and its `customProps` hook binds at request start *and* finish, duplicating fields |
-| Security | `helmet`, `cors`, `express-rate-limit` + `rate-limit-redis`. (`hpp` is not used: it reassigns `req.query`, which is a read-only getter in Express 5; Zod rejects arrays where strings are expected.) |
+| Security | `helmet`, `cors`, own Redis fixed-window rate limiter (`shared/http/rateLimit.ts`, atomic Lua INCR+PEXPIRE) instead of `express-rate-limit` + `rate-limit-redis`: 08 §5 needs fail-open for the global limit but fail-closed for auth limits, keys must come from `keys.ts`, and Lua runs under ioredis-mock so tests need no Docker. (`hpp` is not used: it reassigns `req.query`, which is a read-only getter in Express 5; Zod rejects arrays where strings are expected.) |
 | Dates | `date-fns` v4 + `@date-fns/tz` (`TZDate`); all tz math centralised in `shared/time` |
 | Scheduling | BullMQ **Job Schedulers** (`upsertJobScheduler`; replaces the deprecated repeatable-jobs API). No in-process cron, so it is safe with multiple instances |
 | Metrics | `prom-client` |
@@ -100,9 +100,10 @@ All validated at boot in `config/env.ts`. Example values in `.env.example`. `env
 | `JWT_ACCESS_TTL` | `15m` | |
 | `JWT_ISSUER` / `JWT_AUDIENCE` | `straight-salon-api` / `straight-salon-web` | |
 | `REFRESH_TOKEN_TTL_DAYS` | `7` | |
-| `COOKIE_DOMAIN` | `localhost` | |
-| `COOKIE_SECURE` | `false` (dev) | true in prod |
-| `BCRYPT_COST` | `12` | lower (4) allowed only in test |
+| `COOKIE_DOMAIN` | *(empty)* | empty = host-only cookies (recommended; browsers reject `Domain=localhost`) |
+| `COOKIE_SECURE` | `false` (dev) | defaults to `true` when `NODE_ENV=production` |
+| `BCRYPT_COST` | `12` | 4–15; below 10 only when `NODE_ENV=test` |
+| `MIGRATE_ON_START` | `true` (dev) | run pending migrations at API start; defaults to `false` in production (12 §4) |
 | `LOG_LEVEL` | `info` | |
 | `LOG_PRETTY` | `true` | dev only |
 | `CACHE_ENABLED` | `true` | |

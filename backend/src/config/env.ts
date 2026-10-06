@@ -5,6 +5,14 @@ import { z } from 'zod';
 
 const booleanFlag = (fallback: boolean) => z.stringbool().default(fallback);
 
+const positiveInt = (fallback: number) =>
+  z
+    .string()
+    .regex(/^\d+$/, 'Must be a whole number')
+    .transform(Number)
+    .pipe(z.number().int().positive())
+    .default(fallback);
+
 const envSchema = z
   .object({
     MONGO_URI: z
@@ -46,11 +54,49 @@ const envSchema = z
       .refine((value) => Buffer.from(value, 'base64').length === 32, {
         error: 'Must be 32 bytes, base64-encoded (run `npm run env:init` to generate one)',
       }),
+    // ---- Auth (06) ----
+    JWT_ACCESS_SECRET: z
+      .string({ error: 'Required (run `npm run env:init` to create .env with one)' })
+      .min(32, 'Must be at least 32 characters')
+      .refine((value) => !value.startsWith('replace-with-'), {
+        error: 'Still the .env.example placeholder (run `npm run env:init`)',
+      }),
+    JWT_ACCESS_TTL: z
+      .string()
+      .regex(/^\d+[smhd]$/, 'Use a duration like 15m, 900s or 1h')
+      .default('15m'),
+    JWT_ISSUER: z.string().min(1).default('straight-salon-api'),
+    JWT_AUDIENCE: z.string().min(1).default('straight-salon-web'),
+    REFRESH_TOKEN_TTL_DAYS: positiveInt(7),
+    // Empty = host-only cookies (recommended; browsers reject Domain=localhost).
+    COOKIE_DOMAIN: z.string().optional(),
+    // Defaults to true in production (06 §1: Secure in prod).
+    COOKIE_SECURE: z.stringbool().optional(),
+    BCRYPT_COST: positiveInt(12).pipe(z.number().int().min(4).max(15)),
+    RATE_LIMIT_WINDOW_MS: positiveInt(60_000),
+    RATE_LIMIT_MAX: positiveInt(300),
+    // Run pending migrations when the API starts. Defaults to on outside production (12 §4).
+    MIGRATE_ON_START: z.stringbool().optional(),
   })
-  .transform(({ SWAGGER_ENABLED, ...rest }) => ({
-    ...rest,
-    SWAGGER_ENABLED: SWAGGER_ENABLED ?? rest.NODE_ENV !== 'production',
-  }));
+  .superRefine((env, ctx) => {
+    if (env.BCRYPT_COST < 10 && env.NODE_ENV !== 'test') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['BCRYPT_COST'],
+        message: 'Costs below 10 are only allowed when NODE_ENV=test (NFR-009 requires 12)',
+      });
+    }
+  })
+  .transform(({ SWAGGER_ENABLED, COOKIE_SECURE, MIGRATE_ON_START, COOKIE_DOMAIN, ...rest }) => {
+    const production = rest.NODE_ENV === 'production';
+    return {
+      ...rest,
+      SWAGGER_ENABLED: SWAGGER_ENABLED ?? !production,
+      COOKIE_SECURE: COOKIE_SECURE ?? production,
+      MIGRATE_ON_START: MIGRATE_ON_START ?? !production,
+      COOKIE_DOMAIN: COOKIE_DOMAIN?.trim() ? COOKIE_DOMAIN.trim() : undefined,
+    };
+  });
 
 export type Env = z.infer<typeof envSchema>;
 

@@ -23,7 +23,9 @@ export interface AuditInput {
 }
 
 export interface AuditService {
-  record(input: AuditInput, session: ClientSession): Promise<void>;
+  // Pass the transaction's session whenever the audited action writes data (07 §2.2). Omit it
+  // only for security events that change nothing, e.g. auth.login_failed.
+  record(input: AuditInput, session?: ClientSession): Promise<void>;
 }
 
 // Entities whose audit rows must have email/phone masked (07 §2.2).

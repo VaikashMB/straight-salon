@@ -4,6 +4,7 @@ import { captureLogger } from '../../../../test/helpers/logger.js';
 import { createProcessLogger, loadEnvOrExit, registerShutdown } from '../index.js';
 
 const validEnv = {
+  JWT_ACCESS_SECRET: 'x'.repeat(32),
   OUTBOX_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
   PORT: '4000',
   MONGO_URI: 'mongodb://localhost:27017/straight_salon',

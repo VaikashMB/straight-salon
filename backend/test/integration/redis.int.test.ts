@@ -198,6 +198,7 @@ describe('startOutboxRelay wiring: outbox -> relay -> BullMQ consumer queues (01
       MONGO_URI: 'mongodb://unused',
       REDIS_URL,
       OUTBOX_ENCRYPTION_KEY: key,
+      JWT_ACCESS_SECRET: 'x'.repeat(32),
     });
     const { logger } = captureLogger();
     const { relay, bus } = startOutboxRelay(env, logger);

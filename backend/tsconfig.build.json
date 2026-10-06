@@ -6,6 +6,6 @@
     "noEmit": false,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
+  "include": ["src/**/*.ts", "src/db/migrations/*.js"],
   "exclude": ["src/**/__tests__/**"]
 }

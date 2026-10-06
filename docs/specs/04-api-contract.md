@@ -19,16 +19,18 @@
 ## 3. Endpoints
 
 ### Auth (`tags: Auth`)
+Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` (403 otherwise, 06 §4). Login, register and forgot-password are limited to 10 requests / 15 min / IP.
+
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
 | API-001 | `POST /auth/register` | Public | Body `{name,email,phone,password}` → 201 `{user, accessToken}` + sets refresh cookie (and the `ss_session` indicator cookie, 06 §1). 409 `DUPLICATE` if email/phone exists on a registered account; 409 `PHONE_ALREADY_REGISTERED` if the phone belongs to a walk-in record (FR-001). |
 | API-002 | `POST /auth/login` | Public | `{email,password}` → 200 `{user, accessToken}` + cookie. 401 generic "invalid credentials". |
-| API-003 | `POST /auth/refresh` | Cookie | Rotates refresh token → 200 `{accessToken}` + new cookie. 401 on invalid/reused. |
+| API-003 | `POST /auth/refresh` | Cookie | Rotates refresh token → 200 `{accessToken}` + new cookie. 401 on invalid/reused (and both cookies are cleared). |
 | API-004 | `POST /auth/logout` | Cookie | Revokes current refresh token, clears cookie → 204. |
 | API-005 | `POST /auth/logout-all` | Auth | Revokes all user's refresh tokens → 204. |
 | API-006 | `POST /auth/forgot-password` | Public | `{email}` → always 202 (no user enumeration). |
-| API-007 | `POST /auth/reset-password` | Public | `{token,newPassword}` → 204; revokes all sessions. |
-| API-008 | `POST /auth/change-password` | Auth | `{currentPassword,newPassword}` → 204. |
+| API-007 | `POST /auth/reset-password` | Public | `{token,newPassword}` → 204; revokes all sessions. 400 `INVALID_RESET_TOKEN` if the token is unknown, used or expired. |
+| API-008 | `POST /auth/change-password` | Auth | `{currentPassword,newPassword}` → 204. Ends every other session; this device gets a fresh refresh cookie. Wrong current password → 400 `VALIDATION_FAILED` on `currentPassword` (not 401, which would log the user out client-side). New must differ from current. |
 | API-009 | `GET /auth/me` | Auth | Current user profile. |
 
 ### Users (`tags: Users`)
@@ -36,10 +38,10 @@
 |---|---|---|---|
 | API-010 | `PATCH /users/me` | Auth | Update name, phone, preferences. |
 | API-011 | `GET /users` | ADMIN, RECEPTIONIST | List/search users (`q`, `role`, `isActive`), paginated. Receptionist sees customers only. |
-| API-012 | `POST /users` | ADMIN | Create staff/receptionist/admin account. |
-| API-013 | `POST /users/walk-in` | ADMIN, RECEPTIONIST | `{name, phone}` → creates or returns existing walk-in customer by phone. |
+| API-012 | `POST /users` | ADMIN | `{name,email,phone,role: STAFF\|RECEPTIONIST\|ADMIN,password}` → 201. The admin sets a **temporary password** (same policy as registration) that the person changes via API-008. |
+| API-013 | `POST /users/walk-in` | ADMIN, RECEPTIONIST (`walkin:create`) | `{name, phone}` → 201 new walk-in customer (no email/password), or 200 with the existing customer (walk-in or registered) holding that phone. 409 if the phone belongs to a staff account. |
 | API-014 | `GET /users/{id}` | ADMIN, RECEPTIONIST | |
-| API-015 | `PATCH /users/{id}` | ADMIN | Change role, activate/deactivate. |
+| API-015 | `PATCH /users/{id}` | ADMIN | `{role?, isActive?}`. 403 on your own account. A deactivated user cannot log in; their sessions end at the next refresh (≤ access-token TTL). Role changes reach the token at the next refresh. |
 
 ### Settings & holidays (`tags: Settings`)
 | ID | Method & path | Auth | Description |
@@ -141,5 +143,5 @@
 `GET /health/live`, `GET /health/ready`, `GET /metrics`, `GET /api/docs`, `GET /api/docs/openapi.json`.
 
 ## 4. Standard error codes
-`VALIDATION_FAILED`, `UNAUTHENTICATED`, `TOKEN_EXPIRED`, `FORBIDDEN`, `NOT_FOUND`, `DUPLICATE`, `STALE_VERSION`, `SLOT_UNAVAILABLE`, `OUTSIDE_BUSINESS_HOURS`, `LEAD_TIME_VIOLATION`, `ADVANCE_WINDOW_VIOLATION`, `CUTOFF_PASSED`, `STAFF_CANNOT_PERFORM_SERVICE`, `BOOKING_LIMIT_REACHED`, `INVALID_STATUS_TRANSITION`, `PAYMENT_MISMATCH`, `REVIEW_NOT_ALLOWED`, `RATE_LIMITED`, `IDEMPOTENCY_KEY_REUSED`, `PHONE_ALREADY_REGISTERED` (409, FR-001), `ACTIVE_BOOKINGS_EXIST` (422; holiday, time-off, stylist deactivation (BR-014) and timezone change without `force`), `INVALID_FILE` (400/413, API-027), `PAYLOAD_TOO_LARGE` (413, JSON body over 100 kb), `TEMPORARILY_UNAVAILABLE` (503), `INTERNAL_ERROR`.
+`VALIDATION_FAILED`, `UNAUTHENTICATED`, `TOKEN_EXPIRED`, `FORBIDDEN`, `NOT_FOUND`, `DUPLICATE`, `STALE_VERSION`, `SLOT_UNAVAILABLE`, `OUTSIDE_BUSINESS_HOURS`, `LEAD_TIME_VIOLATION`, `ADVANCE_WINDOW_VIOLATION`, `CUTOFF_PASSED`, `STAFF_CANNOT_PERFORM_SERVICE`, `BOOKING_LIMIT_REACHED`, `INVALID_STATUS_TRANSITION`, `PAYMENT_MISMATCH`, `REVIEW_NOT_ALLOWED`, `RATE_LIMITED`, `IDEMPOTENCY_KEY_REUSED`, `INVALID_RESET_TOKEN` (400, API-007), `PHONE_ALREADY_REGISTERED` (409, FR-001), `ACTIVE_BOOKINGS_EXIST` (422; holiday, time-off, stylist deactivation (BR-014) and timezone change without `force`), `INVALID_FILE` (400/413, API-027), `PAYLOAD_TOO_LARGE` (413, JSON body over 100 kb), `TEMPORARILY_UNAVAILABLE` (503), `INTERNAL_ERROR`.
 The frontend maps codes (not messages) to user-facing text.

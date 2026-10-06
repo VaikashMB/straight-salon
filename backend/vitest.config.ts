@@ -33,6 +33,7 @@ export default defineConfig({
         'src/worker.ts',
         'src/relay.ts',
         'src/docs/export.ts',
+        'src/db/runMigrations.ts',
         'src/db/seed/**',
         'src/db/migrations/**',
       ],

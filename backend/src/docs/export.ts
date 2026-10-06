@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 // Importing the app registers every route's OpenAPI path (registration happens at import time).
 import '../app.js';
+import '../modules/index.js';
 import { generateOpenApiDocument } from './openapi.js';
 
 // `npm run openapi:export`: writes backend/openapi.json, the committed contract that the

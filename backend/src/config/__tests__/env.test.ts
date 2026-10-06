@@ -9,6 +9,7 @@ const required = {
   MONGO_URI: 'mongodb://localhost:27017/straight_salon?replicaSet=rs0',
   REDIS_URL: 'redis://localhost:6379',
   OUTBOX_ENCRYPTION_KEY: key,
+  JWT_ACCESS_SECRET: 'x'.repeat(32),
 };
 
 function issuesOf(source: NodeJS.ProcessEnv): { path: string; message: string }[] {
@@ -35,6 +36,16 @@ describe('parseEnv', () => {
       METRICS_ENABLED: true,
       RUN_RELAY_IN_WORKER: true,
       SWAGGER_ENABLED: true,
+      JWT_ACCESS_TTL: '15m',
+      JWT_ISSUER: 'straight-salon-api',
+      JWT_AUDIENCE: 'straight-salon-web',
+      REFRESH_TOKEN_TTL_DAYS: 7,
+      COOKIE_DOMAIN: undefined,
+      COOKIE_SECURE: false,
+      BCRYPT_COST: 12,
+      RATE_LIMIT_WINDOW_MS: 60_000,
+      RATE_LIMIT_MAX: 300,
+      MIGRATE_ON_START: true,
     });
   });
 
@@ -81,6 +92,10 @@ describe('parseEnv', () => {
         path: 'OUTBOX_ENCRYPTION_KEY',
         message: 'Required (run `npm run env:init` to create .env with one)',
       },
+      {
+        path: 'JWT_ACCESS_SECRET',
+        message: 'Required (run `npm run env:init` to create .env with one)',
+      },
     ]);
   });
 
@@ -112,5 +127,30 @@ describe('parseEnv', () => {
         .sort(),
     ).toEqual(['LOG_PRETTY', 'NODE_ENV', 'PORT']);
     expect(() => parseEnv(source)).toThrow(/PORT/);
+  });
+
+  it('auth settings: production defaults, placeholders, durations and the bcrypt floor (06, NFR-009)', () => {
+    const prod = parseEnv({ ...required, NODE_ENV: 'production' });
+    expect(prod).toMatchObject({
+      COOKIE_SECURE: true,
+      MIGRATE_ON_START: false,
+      SWAGGER_ENABLED: false,
+    });
+    expect(parseEnv({ ...required, COOKIE_DOMAIN: ' salon.example ' }).COOKIE_DOMAIN).toBe(
+      'salon.example',
+    );
+    expect(parseEnv({ ...required, COOKIE_DOMAIN: '' }).COOKIE_DOMAIN).toBeUndefined();
+    expect(parseEnv({ ...required, NODE_ENV: 'test', BCRYPT_COST: '4' }).BCRYPT_COST).toBe(4);
+    expect(issuesOf({ ...required, BCRYPT_COST: '4' }).map((i) => i.path)).toEqual(['BCRYPT_COST']);
+    expect(issuesOf({ ...required, JWT_ACCESS_SECRET: 'too-short' }).map((i) => i.path)).toEqual([
+      'JWT_ACCESS_SECRET',
+    ]);
+    expect(
+      issuesOf({ ...required, JWT_ACCESS_SECRET: 'replace-with-at-least-32-random-characters' })[0]
+        ?.message,
+    ).toContain('env:init');
+    expect(issuesOf({ ...required, JWT_ACCESS_TTL: '15 minutes' }).map((i) => i.path)).toEqual([
+      'JWT_ACCESS_TTL',
+    ]);
   });
 });

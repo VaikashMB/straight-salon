@@ -7,7 +7,9 @@
     "moduleResolution": "nodenext",
     "types": ["node"],
     "rootDir": ".",
-    "noEmit": true
+    "noEmit": true,
+    "allowJs": true,
+    "checkJs": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+  "include": ["src/**/*.ts", "src/db/migrations/*.js", "test/**/*.ts", "vitest.config.ts"]
 }

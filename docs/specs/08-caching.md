@@ -40,7 +40,7 @@ Since Redis has no native tags, maintain a Redis SET per tag listing keys:
 ## 5. Other Redis uses
 | Use | Key | Behaviour when Redis unavailable |
 |---|---|---|
-| Rate limiting | `ss:v1:rl:{scope}:{id}` | Fail **open** for global limit (log warn), fail **closed** (429) for login limit |
+| Rate limiting | `ss:v1:rl:{scope}:{id}` | Fail **open** for global limit (log warn, at most once a minute), fail **closed** (429) for the auth limit (login, register, forgot-password) |
 | Login failure counter | `ss:v1:login_fail:{emailHash}` | Fail closed for login |
 | Distributed lock (booking) | `ss:v1:lock:staff:{staffId}:{date}` | Booking creation returns 503 `TEMPORARILY_UNAVAILABLE`. (Overlap is prevented by the transaction plus the staff-day guard document, 02 §2.18. The lock only reduces contention and write-conflict retries. Failing closed keeps behaviour predictable while Redis is down.) |
 | BullMQ queues | `bull:*` (BullMQ's own prefix `ss`) | Events stay safely in the outbox until Redis returns |

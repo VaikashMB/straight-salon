@@ -5,7 +5,7 @@
 |---|---|---|---|---|
 | Access token | JWT (HS256 in v1; RS256 planned so other services can verify with a public key) | 15 min | Memory only | Not stored (stateless) |
 | Refresh token | Opaque random 256-bit string (base64url) | 7 days, sliding via rotation | httpOnly cookie `ss_rt`, `Path=/api/v1/auth`, `SameSite=Lax`, `Secure` in prod | SHA-256 hash in `refresh_tokens` |
-| Session indicator | Literal `1` (no secret, grants nothing) | Same as the refresh token | Cookie `ss_session`, `Path=/`, `SameSite=Lax`, `Secure` in prod. Set and cleared alongside `ss_rt`. Only used by the frontend `proxy.ts` to decide whether to redirect to login (05 §5) | — |
+| Session indicator | Literal `1` (no secret, grants nothing) | Same as the refresh token | Cookie `ss_session`, `Path=/`, httpOnly (only the server-side proxy reads it), `SameSite=Lax`, `Secure` in prod. Set and cleared alongside `ss_rt`. Only used by the frontend `proxy.ts` to decide whether to redirect to login (05 §5) | — |
 
 JWTs are signed and verified with `jose`.
 
@@ -34,8 +34,11 @@ No PII (no email/phone/name) in the token.
 3. Found but `revokedAt` set → **reuse detected**: revoke the whole `family`, audit `auth.refresh_reuse_detected` (warn log), return 401. (Stolen token mitigation.)
 4. Valid → revoke it (`replacedByHash`), issue new refresh token in same family + new access token.
 5. Also reject if user inactive or `passwordChangedAt > token.createdAt`.
+6. Rotation is one atomic update (`revokedAt` must still be absent). Two concurrent refreshes of the same token: the loser is treated as reuse (step 3). The frontend's single-flight refresh (05 §5) avoids this within a tab.
 
-**Logout / logout-all / password reset/change** revoke tokens as described in API-004..008. Password change/reset sets `passwordChangedAt` and revokes all families.
+**Logout / logout-all / password reset/change** revoke tokens as described in API-004..008. Password change/reset sets `passwordChangedAt` and revokes all families. **Change password** then starts a fresh family for the current device (decision 2026-10-06: the user stays signed in where they made the change; every other device is signed out). **Reset password** does not sign anyone in.
+
+**Login details:** wrong password, unknown email, inactive account and walk-in (no password) all return the same 401. The failure counter resets on a successful login. Deactivating a user or changing their role takes effect at their next refresh (the API stays stateless; access tokens live at most `JWT_ACCESS_TTL`).
 
 ## 3. Authorization (RBAC + ownership)
 - `authenticate` middleware: verifies JWT (signature, `exp`, `iss`, `aud`), puts `req.auth = { userId, role, staffId }`. Expired → 401 `TOKEN_EXPIRED`; anything else invalid → 401 `UNAUTHENTICATED`.
@@ -61,6 +64,7 @@ No PII (no email/phone/name) in the token.
 | `uploads:create` | | | | ✓ |
 | `users:read` | | | ✓ (customers) | ✓ |
 | `users:manage` | | | | ✓ |
+| `walkin:create` | | | ✓ | ✓ |
 | `settings:manage` | | | | ✓ |
 | `reports:dashboard` | | | ✓ | ✓ |
 | `reports:read` | | | | ✓ |
@@ -68,18 +72,18 @@ No PII (no email/phone/name) in the token.
 | `audit:read` | | | | ✓ |
 | `review:moderate` | | | | ✓ |
 
-`schedule:read:*` covers API-033 and API-035. `reports:dashboard` covers API-070; `reports:read` covers API-071/072. Every authenticated user may read their own notifications (API-065), so that endpoint needs no permission.
+`schedule:read:*` covers API-033 and API-035. `walkin:create` covers API-013. `reports:dashboard` covers API-070; `reports:read` covers API-071/072. Every authenticated user may read their own notifications (API-065), so that endpoint needs no permission.
 
 - **Ownership checks** (e.g. "own booking", "assigned stylist") are done in the **service layer**, not only in middleware. They return 404 (not 403) when a customer requests another customer's resource, or a stylist requests a booking not assigned to them, to avoid leaking existence.
 
 ## 4. Security controls checklist (OWASP-aligned)
-- **Passwords:** min 8 chars, at least one letter and one number; bcrypt cost 12; checked against a small common-password list.
+- **Passwords:** min 8 chars, at least one letter and one number, **max 72 bytes** (bcrypt ignores anything longer); bcrypt cost 12; checked against a small common-password list (`shared/auth/commonPasswords.ts`). Login itself does not re-apply the policy, so older passwords keep working.
 - **Input validation:** Zod on every input with `.strict()` (reject unknown fields); string length caps; ObjectId format validation.
 - **NoSQL injection:** Zod rejects objects where strings are expected; additionally enable Mongoose `sanitizeFilter: true` (global, in `db/connect.ts`) and strip keys beginning with `$` or containing `.` from user input. With `sanitizeFilter` on, an operator object in a filter is neutralised (and fails to cast), **including operators written in our own repositories**: wrap those in `mongoose.trusted({ $in: [...] })`. Never wrap user input in `trusted()`.
-- **Rate limiting** (Redis-backed so it works across instances): global 300 req/min/IP; `/auth/login`, `/auth/register`, `/auth/forgot-password` 10 req/15 min/IP; `POST /bookings` 20 req/hour/user.
+- **Rate limiting** (Redis-backed so it works across instances): global 300 req/min/IP; `/auth/login`, `/auth/register`, `/auth/forgot-password` 10 req/15 min/IP; `POST /bookings` 20 req/hour/user. Implemented by `shared/http/rateLimit.ts` (fixed window, `RateLimit-*` and `Retry-After` headers).
 - **Headers:** `helmet` defaults; CSP configured on the Next.js side; `X-Powered-By` disabled.
 - **CORS:** allow-list from `CORS_ORIGINS`, `credentials: true`.
-- **CSRF:** refresh cookie is `SameSite=Lax` and scoped to `/api/v1/auth`; state-changing auth endpoints additionally require header `X-Requested-With: straight-salon-web`. All other endpoints use bearer tokens (not cookies), so they are not CSRF-exposed.
+- **CSRF:** refresh cookie is `SameSite=Lax` and scoped to `/api/v1/auth`; every `POST /auth/*` endpoint additionally requires header `X-Requested-With: straight-salon-web` (403 otherwise). All other endpoints use bearer tokens (not cookies), so they are not CSRF-exposed.
 - **Mass assignment:** services map only whitelisted fields from DTOs; `role`, `isActive` can only be changed via admin endpoints.
 - **Secrets:** only via env; `.env` git-ignored; `.env.example` contains placeholders. CI runs a secret scan (gitleaks).
 - **Dependencies:** `npm audit --audit-level=high` in CI; Dependabot/Renovate enabled.

@@ -10,7 +10,7 @@
 - Money: integer minor units (`priceMinor: 50000` = ₹500.00 / $500.00 depending on currency setting).
 - Optimistic concurrency: enable Mongoose `optimisticConcurrency: true` on `bookings`, `services`, `staff`, `settings`.
 - Every query used by an endpoint must be backed by an index listed here. Add new indexes to this file when adding queries.
-- Schema migrations: `migrate-mongo` in `backend/src/db/migrations`. Never change data shapes without a migration.
+- Schema migrations: `migrate-mongo` in `backend/src/db/migrations`. Never change data shapes without a migration. Migrations are **plain ESM `.js` files type-checked with JSDoc** (`// @ts-check`), not TypeScript: the changelog stores the file name *with extension*, so `.ts` from source and `.js` from the image would look like different migrations and run twice on a shared database. Index migrations must match the Mongoose schema indexes (an integration test compares them). Run: `npm run db:migrate`; automatically on API start when `MIGRATE_ON_START=true` (default outside production); in production as a one-off job (`node dist/db/runMigrations.js`). Concurrent starts are safe: an atomic lock document (`changelog_lock`, fixed `_id`, 5-min TTL) lets exactly one instance migrate while the others skip. migrate-mongo's own lock is disabled: it checks-then-inserts (racy) and fires an unawaited `createIndex` that caused an unhandled rejection when the client closed.
 
 > When rebuilding in a relational stack, each collection maps to a table; embedded arrays (`services` in booking, `breaks` in schedule) become child tables.
 
@@ -40,7 +40,7 @@ Indexes: `{ email: 1 } unique sparse`, `{ phone: 1 } unique`, `{ role: 1, isActi
 | `tokenHash` | string | SHA-256 of the opaque token; never store raw |
 | `family` | string | UUID; all rotations of one login share a family (reuse detection) |
 | `expiresAt` | Date | |
-| `revokedAt` | Date | null if active |
+| `revokedAt` | Date | absent (not stored) while active |
 | `replacedByHash` | string | set on rotation |
 | `userAgent`, `ip` | string | for "active sessions" view |
 
@@ -182,7 +182,7 @@ Every transaction that creates or moves an active booking (create, reschedule, w
 ## 3. Seed data (`npm run db:seed`)
 Idempotent seed for local dev and e2e tests. It grows with the build plan: each phase seeds only the collections that exist so far (admin user in Phase 3; settings, users, catalogue, staff, schedules, holidays and time-off in Phase 4; bookings and payments in Phase 5; reviews in Phase 7). The complete seed below is what exists by Phase 7.
 - Settings singleton with defaults above.
-- Users: 1 admin (`admin@straightsalon.local`), 1 receptionist, 4 staff, 10 customers. Password for all: `Password@123` (dev only; seed refuses to run when `NODE_ENV=production`).
+- Users: 1 admin (`admin@straightsalon.local`, phone `+919000000001`; seeded from Phase 3), 1 receptionist, 4 staff, 10 customers. The seed writes directly (no audit rows; seed data is not a business action) and runs pending migrations first. Password for all: `Password@123` (dev only; seed refuses to run when `NODE_ENV=production`).
 - Categories: Hair, Beard & Grooming, Skin, Nails.
 - ~15 services across categories with realistic durations (15–120 min) and prices.
 - Staff schedules (one stylist off on Mondays), one holiday next month, a few time-off blocks.
