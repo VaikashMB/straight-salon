@@ -1,0 +1,48 @@
+{
+  "name": "straight-salon",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Salon appointment booking and management platform",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "engines": {
+    "node": ">=24 <25",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "dev": "concurrently --names backend,frontend --prefix-colors blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "build": "npm run build --workspaces",
+    "lint": "npm run lint --workspaces",
+    "lint:fix": "npm run lint:fix --workspaces",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces",
+    "test": "npm run test --workspaces",
+    "test:coverage": "npm run test:coverage --workspaces",
+    "test:e2e": "node scripts/not-yet.mjs test:e2e 11",
+    "openapi:export": "node scripts/not-yet.mjs openapi:export 2",
+    "api:client": "node scripts/not-yet.mjs api:client 8",
+    "contract:check": "node scripts/not-yet.mjs contract:check 2",
+    "sonar": "node scripts/not-yet.mjs sonar 11",
+    "db:seed": "node scripts/not-yet.mjs db:seed 3",
+    "db:migrate": "node scripts/not-yet.mjs db:migrate 2",
+    "stats:rebuild": "node scripts/not-yet.mjs stats:rebuild 7",
+    "queues:retry-failed": "node scripts/not-yet.mjs queues:retry-failed 6",
+    "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run contract:check"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "concurrently": "^10.0.5",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.6.0",
+    "prettier": "^3.9.9"
+  },
+  "allowScripts": {
+    "esbuild@0.28.2": true,
+    "unrs-resolver@1.12.2": true
+  }
+}

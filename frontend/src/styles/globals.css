@@ -1,0 +1,38 @@
+/* Phase 0 base styles. Tailwind + shadcn theme replace this in Phase 8 (05-frontend §2). */
+:root {
+  --color-primary: #111111;
+  --color-background: #faf7f2;
+  --color-accent: #b08d57;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--color-background);
+  color: var(--color-primary);
+  font-family: system-ui, sans-serif;
+}
+
+.placeholder {
+  display: grid;
+  place-content: center;
+  min-height: 100vh;
+  padding: 0 16px;
+  text-align: center;
+}
+
+.placeholder h1 {
+  margin: 0 0 8px;
+  border-bottom: 3px solid var(--color-accent);
+  padding-bottom: 8px;
+}
+
+a {
+  color: inherit;
+}

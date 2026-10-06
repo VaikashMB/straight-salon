@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.next/
+coverage/
+reports/
+package-lock.json
+frontend/next-env.d.ts
+frontend/src/lib/api/schema.d.ts
+backend/openapi.json
+
+# Specs are hand-formatted (wide tables); keep diffs readable
+docs/

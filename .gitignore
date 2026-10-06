@@ -1,0 +1,33 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.next/
+out/
+build/
+*.tsbuildinfo
+frontend/next-env.d.ts
+
+# Tests & reports
+coverage/
+reports/
+test-results/
+playwright-report/
+.scannerwork/
+
+# Environment (never commit secrets; .env.example is the template)
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
