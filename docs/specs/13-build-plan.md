@@ -15,12 +15,12 @@ Build strictly in order. Each phase ends with the Definition of Done in `AGENTS.
 > Prompt: *"Implement Phase 1: Docker and local infra exactly as 11-docker-local-dev.md describes."*
 
 ## Phase 2 — Backend core (cross-cutting foundation)
-**Scope:** extend `config/env.ts` (all 03 §3 variables needed so far); extend the Pino logger with redaction, pino-http & request context (07 §1); extend `createApp(deps)` with the new infra clients; error classes + problem+json middleware (03 §4); validation middleware; OpenAPI registry + Swagger UI (04 §2); Redis cache module with cache-aside, tags, lock (08); audit service (07 §2); `withTransaction`; `Clock`; EventBus interface + outbox writer + in-memory bus for tests + BullMQ adapter + relay (09 §4–6); staff-day guard support in `withTransaction` (02 §2.18); graceful shutdown; `/metrics`; Vitest global setup with memory replica set; test factories.
+**Scope:** extend `config/env.ts` (all 03 §3 variables needed so far); extend the Pino logger with redaction, access-log middleware & request context (07 §1); extend `createApp(deps)` with the new infra clients; error classes + problem+json middleware (03 §4); validation middleware; OpenAPI registry + Swagger UI (04 §2); Redis cache module with cache-aside, tags, lock (08); audit service (07 §2); `withTransaction`; `Clock`; EventBus interface + outbox writer + in-memory bus for tests + BullMQ adapter + relay (09 §4–6); staff-day guard support in `withTransaction` (02 §2.18); graceful shutdown; `/metrics`; Vitest global setup with memory replica set; test factories; `openapi:export` + `contract:check`; `env:init`. (`migrate-mongo` moves to Phase 3 with the first business collections.)
 **Done when:** unit tests for all shared modules ≥ 90% coverage; Swagger UI loads with health endpoints documented.
 > Prompt: *"Implement Phase 2: all cross-cutting backend foundations (03, 07, 08, 09 §4–6, 10 §3). No business modules yet. Include tests."*
 
 ## Phase 3 — Auth & users
-**Scope:** users model, refresh tokens, password reset tokens; API-001…015; RBAC permission map & middleware; rate limits & login lockout; security tests (06 §5); audit entries for auth events; seed admin user.
+**Scope:** `migrate-mongo` setup (`db:migrate`, `MIGRATE_ON_START`, index migrations for existing and new collections, 02 §1); users model, refresh tokens, password reset tokens; API-001…015; RBAC permission map & middleware; rate limits & login lockout; security tests (06 §5); audit entries for auth events; seed admin user.
 > Prompt: *"Implement Phase 3: auth and users modules per 06-auth-and-security, API-001 to API-015, with all required tests."*
 
 ## Phase 4 — Settings, catalog, staff, schedules, holidays

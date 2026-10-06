@@ -35,13 +35,13 @@ Pino JSON, one line per event, to stdout. In development, `LOG_PRETTY=true` pipe
 | `fatal` | Process cannot continue (cannot connect to DB at boot) |
 | `error` | Unhandled errors, 5xx, job failed after final retry |
 | `warn` | Handled but suspicious: refresh token reuse, rate limit hit, retrying job, slow query > 500 ms |
-| `info` | Request completed (pino-http), business milestones (booking created/cancelled), startup/shutdown |
+| `info` | Request completed (access-log middleware), business milestones (booking created/cancelled), startup/shutdown |
 | `debug` | Detailed flow (availability calculation inputs/outputs), cache hit/miss |
 | `trace` | Not used in v1 |
 
 Default `LOG_LEVEL=info` (dev may use `debug`). Tests use `silent`.
 
-### 1.3 HTTP access logs (`pino-http`)
+### 1.3 HTTP access logs (`shared/http/accessLog.ts`)
 Log on response finish: method, route pattern (not raw URL with IDs, to keep cardinality low), status, `responseTimeMs`, `contentLength`, `userAgent`. 5xx → `error`, 4xx → `warn` (except 401/404 → `info`), else `info`. Skip `/health/*` and `/metrics`.
 
 ### 1.4 Redaction (PII and secrets) — mandatory

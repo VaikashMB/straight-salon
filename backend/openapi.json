@@ -1,0 +1,315 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Straight Salon API",
+    "version": "0.0.0",
+    "description": "Salon booking and management API. Errors use RFC 7807 problem details; every response carries X-Request-Id."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      },
+      "refreshCookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "ss_rt"
+      }
+    },
+    "schemas": {
+      "Problem": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "example": "https://straightsalon.dev/errors/slot-unavailable"
+          },
+          "title": {
+            "type": "string",
+            "example": "Conflict"
+          },
+          "status": {
+            "type": "integer",
+            "example": 409
+          },
+          "code": {
+            "type": "string",
+            "example": "SLOT_UNAVAILABLE"
+          },
+          "detail": {
+            "type": "string",
+            "example": "The selected stylist is no longer free at 11:00."
+          },
+          "instance": {
+            "type": "string",
+            "example": "/api/v1/bookings"
+          },
+          "requestId": {
+            "type": "string",
+            "example": "6f1c2a8e-4d1b-4c0e-9a57-2b8f0e1d3c4a"
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "path": {
+                  "type": "string",
+                  "example": "startAt"
+                },
+                "message": {
+                  "type": "string",
+                  "example": "Invalid ISO datetime"
+                }
+              },
+              "required": [
+                "path",
+                "message"
+              ]
+            }
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "detail",
+          "instance"
+        ],
+        "description": "RFC 7807 problem details (03-backend §4)"
+      },
+      "Money": {
+        "type": "object",
+        "properties": {
+          "amountMinor": {
+            "type": "integer",
+            "example": 50000,
+            "description": "Smallest currency unit"
+          },
+          "currency": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 3,
+            "example": "INR",
+            "description": "ISO 4217"
+          }
+        },
+        "required": [
+          "amountMinor",
+          "currency"
+        ]
+      },
+      "PaginationMeta": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          },
+          "total": {
+            "type": "integer"
+          },
+          "totalPages": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "total",
+          "totalPages"
+        ],
+        "example": {
+          "page": 1,
+          "pageSize": 20,
+          "total": 134,
+          "totalPages": 7
+        }
+      },
+      "Liveness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok"
+            ]
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "example": {
+          "status": "ok"
+        }
+      },
+      "Readiness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "enum": [
+              "ok",
+              "degraded",
+              "error",
+              "shutting_down"
+            ],
+            "description": "ok: all up. degraded: a non-critical dependency (Redis) is down, still serving (HTTP 200). error: a critical dependency (MongoDB) is down (HTTP 503). shutting_down: draining (HTTP 503)."
+          },
+          "checks": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "up",
+                    "down"
+                  ]
+                }
+              },
+              "required": [
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "status",
+          "checks"
+        ]
+      }
+    },
+    "parameters": {}
+  },
+  "paths": {
+    "/health/live": {
+      "get": {
+        "tags": [
+          "Ops"
+        ],
+        "summary": "Liveness probe",
+        "description": "The process is up. No dependency checks (03-backend §6).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Process is alive",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Liveness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "tags": [
+          "Ops"
+        ],
+        "summary": "Readiness probe",
+        "description": "Pings MongoDB (critical) and Redis (non-critical). Returns 503 if MongoDB is down or the process is shutting down; Redis down only degrades the status (03-backend §6).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Ready (status ok or degraded)",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "ok": {
+                    "value": {
+                      "status": "ok",
+                      "checks": {
+                        "mongo": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "up"
+                        }
+                      }
+                    }
+                  },
+                  "degraded": {
+                    "value": {
+                      "status": "degraded",
+                      "checks": {
+                        "mongo": {
+                          "status": "up"
+                        },
+                        "redis": {
+                          "status": "down"
+                        }
+                      }
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready (MongoDB down or shutting down)",
+            "content": {
+              "application/json": {
+                "example": {
+                  "status": "error",
+                  "checks": {
+                    "mongo": {
+                      "status": "down"
+                    },
+                    "redis": {
+                      "status": "up"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/metrics": {
+      "get": {
+        "tags": [
+          "Ops"
+        ],
+        "summary": "Prometheus metrics",
+        "description": "Exposed when METRICS_ENABLED=true (03-backend §6).",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Prometheus text exposition format",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "http_request_duration_seconds_bucket{...} 3"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "webhooks": {}
+}

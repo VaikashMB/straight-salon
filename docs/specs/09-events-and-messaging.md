@@ -66,7 +66,7 @@ interface EventBus {
   subscribe(consumerName: string, eventTypes: string[], handler: (e) => Promise<void>, opts?): void;
 }
 ```
-**BullMQ adapter (v1):** one queue per consumer (fan-out done by the adapter: `publish` adds the event to every queue whose consumer subscribed to that type). Job ID = `${consumer}:${eventId}` so BullMQ itself deduplicates.
+**BullMQ adapter (v1):** one queue per consumer (fan-out done by the adapter: `publish` adds the event to every queue whose consumer subscribed to that type). Job ID = `eventId` so BullMQ itself drops a duplicate publish into the same queue (BullMQ rejects `:` in custom job IDs, so the consumer cannot be part of the ID; the per-consumer queue already scopes it). The consumer → event-types routing table is static (`shared/events/subscriptions.ts`), so the relay process can fan out without knowing which worker runs each consumer. Queue key prefix `ss`.
 
 Future adapters: `RabbitMqEventBus` (topic exchange `ss.events`, one queue per consumer, routing key = event type), `KafkaEventBus` (topic per aggregate). Modules never import BullMQ directly.
 
@@ -104,7 +104,7 @@ Plus natural idempotency (e.g. `notifications.dedupeKey`, stats recompute).
 
 Schedules are registered with `queue.upsertJobScheduler(<fixed scheduler id>, { every | pattern, tz: <salon timezone> }, template)`. Upserting by a fixed ID means running multiple worker replicas, or restarting, never duplicates a schedule. (This replaces BullMQ's deprecated repeatable-jobs API.)
 
-**Password reset token handling:** the API generates the raw token, stores its hash, and writes the raw token into the outbox payload field `secret` which is encrypted with AES-256-GCM using `OUTBOX_ENCRYPTION_KEY` (env). The notification consumer decrypts it to build the link. Outbox rows are TTL-deleted after publish.
+**Password reset token handling:** the API generates the raw token, stores its hash, and writes the raw token into the envelope field `secret` (next to, not inside, `payload`, so payload validation and logging never see it), encrypted with AES-256-GCM using `OUTBOX_ENCRYPTION_KEY` (env). The notification consumer decrypts it to build the link. Outbox rows are TTL-deleted after publish.
 
 ## 8. Notification templates
 Stored as code in `modules/notifications/templates/` (Handlebars or simple TS functions), each with `email.subject`, `email.html`, `email.text`, `sms.text` (≤ 160 chars). Templates: `welcome`, `password_reset`, `booking_confirmed`, `booking_rescheduled`, `booking_cancelled`, `booking_reminder_24h`, `booking_reminder_2h`, `booking_no_show`, `booking_thank_you`, `staff_booking_assigned`, `staff_booking_changed`, `staff_booking_cancelled`.

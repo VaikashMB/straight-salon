@@ -165,7 +165,7 @@ Indexes: `{ entityType: 1, entityId: 1, at: -1 }`, `{ "actor.id": 1, at: -1 }`, 
 The application DB user must have **insert/find only** on this collection (no update/delete) — enforced via a dedicated Mongo role in `infra/docker/mongo-init.js`.
 
 ### 2.15 `outbox_events`
-`eventId` (UUID, unique), `type` (e.g. `booking.created`), `aggregateType`, `aggregateId`, `payload`, `occurredAt`, `status` (`PENDING|PUBLISHING|PUBLISHED|FAILED`), `claimedAt` (set when a relay claims the row, see 09 §4), `publishedAt`, `attempts`, `lastError`.
+The full event envelope (09 §2): `eventId` (UUID, unique), `type` (e.g. `booking.created`), `version`, `aggregateType`, `aggregateId`, `actor {id, role}`, `correlationId`, `payload`, optional `secret {iv, tag, data}` (AES-256-GCM, 09 §7), `occurredAt`; plus delivery state: `status` (`PENDING|PUBLISHING|PUBLISHED|FAILED`), `claimedAt` (set when a relay claims the row, see 09 §4), `publishedAt`, `attempts`, `lastError`.
 Indexes: `{ eventId: 1 } unique`, `{ status: 1, occurredAt: 1 }`, `{ status: 1, claimedAt: 1 }` (stale-claim reset), TTL 7 days on `publishedAt`.
 
 ### 2.16 `processed_events` (consumer idempotency)

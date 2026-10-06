@@ -3,6 +3,11 @@ import type { Logger } from '../shared/logger/index.js';
 
 const DEFAULT_SERVER_SELECTION_TIMEOUT_MS = 10_000;
 
+// NoSQL-injection defence in depth (06 §4): query filters treat user-supplied objects such as
+// { $gt: "" } as literal values, and unknown filter paths are rejected.
+mongoose.set('sanitizeFilter', true);
+mongoose.set('strictQuery', true);
+
 // Connects the shared Mongoose connection and logs each state change (07-logging §1.5).
 // The URI is never logged: it can carry credentials.
 export async function connectMongo(

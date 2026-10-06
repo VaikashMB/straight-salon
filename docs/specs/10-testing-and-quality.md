@@ -10,7 +10,7 @@
 | Level | Backend | Frontend | Runs in |
 |---|---|---|---|
 | Unit | Vitest: services (repositories mocked), pure utils, mappers, Zod schemas, middleware | Vitest + RTL: components, hooks, utils | Every commit (pre-push) & CI |
-| Integration | Vitest + Supertest against `createApp()` with **mongodb-memory-server (replica set)** and ioredis-mock / real Redis in CI; queues replaced with in-memory EventBus | Vitest + MSW: pages/features against mocked API | CI |
+| Integration | Vitest + Supertest against `createApp()` with **mongodb-memory-server (replica set)**, one per run (`test/setup/globalSetup.ts`), a fresh database per test file (`test/helpers/db.ts`); in-memory EventBus for business flows. ioredis-mock for cache/lock unit tests (it ignores `EXPIRE NX/GT`); **real Redis** for the BullMQ adapter and Redis 7 semantics (`test/integration/redis.int.test.ts`, `REDIS_TEST_URL`, default `redis://127.0.0.1:6379/15`; locally `docker compose up -d redis`, CI redis service) | Vitest + MSW: pages/features against mocked API | CI |
 | Contract | OpenAPI drift check; response bodies validated against Zod response schemas in integration tests | Generated client type-checks against committed `openapi.json` | CI |
 | E2E | — | Playwright against full docker-compose stack with seed data | CI (main branch & PRs labelled `e2e`), locally on demand |
 
@@ -84,6 +84,6 @@ Based on "Sonar way" plus: coverage on new code ≥ 80%, overall coverage ≥ 80
 
 ## 6. Static checks (run before tests)
 - `tsc --noEmit` in both apps.
-- ESLint 9 flat config with typescript-eslint `recommendedTypeChecked`, no import cycles (`eslint-plugin-import-x` in the backend; the `import` plugin bundled with `eslint-config-next` in the frontend), `eslint-plugin-security` (backend), `eslint-plugin-jsx-a11y` recommended (frontend). Rules: no `console`, no floating promises, no explicit `any`. `--max-warnings=0`.
+- ESLint 9 flat config with typescript-eslint `recommendedTypeChecked`, no import cycles (`eslint-plugin-import-x` in the backend; the `import` plugin bundled with `eslint-config-next` in the frontend), `eslint-plugin-security` (backend; `detect-object-injection` off: it flags every `obj[key]`, all hits were false positives, and injection is handled by strict Zod + `sanitizeFilter`), `eslint-plugin-jsx-a11y` recommended (frontend). Rules: no `console`, no floating promises, no explicit `any`. `--max-warnings=0`.
 - Prettier check.
 - `npm audit --audit-level=high`, gitleaks secret scan.

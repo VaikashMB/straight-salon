@@ -14,6 +14,7 @@
   "scripts": {
     "prepare": "husky",
     "dev": "concurrently --names backend,worker,frontend --prefix-colors blue,yellow,magenta \"npm run dev -w backend\" \"npm run dev:worker -w backend\" \"npm run dev -w frontend\"",
+    "env:init": "node scripts/init-env.mjs",
     "up": "docker compose up -d --build",
     "down": "docker compose down",
     "reset": "docker compose down -v",
@@ -30,12 +31,12 @@
     "test": "npm run test --workspaces",
     "test:coverage": "npm run test:coverage --workspaces",
     "test:e2e": "node scripts/not-yet.mjs test:e2e 11",
-    "openapi:export": "node scripts/not-yet.mjs openapi:export 2",
+    "openapi:export": "npm run openapi:export -w backend",
     "api:client": "node scripts/not-yet.mjs api:client 8",
-    "contract:check": "node scripts/not-yet.mjs contract:check 2",
+    "contract:check": "node scripts/contract-check.mjs",
     "sonar": "node scripts/not-yet.mjs sonar 11",
     "db:seed": "node scripts/not-yet.mjs db:seed 3",
-    "db:migrate": "node scripts/not-yet.mjs db:migrate 2",
+    "db:migrate": "node scripts/not-yet.mjs db:migrate 3",
     "stats:rebuild": "node scripts/not-yet.mjs stats:rebuild 7",
     "queues:retry-failed": "node scripts/not-yet.mjs queues:retry-failed 6",
     "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run contract:check"
@@ -51,6 +52,8 @@
   "allowScripts": {
     "esbuild@0.28.2": true,
     "unrs-resolver@1.12.2": true,
-    "mongodb-memory-server": false
+    "mongodb-memory-server": false,
+    "@scarf/scarf": false,
+    "msgpackr-extract": false
   }
 }

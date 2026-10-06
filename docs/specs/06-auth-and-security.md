@@ -75,7 +75,7 @@ No PII (no email/phone/name) in the token.
 ## 4. Security controls checklist (OWASP-aligned)
 - **Passwords:** min 8 chars, at least one letter and one number; bcrypt cost 12; checked against a small common-password list.
 - **Input validation:** Zod on every input with `.strict()` (reject unknown fields); string length caps; ObjectId format validation.
-- **NoSQL injection:** Zod rejects objects where strings are expected; additionally enable Mongoose `sanitizeFilter: true` and strip keys beginning with `$` or containing `.` from user input.
+- **NoSQL injection:** Zod rejects objects where strings are expected; additionally enable Mongoose `sanitizeFilter: true` (global, in `db/connect.ts`) and strip keys beginning with `$` or containing `.` from user input. With `sanitizeFilter` on, an operator object in a filter is neutralised (and fails to cast), **including operators written in our own repositories**: wrap those in `mongoose.trusted({ $in: [...] })`. Never wrap user input in `trusted()`.
 - **Rate limiting** (Redis-backed so it works across instances): global 300 req/min/IP; `/auth/login`, `/auth/register`, `/auth/forgot-password` 10 req/15 min/IP; `POST /bookings` 20 req/hour/user.
 - **Headers:** `helmet` defaults; CSP configured on the Next.js side; `X-Powered-By` disabled.
 - **CORS:** allow-list from `CORS_ORIGINS`, `credentials: true`.

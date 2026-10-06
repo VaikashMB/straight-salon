@@ -11,7 +11,7 @@
 | Redis client | `ioredis` 5 (not 6 yet: `ioredis-mock`, used in tests, supports only 5; BullMQ accepts either). App client uses `enableOfflineQueue: false` + `maxRetriesPerRequest: 1` so commands fail fast while Redis is down; BullMQ gets its own connections |
 | Queue | BullMQ |
 | Auth | `jose` (JWT; also covers the planned RS256 move), `bcrypt` (prebuilt binaries; `bcryptjs` is the drop-in fallback if the Alpine build fails) |
-| Logging | `pino`, `pino-http`, `pino-pretty` (dev only) |
+| Logging | `pino`, `pino-pretty` (dev only). HTTP access log is a ~30-line middleware (`shared/http/accessLog.ts`), not `pino-http`: the spec needs the route *pattern* and exactly the fields in 07 §1.3; `pino-http` logs raw URLs/headers by default and its `customProps` hook binds at request start *and* finish, duplicating fields |
 | Security | `helmet`, `cors`, `express-rate-limit` + `rate-limit-redis`. (`hpp` is not used: it reassigns `req.query`, which is a read-only getter in Express 5; Zod rejects arrays where strings are expected.) |
 | Dates | `date-fns` v4 + `@date-fns/tz` (`TZDate`); all tz math centralised in `shared/time` |
 | Scheduling | BullMQ **Job Schedulers** (`upsertJobScheduler`; replaces the deprecated repeatable-jobs API). No in-process cron, so it is safe with multiple instances |
@@ -29,7 +29,8 @@ backend/src/
 │   ├── env.ts                 # Zod schema for process.env; process exits on invalid config
 │   └── constants.ts
 ├── shared/
-│   ├── logger/                # pino instance, child loggers, redaction
+│   ├── logger/                # pino instance, redaction, requestContext mixin
+│   ├── metrics/               # prom-client registry, HTTP histogram, cache counters, gauges
 │   ├── http/                  # requestContext, validate, asyncHandler, pagination, response mappers
 │   │                          #   validate() stores parsed input on req.validated.{body,query,params};
 │   │                          #   it never reassigns req.query (read-only getter in Express 5)
@@ -37,7 +38,8 @@ backend/src/
 │   ├── auth/                  # jwt utils, authenticate, authorize, permissions map
 │   ├── audit/                 # auditService.record(), diff util
 │   ├── cache/                 # redis.ts (client, ping, close), cacheAside(), key builders, invalidation
-│   ├── events/                # EventBus interface, outbox writer, BullMQ adapter, event type registry
+│   ├── events/                # envelope, registry (Zod payloads), outbox model/repository/writer, secret (AES-GCM),
+│   │                          #   EventBus + in-memory + BullMQ adapters, subscriptions table, relay, idempotent()
 │   ├── locks/                 # Redis distributed lock (SET NX PX + token)
 │   ├── time/                  # tz helpers, slot math
 │   ├── db/                    # withTransaction helper

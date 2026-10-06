@@ -4,6 +4,7 @@ import { captureLogger } from '../../../../test/helpers/logger.js';
 import { createProcessLogger, loadEnvOrExit, registerShutdown } from '../index.js';
 
 const validEnv = {
+  OUTBOX_ENCRYPTION_KEY: Buffer.alloc(32, 7).toString('base64'),
   PORT: '4000',
   MONGO_URI: 'mongodb://localhost:27017/straight_salon',
   REDIS_URL: 'redis://localhost:6379',
@@ -104,5 +105,37 @@ describe('registerShutdown', () => {
 
     expect(exit).toHaveBeenCalledWith(1);
     expect(lines().some((l) => l.msg === 'Forced shutdown after timeout')).toBe(true);
+  });
+});
+
+describe('default process hooks', () => {
+  it('loadEnvOrExit calls process.exit(1) by default', () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const stdout = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+    try {
+      loadEnvOrExit('relay', {});
+      expect(exit).toHaveBeenCalledWith(1);
+    } finally {
+      exit.mockRestore();
+      stdout.mockRestore();
+    }
+  });
+
+  it('registerShutdown listens on the real process and exits via process.exit by default', async () => {
+    const exit = vi.spyOn(process, 'exit').mockImplementation(() => undefined as never);
+    const once = vi.spyOn(process, 'once');
+    try {
+      registerShutdown(captureLogger().logger, []);
+      const sigterm = once.mock.calls.find(([signal]) => signal === 'SIGTERM')?.[1] as (
+        s: NodeJS.Signals,
+      ) => void;
+      sigterm('SIGTERM');
+      await vi.waitFor(() => expect(exit).toHaveBeenCalledWith(0));
+    } finally {
+      process.removeAllListeners('SIGTERM');
+      process.removeAllListeners('SIGINT');
+      exit.mockRestore();
+      once.mockRestore();
+    }
   });
 });

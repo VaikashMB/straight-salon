@@ -1,59 +1,49 @@
-import { MongoMemoryReplSet } from 'mongodb-memory-server';
-import request from 'supertest';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createApp } from '../../src/app.js';
+import mongoose from 'mongoose';
+import { afterAll, describe, expect, inject, it } from 'vitest';
 import { connectMongo, disconnectMongo, pingMongo } from '../../src/db/connect.js';
-import { createReadinessService } from '../../src/modules/health/health.service.js';
 import { captureLogger } from '../helpers/logger.js';
 
-// Real MongoDB (single-node replica set, as in Docker) via mongodb-memory-server.
-let replSet: MongoMemoryReplSet;
-
-beforeAll(async () => {
-  replSet = await MongoMemoryReplSet.create({ replSet: { count: 1 } });
-}, 120_000);
+// Real MongoDB (single-node replica set, as in Docker) from test/setup/globalSetup.ts.
+const uri = (): string => {
+  const url = new URL(inject('mongoUri'));
+  url.pathname = '/connect_probe';
+  return url.toString();
+};
 
 afterAll(async () => {
-  await disconnectMongo();
-  await replSet.stop();
+  await mongoose.disconnect();
 });
 
 describe('connectMongo / pingMongo', () => {
   it('connects to a replica set, logs it, and answers ping', async () => {
     const { logger, lines } = captureLogger();
-    const connection = await connectMongo(replSet.getUri('straight_salon'), logger);
+    const connection = await connectMongo(uri(), logger);
 
     await expect(pingMongo(connection)).resolves.toBeUndefined();
     expect(lines().some((l) => l.component === 'mongo' && l.msg === 'MongoDB connected')).toBe(
       true,
     );
     // The URI (which can contain credentials) never appears in the logs.
-    expect(JSON.stringify(lines())).not.toContain(replSet.getUri());
+    expect(JSON.stringify(lines())).not.toContain(inject('mongoUri'));
   });
 
-  it('GET /health/ready is 200 against a live MongoDB even when Redis is down (degraded)', async () => {
-    const { logger } = captureLogger();
-    const connection = await connectMongo(replSet.getUri('straight_salon'), logger);
-    const readiness = createReadinessService(
-      {
-        mongo: { critical: true, check: () => pingMongo(connection) },
-        redis: { critical: false, check: () => Promise.reject(new Error('ECONNREFUSED')) },
-      },
-      logger,
+  it('enables sanitizeFilter, so injected operators become literal values (06 §4)', async () => {
+    expect(mongoose.get('sanitizeFilter')).toBe(true);
+    const Probe = mongoose.model<{ email: string }>(
+      'Probe',
+      new mongoose.Schema<{ email: string }>({ email: String }),
     );
-
-    const res = await request(createApp({ readiness })).get('/health/ready');
-
-    expect(res.status).toBe(200);
-    expect(res.body).toEqual({
-      status: 'degraded',
-      checks: { mongo: { status: 'up' }, redis: { status: 'down' } },
-    });
+    await Probe.create({ email: 'a@b.c' });
+    // The injected operator is wrapped in $eq and then fails to cast: it never reaches MongoDB.
+    await expect(Probe.findOne({ email: { $ne: 'nobody' } as unknown as string })).rejects.toThrow(
+      /Cast to string/,
+    );
+    expect(await Probe.findOne({ email: mongoose.trusted({ $ne: 'nobody' }) })).not.toBeNull();
   });
 
   it('ping fails once disconnected', async () => {
     const { logger, lines } = captureLogger();
-    const connection = await connectMongo(replSet.getUri('straight_salon'), logger);
+    const connection = await connectMongo(uri(), logger);
     await disconnectMongo();
 
     await expect(pingMongo(connection)).rejects.toThrow();

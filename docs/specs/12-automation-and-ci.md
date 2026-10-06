@@ -27,15 +27,16 @@
 | `test` | unit + integration all workspaces |
 | `test:coverage` | with coverage + thresholds |
 | `test:e2e` | Playwright against running stack |
+| `env:init` | create `.env` from `.env.example` and generate placeholder secrets (`JWT_ACCESS_SECRET`, `OUTBOX_ENCRYPTION_KEY`); never overwrites real values |
 | `openapi:export` | regenerate `backend/openapi.json` |
 | `api:client` | regenerate `frontend/src/lib/api/schema.d.ts` from openapi.json |
-| `contract:check` | export + client gen + fail if git diff non-empty |
+| `contract:check` | export (+ client gen from Phase 8); fail if `backend/openapi.json` is untracked or differs from the git index |
 | `sonar` | run sonar-scanner via Docker |
 | `db:seed` / `db:migrate` / `stats:rebuild` | backend data tasks |
 | `queues:retry-failed` | re-queue DLQ jobs |
 | `validate` | lint + format:check + typecheck + test:coverage + contract:check (what CI runs; developers run before pushing) |
 
-Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `openapi:export`, `contract:check`, `db:migrate` (Phase 2), `db:seed` (3), `queues:retry-failed` (6), `stats:rebuild` (7), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
+Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `db:migrate` (Phase 3, with the first business collections; Phase 2's collections rely on Mongoose index builds), `db:seed` (3), `queues:retry-failed` (6), `stats:rebuild` (7), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
 
 ## 3. CI pipeline (GitHub Actions)
 

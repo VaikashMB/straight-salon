@@ -31,6 +31,10 @@ export default defineConfig([
       '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
       'import-x/no-cycle': 'error',
+      // Flags every obj[key] read, including keys from Object.keys() of our own objects and
+      // fixed unions: all hits were false positives. Injection is handled by strict Zod
+      // schemas and Mongoose sanitizeFilter (06 §4). Other security rules stay on.
+      'security/detect-object-injection': 'off',
     },
   },
   {
