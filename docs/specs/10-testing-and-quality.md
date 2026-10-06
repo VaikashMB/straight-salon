@@ -24,6 +24,7 @@ backend/
 │   │   └── testApp.ts        # builds app with test deps (fake clock, in-memory bus, mock providers)
 │   ├── factories/            # buildUser(), buildService(), buildBooking() ... (fishery or hand-written)
 │   ├── helpers/auth.ts       # loginAs(role) -> bearer token
+│   ├── helpers/logger.ts     # captureLogger(): real pino logger writing JSON lines to memory
 │   └── integration/          # *.int.test.ts per module
 └── src/**/__tests__/*.test.ts  # unit tests next to code
 ```
@@ -37,6 +38,8 @@ exclude: ['src/**/*.d.ts', 'src/**/__tests__/**', 'src/server.ts', 'src/worker.t
 Reporters: Vitest's built-in `junit` reporter for CI test reports (added in Phase 11). Sonar reads coverage from `lcov.info`; no separate Sonar test-execution reporter is needed.
 
 > Why Vitest instead of Jest (decided in Phase 0): the backend is ESM (03 §1), and several dependencies are ESM-only. Jest's ESM support is still experimental and needs transform workarounds. Vitest runs TypeScript and ESM natively and is already the frontend runner, so the repo uses one test runner throughout.
+
+**mongodb-memory-server:** its postinstall download is denied in `allowScripts` (12 §1), so `npm install` (and Docker builds) never fetch a ~120 MB `mongod`. The binary downloads once on first test use into `~/.cache/mongodb-binaries`. Integration tests start a single-node replica set (`MongoMemoryReplSet`), matching Docker.
 
 **Clock injection:** a `Clock` interface (`now()`) is injected everywhere time matters, so tests can freeze time. Never call `new Date()` directly in business logic.
 

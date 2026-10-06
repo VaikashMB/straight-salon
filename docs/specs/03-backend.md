@@ -8,7 +8,7 @@
 | Validation & types | Zod 4 |
 | OpenAPI | `@asteasolutions/zod-to-openapi` (Zod 4-compatible major) + `swagger-ui-express` |
 | ODM | Mongoose (current major at the time of Phase 2; check the migration guide) |
-| Redis client | `ioredis` |
+| Redis client | `ioredis` 5 (not 6 yet: `ioredis-mock`, used in tests, supports only 5; BullMQ accepts either). App client uses `enableOfflineQueue: false` + `maxRetriesPerRequest: 1` so commands fail fast while Redis is down; BullMQ gets its own connections |
 | Queue | BullMQ |
 | Auth | `jose` (JWT; also covers the planned RS256 move), `bcrypt` (prebuilt binaries; `bcryptjs` is the drop-in fallback if the Alpine build fails) |
 | Logging | `pino`, `pino-http`, `pino-pretty` (dev only) |
@@ -36,12 +36,13 @@ backend/src/
 │   ├── errors/                # AppError, NotFoundError, ConflictError, ... + errorHandler middleware
 │   ├── auth/                  # jwt utils, authenticate, authorize, permissions map
 │   ├── audit/                 # auditService.record(), diff util
-│   ├── cache/                 # cache client, cacheAside(), key builders, invalidation
+│   ├── cache/                 # redis.ts (client, ping, close), cacheAside(), key builders, invalidation
 │   ├── events/                # EventBus interface, outbox writer, BullMQ adapter, event type registry
 │   ├── locks/                 # Redis distributed lock (SET NX PX + token)
 │   ├── time/                  # tz helpers, slot math
 │   ├── db/                    # withTransaction helper
-│   └── storage/               # ObjectStorage interface + local adapter
+│   ├── storage/               # ObjectStorage interface + local adapter
+│   └── lifecycle/             # loadEnvOrExit, createProcessLogger, registerShutdown (shared by api/worker/relay)
 ├── modules/
 │   ├── auth/
 │   ├── users/
@@ -60,7 +61,7 @@ backend/src/
 ├── jobs/                      # BullMQ job scheduler definitions (reminders, no-show, stats)
 ├── workers/                   # BullMQ processors wiring
 ├── docs/                      # openapi registry & document builder
-├── db/                        # connect.ts, migrations/, seed/
+├── db/                        # connect.ts (connectMongo, pingMongo, disconnectMongo), migrations/, seed/
 ├── app.ts
 ├── server.ts
 ├── worker.ts
@@ -82,7 +83,7 @@ modules/bookings/
 ```
 
 ## 3. Configuration (`.env`)
-All validated at boot in `config/env.ts`. Example values in `.env.example`. `env.ts` starts in Phase 0 with `NODE_ENV`, `PORT`, `APP_VERSION`, `LOG_LEVEL` and `LOG_PRETTY`; each later phase adds the variables it uses. In dev, `npm run dev` loads the repo-root `.env` (`--env-file-if-exists`). In containers, variables come from Compose.
+All validated at boot in `config/env.ts`. Example values in `.env.example`. `env.ts` starts in Phase 0 with `NODE_ENV`, `PORT`, `APP_VERSION`, `LOG_LEVEL` and `LOG_PRETTY`; Phase 1 adds `MONGO_URI` and `REDIS_URL` (both required, scheme-checked); each later phase adds the variables it uses. The worker and relay parse the same schema (they ignore `PORT`). In dev, `npm run dev` loads the repo-root `.env` (`--env-file-if-exists`). In containers, variables come from Compose.
 
 | Variable | Example | Notes |
 |---|---|---|
@@ -191,12 +192,23 @@ Implemented as pure functions in `shared/time/slots.ts` — **this must have nea
 
 ## 6. Health and ops endpoints
 - `GET /health/live` → 200 `{ status: "ok" }` (process alive, no dependency checks).
-- `GET /health/ready` → checks Mongo ping, Redis ping; 200 or 503 with per-dependency status.
+- `GET /health/ready` → pings Mongo and Redis (2 s timeout each) and returns per-dependency status. Mongo is **critical** and Redis is **non-critical**, which reconciles this section with 08 §1 ("if Redis is down … readiness stays OK"):
+
+  | Situation | HTTP | Body `status` |
+  |---|---|---|
+  | All up | 200 | `ok` |
+  | Redis down, Mongo up | 200 | `degraded` (cache falls back to Mongo; locks/rate limits degrade per 08 §5) |
+  | Mongo down | 503 | `error` |
+  | Shutting down (SIGTERM received) | 503 | `shutting_down` (no checks run) |
+
+  Body: `{ "status": "degraded", "checks": { "mongo": { "status": "up" }, "redis": { "status": "down" } } }`. Error details are logged at `warn`, never returned (the endpoint is public).
+- At startup, a Mongo connection failure is fatal (log `fatal`, exit 1, 07 §1.2). A Redis failure is not: the client reconnects in the background, and readiness reports `degraded` meanwhile.
 - `GET /metrics` → Prometheus metrics (HTTP duration histogram by route/status, queue depth, outbox pending count) when `METRICS_ENABLED`.
 - `GET /api/docs` → Swagger UI; `GET /api/docs/openapi.json` → raw spec.
 
 ## 7. Graceful shutdown
 On `SIGTERM`/`SIGINT`: mark readiness as failing → stop HTTP server accepting new connections → wait for in-flight requests (max 10s) → close BullMQ workers/queues → close Redis → close Mongo → exit 0. Workers finish current job before closing.
+Implemented by `registerShutdown(logger, steps)` in `shared/lifecycle`, shared by all entrypoints: steps run in order, a failing step is logged and the rest still run (exit 1), and the whole sequence is capped at 10 s (forced exit 1). Redis is closed with `QUIT` when connected and by dropping the socket when it is unreachable.
 
 ## 8. Pagination, filtering, sorting conventions
 - Query: `?page=1&pageSize=20&sort=-startAt&status=BOOKED`.

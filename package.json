@@ -13,7 +13,14 @@
   },
   "scripts": {
     "prepare": "husky",
-    "dev": "concurrently --names backend,frontend --prefix-colors blue,magenta \"npm run dev -w backend\" \"npm run dev -w frontend\"",
+    "dev": "concurrently --names backend,worker,frontend --prefix-colors blue,yellow,magenta \"npm run dev -w backend\" \"npm run dev:worker -w backend\" \"npm run dev -w frontend\"",
+    "up": "docker compose up -d --build",
+    "down": "docker compose down",
+    "reset": "docker compose down -v",
+    "logs": "docker compose logs -f backend worker",
+    "seed": "node scripts/not-yet.mjs seed 3",
+    "tools": "docker compose --profile tools up -d",
+    "sonar:up": "docker compose -f docker-compose.sonar.yml up -d",
     "build": "npm run build --workspaces",
     "lint": "npm run lint --workspaces",
     "lint:fix": "npm run lint:fix --workspaces",
@@ -43,6 +50,7 @@
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
-    "unrs-resolver@1.12.2": true
+    "unrs-resolver@1.12.2": true,
+    "mongodb-memory-server": false
   }
 }

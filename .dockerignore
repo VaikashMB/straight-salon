@@ -1,0 +1,31 @@
+# Build context is the repo root (npm workspaces share one lockfile, 11-docker §4).
+# Keep it small and free of secrets.
+.git
+.github
+.husky
+.vscode
+.idea
+docs
+infra
+scripts
+**/node_modules
+**/dist
+**/.next
+**/coverage
+**/reports
+**/*.tsbuildinfo
+**/*.log
+.env
+.env.*
+!.env.example
+
+# Tests are not part of any image
+backend/test
+**/__tests__
+frontend/tests
+**/vitest.config.*
+
+# Not needed inside images
+**/Dockerfile
+docker-compose*.yml
+sonar-project.properties

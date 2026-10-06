@@ -1,0 +1,59 @@
+# Optional overlay: run MongoDB with authentication, so the append-only audit role is
+# enforced by the database (02-database §2.14, 11-docker §6). Default local dev is no-auth.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.override.yml -f docker-compose.auth.yml up --build
+#
+# Needs in .env: MONGO_ROOT_PASSWORD and MONGO_APP_PASSWORD. Switching an existing no-auth
+# volume to auth mode needs `npm run reset` first (the root user is only created on first init).
+
+services:
+  mongo:
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
+    # A replica set with auth needs a keyfile for internal authentication. It must be owned by
+    # the mongodb user with 0400 permissions, so it is generated inside the container.
+    entrypoint:
+      - bash
+      - -c
+      - |
+        set -e
+        if [ ! -f /data/configdb/keyfile ]; then
+          head -c 756 /dev/urandom | base64 -w 0 > /data/configdb/keyfile
+          chmod 400 /data/configdb/keyfile
+          chown 999:999 /data/configdb/keyfile
+        fi
+        exec docker-entrypoint.sh "$$@"
+      - --
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all', '--keyFile', '/data/configdb/keyfile']
+    volumes:
+      - mongo_config:/data/configdb
+
+  mongo-init:
+    entrypoint:
+      - mongosh
+      - --quiet
+      - --host
+      - mongo:27017
+      - --username
+      - root
+      - --password
+      - ${MONGO_ROOT_PASSWORD:?set MONGO_ROOT_PASSWORD in .env}
+      - --authenticationDatabase
+      - admin
+      - --file
+      - /scripts/mongo-init.js
+    environment:
+      MONGO_AUTH: 'true'
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:?set MONGO_APP_PASSWORD in .env}
+
+  backend:
+    environment:
+      MONGO_URI: mongodb://ss_app:${MONGO_APP_PASSWORD}@mongo:27017/straight_salon?replicaSet=rs0&authSource=straight_salon
+
+  worker:
+    environment:
+      MONGO_URI: mongodb://ss_app:${MONGO_APP_PASSWORD}@mongo:27017/straight_salon?replicaSet=rs0&authSource=straight_salon
+
+volumes:
+  mongo_config:

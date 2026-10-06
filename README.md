@@ -10,7 +10,7 @@ This repository starts with **specifications only**. The application is meant to
 | -------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Frontend             | Next.js 16 (App Router) + TypeScript + Tailwind CSS                                                          |
 | Backend              | Node.js (24 LTS) + Express 5 + TypeScript (ESM)                                                              |
-| Database             | MongoDB 7+ (Docker: `mongo:8.0`; Mongoose ODM), single-node replica set for transactions                     |
+| Database             | MongoDB 7+ (Docker: `mongo:8.2`, see 11 §1; Mongoose ODM), single-node replica set for transactions          |
 | Cache / Queue broker | Redis 7                                                                                                      |
 | Messaging            | BullMQ on Redis (behind an `EventBus` abstraction so RabbitMQ/Kafka can be swapped in later)                 |
 | Auth                 | JWT access token + rotating refresh token (httpOnly cookie)                                                  |
@@ -46,24 +46,45 @@ The specs are written to be **stack-agnostic where possible**. Anything stack-sp
 
 ## Getting started (local development)
 
-Build status: **Phase 0** (repository skeleton & tooling) is complete. See `docs/specs/13-build-plan.md` for what comes next.
+Build status: **Phase 1** (Docker & infrastructure) is complete. See `docs/specs/13-build-plan.md` for what comes next.
 
 ### Prerequisites
 
 - Node.js **24** and npm ≥ 10. With [nvm](https://github.com/nvm-sh/nvm): `nvm install` (reads `.nvmrc`). Installs fail fast on other Node versions (`engine-strict`).
 - Git.
-- Docker Engine + Compose plugin (needed from Phase 1).
+- Docker Engine + Compose plugin (v2.24+), with your user in the `docker` group.
 
 ### Install and run
 
 ```bash
 npm install                 # installs both workspaces and sets up the git hooks
 cp .env.example .env        # local config (git-ignored); adjust as needed
-npm run dev                 # backend on :4000, frontend on :3000
 ```
 
-- Backend liveness: `curl http://localhost:4000/health/live` → `{"status":"ok"}`
-- Frontend: http://localhost:3000
+**Option A: everything in Docker** (hot reload via `docker-compose.override.yml`):
+
+```bash
+npm run up                  # docker compose up -d --build
+docker compose ps           # all services healthy; mongo-init "exited (0)"
+npm run logs                # follow backend + worker logs
+npm run down                # stop (npm run reset also wipes the data volumes)
+```
+
+**Option B: infra in Docker, apps on the host:**
+
+```bash
+docker compose up -d mongo mongo-init redis mailpit
+npm run dev                 # backend :4000, worker, frontend :3000
+```
+
+Check it:
+
+- `curl http://localhost:4000/health/live` → `{"status":"ok"}`
+- `curl http://localhost:4000/health/ready` → `{"status":"ok","checks":{"mongo":{"status":"up"},"redis":{"status":"up"}}}`
+- App: http://localhost:3000 · Mailpit: http://localhost:8025
+- Optional tools: `npm run tools` → Mongo Express http://localhost:8081, Redis Insight http://localhost:5540
+- Production-style images only: `docker compose -f docker-compose.yml up -d --build`
+- Mongo with authentication (enforces the append-only audit role): see `docker-compose.auth.yml`
 
 ### Checks
 
@@ -103,4 +124,5 @@ Kubernetes, Helm, cloud deployment, managed databases, horizontal scaling, obser
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Specs touched                                              |
 | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
 | 2026-10-06 | Phase 0 review: resolved ambiguities and contradictions. Key changes: staff-day guard document so BR-004 holds under concurrency without relying on Redis; `ss_session` indicator cookie for frontend route protection; runtime `/api/*` proxy in `proxy.ts` (Next 16) instead of build-time rewrites; root-context Docker builds for the workspace lockfile; `directConnection=true` for host-mode Mongo; lead-time filter applied after the availability cache; walk-in `checkInNow`; 422 `ACTIVE_BOOKINGS_EXIST` + `force` semantics for holidays/time-off; new error codes; extended permission map; image upload endpoint API-027; `booking.reminder_due` event (EVT-017); outbox `PUBLISHING`/`claimedAt`; incremental seed; Sonar test exclusions; explicit commit scopes. | AGENTS, 00, 01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13 |
+| 2026-10-06 | Phase 1: `/health/ready` treats Mongo as critical (503) and Redis as non-critical (200 `degraded`), reconciling 03 §6 with 08 §1; ioredis pinned to 5 for `ioredis-mock`; Docker builds from the repo root with `--ignore-scripts` and a separate prod-deps stage; numeric non-root UID; pinned image tags; `mongo:8.2` instead of 8.0 (8.0/8.3/9.0 refuse to start on Ubuntu 26.04 kernels until 8.0.35/9.0.3 images exist, 11 §1); separate worker image tag; host ports on 127.0.0.1; frontend gets no `.env`; Mongo auth overlay with verified append-only audit role; `shared/lifecycle` for entrypoints; worker skeleton.                                                                                                                                                   | 01, 03, 08, 10, 11, 12, 13, README                         |
 | 2026-10-06 | Library updates: Node 24 LTS, Vitest for the backend (ESM), TypeScript 6.0 and ESLint 9 (newest majors supported by the lint toolchain), `jose`, `date-fns` v4 + `@date-fns/tz`, BullMQ Job Schedulers, `mongo:8.0`, `eslint-plugin-import-x`; dropped `hpp` (incompatible with Express 5) and `jest-sonar-reporter` (unmaintained).                                                                                                                                                                                                                                                                                                                                                                                                                                              | 03, 05, 10, 11, 12, README                                 |

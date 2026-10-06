@@ -81,8 +81,11 @@ straight-salon/
 ├── scripts/                    # repo tooling (git-hook helpers, phase stubs)
 ├── .github/                    # workflows (CI), PR/issue templates, CODEOWNERS, dependabot
 ├── .husky/                     # git hooks (12 §1)
-├── docker-compose.yml
+├── docker-compose.yml          # base stack (production-style images)
+├── docker-compose.override.yml # dev overrides, auto-loaded: dev targets, hot reload, inspector
+├── docker-compose.auth.yml     # optional overlay: Mongo with auth + keyfile (append-only audit enforced)
 ├── docker-compose.sonar.yml
+├── .dockerignore               # build context is the repo root
 ├── sonar-project.properties
 ├── tsconfig.base.json          # shared strict compiler options
 ├── commitlint.config.mjs  .lintstagedrc.mjs  .prettierrc.json  .editorconfig

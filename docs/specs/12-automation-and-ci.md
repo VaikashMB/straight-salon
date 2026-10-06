@@ -4,7 +4,7 @@
 
 ## 1. Repository tooling
 - **npm workspaces** at root: `"workspaces": ["backend", "frontend"]`. Node **24** pinned in `.nvmrc` and `engines` (`>=24 <25`, npm `>=10`); `.npmrc` sets `engine-strict=true` so installs fail fast on the wrong Node.
-- npm 11 blocks dependency install scripts until approved. Approved packages are listed under `allowScripts` in the root `package.json` (`npm install-scripts approve <pkg>`). Approve only well-known packages whose script selects or builds a native binary (currently `esbuild`, `unrs-resolver`), and re-approve when Dependabot bumps them.
+- npm 11 blocks dependency install scripts until approved. Approved packages are listed under `allowScripts` in the root `package.json` (`npm install-scripts approve <pkg>`). Approve only well-known packages whose script selects or builds a native binary (currently `esbuild`, `unrs-resolver`), and re-approve when Dependabot bumps them. `mongodb-memory-server` is explicitly **denied**: its postinstall downloads a ~120 MB `mongod`, which tests fetch lazily instead (10 §3). Docker builds use `npm ci --ignore-scripts`.
 - **EditorConfig**, **Prettier** (shared config at root; `docs/` is excluded so hand-formatted spec tables stay readable), **ESLint** per app. Shared strict compiler options in `tsconfig.base.json`.
 - **Husky** git hooks:
   - `pre-commit` → `lint-staged` (ESLint --fix + Prettier on staged files, `tsc --noEmit` on affected workspace).
@@ -35,7 +35,7 @@
 | `queues:retry-failed` | re-queue DLQ jobs |
 | `validate` | lint + format:check + typecheck + test:coverage + contract:check (what CI runs; developers run before pushing) |
 
-Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `openapi:export`, `contract:check`, `db:migrate` (Phase 2), `db:seed` (3), `queues:retry-failed` (6), `stats:rebuild` (7), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend + frontend until the worker exists (Phase 6). The Docker scripts from 11 §7 are added in Phase 1.
+Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `openapi:export`, `contract:check`, `db:migrate` (Phase 2), `db:seed` (3), `queues:retry-failed` (6), `stats:rebuild` (7), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
 
 ## 3. CI pipeline (GitHub Actions)
 

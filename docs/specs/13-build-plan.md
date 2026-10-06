@@ -10,12 +10,12 @@ Build strictly in order. Each phase ends with the Definition of Done in `AGENTS.
 > Prompt: *"Read AGENTS.md and docs/specs. Implement Phase 0 from 13-build-plan.md only: repo skeleton and tooling per 01-architecture §2 and 12-automation §1–2. Don't build features yet."*
 
 ## Phase 1 — Docker & infrastructure
-**Scope:** backend & frontend multi-stage Dockerfiles, `docker-compose.yml` + override + `docker-compose.sonar.yml`, mongo replica set init, redis, mailpit, tools profile (11-docker).
+**Scope:** backend & frontend multi-stage Dockerfiles, `docker-compose.yml` + override + `docker-compose.sonar.yml` (+ optional `docker-compose.auth.yml`), mongo replica set init with append-only audit role, redis, mailpit, tools profile (11-docker). Backend: `MONGO_URI`/`REDIS_URL` in `env.ts`, Mongo connection (`db/connect.ts`), Redis client (`shared/cache/redis.ts`), `/health/ready` with critical/non-critical dependencies (03 §6), `createApp(deps)`, shared process lifecycle (`shared/lifecycle`), worker entrypoint skeleton, Docker root scripts (11 §7).
 **Done when:** `docker compose up --build` starts everything healthy; backend connects to Mongo (replica set) and Redis; `/health/ready` reports both up.
 > Prompt: *"Implement Phase 1: Docker and local infra exactly as 11-docker-local-dev.md describes."*
 
 ## Phase 2 — Backend core (cross-cutting foundation)
-**Scope:** extend `config/env.ts` (all 03 §3 variables needed so far); extend the Pino logger with redaction, pino-http & request context (07 §1); `createApp(deps)` dependency injection; error classes + problem+json middleware (03 §4); validation middleware; OpenAPI registry + Swagger UI (04 §2); Redis cache module with cache-aside, tags, lock (08); audit service (07 §2); `withTransaction`; `Clock`; EventBus interface + outbox writer + in-memory bus for tests + BullMQ adapter + relay (09 §4–6); staff-day guard support in `withTransaction` (02 §2.18); graceful shutdown; `/metrics`; Vitest global setup with memory replica set; test factories.
+**Scope:** extend `config/env.ts` (all 03 §3 variables needed so far); extend the Pino logger with redaction, pino-http & request context (07 §1); extend `createApp(deps)` with the new infra clients; error classes + problem+json middleware (03 §4); validation middleware; OpenAPI registry + Swagger UI (04 §2); Redis cache module with cache-aside, tags, lock (08); audit service (07 §2); `withTransaction`; `Clock`; EventBus interface + outbox writer + in-memory bus for tests + BullMQ adapter + relay (09 §4–6); staff-day guard support in `withTransaction` (02 §2.18); graceful shutdown; `/metrics`; Vitest global setup with memory replica set; test factories.
 **Done when:** unit tests for all shared modules ≥ 90% coverage; Swagger UI loads with health endpoints documented.
 > Prompt: *"Implement Phase 2: all cross-cutting backend foundations (03, 07, 08, 09 §4–6, 10 §3). No business modules yet. Include tests."*
 

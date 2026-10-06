@@ -1,0 +1,215 @@
+# Straight Salon — local stack (docs/specs/11-docker-local-dev.md).
+#
+#   docker compose up --build            dev mode: also loads docker-compose.override.yml (hot reload)
+#   docker compose -f docker-compose.yml up --build    production-style images only
+#   docker compose --profile tools up -d                adds mongo-express and redis-insight
+#
+# Host ports bind to 127.0.0.1 only, so nothing is exposed to the local network.
+# Variables come from .env (copied from .env.example). Container-to-container URLs are set
+# here with service names and override the host-mode values in .env.
+
+name: straight-salon
+
+x-backend-build: &backend-build
+  context: .
+  dockerfile: backend/Dockerfile
+  target: runtime
+  args:
+    APP_VERSION: ${APP_VERSION:-0.0.0-dev}
+    GIT_SHA: ${GIT_SHA:-unknown}
+
+x-backend-env: &backend-env
+  NODE_ENV: production
+  PORT: '4000'
+  LOG_PRETTY: 'false' # pino-pretty is a dev dependency; not present in runtime images
+  MONGO_URI: ${MONGO_URI_DOCKER:-mongodb://mongo:27017/straight_salon?replicaSet=rs0}
+  REDIS_URL: redis://redis:6379
+  SMTP_HOST: mailpit
+  SMTP_PORT: '1025'
+
+x-backend-depends: &backend-depends
+  mongo-init:
+    condition: service_completed_successfully
+  redis:
+    condition: service_healthy
+
+services:
+  mongo:
+    # 8.2, not 8.0/8.3/9.0: those refuse to start on Ubuntu 26.04's kernel (7.0.0-NN reports a
+    # version their kernel-bug guard misreads; SERVER-121912 / SERVER-131779). The fix ships in
+    # 8.0.35 / 8.3.14 / 9.0.3; move to one of those once Docker images exist. See 11 §1.
+    image: mongo:8.2
+    command: ['mongod', '--replSet', 'rs0', '--bind_ip_all']
+    ports:
+      - '127.0.0.1:27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ['CMD', 'mongosh', '--quiet', '--eval', "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 1g }
+    networks: [straight-salon]
+
+  # One-shot: initiate the replica set (+ roles and app user in auth mode), then exit.
+  mongo-init:
+    image: mongo:8.2
+    depends_on:
+      mongo:
+        condition: service_healthy
+    entrypoint: ['mongosh', '--quiet', '--host', 'mongo:27017', '--file', '/scripts/mongo-init.js']
+    environment:
+      MONGO_RS_HOST: mongo:27017
+      MONGO_DB_NAME: straight_salon
+      MONGO_AUTH: ${MONGO_AUTH:-false}
+      MONGO_APP_PASSWORD: ${MONGO_APP_PASSWORD:-}
+    volumes:
+      - ./infra/docker/mongo-init.js:/scripts/mongo-init.js:ro
+    restart: 'no'
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256m }
+    networks: [straight-salon]
+
+  redis:
+    image: redis:7.4-alpine
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '127.0.0.1:6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256m }
+    networks: [straight-salon]
+
+  backend:
+    build: *backend-build
+    image: straight-salon/backend:local
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *backend-env
+    depends_on: *backend-depends
+    ports:
+      - '127.0.0.1:4000:4000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO /dev/null http://127.0.0.1:4000/health/ready || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512m }
+    networks: [straight-salon]
+
+  # Same Dockerfile and target as backend; the command selects the worker process
+  # (01-architecture §1). It gets its own tag because two services exporting one tag in
+  # parallel race ("image already exists"); the second build is a cache hit.
+  worker:
+    build: *backend-build
+    image: straight-salon/worker:local
+    command: ['node', 'dist/worker.js']
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      <<: *backend-env
+    depends_on: *backend-depends
+    healthcheck:
+      disable: true # no HTTP server; the image's /health/live check does not apply
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512m }
+    networks: [straight-salon]
+
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      target: runtime
+      args:
+        APP_VERSION: ${APP_VERSION:-0.0.0-dev}
+        GIT_SHA: ${GIT_SHA:-unknown}
+    image: straight-salon/frontend:local
+    # No env_file: the frontend must not receive backend secrets from .env.
+    environment:
+      NODE_ENV: production
+      PORT: '3000'
+      API_INTERNAL_URL: http://backend:4000
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:3000:3000'
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO /dev/null http://127.0.0.1:3000/ || exit 1']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+      start_period: 20s
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512m }
+    networks: [straight-salon]
+
+  mailpit:
+    image: axllent/mailpit:v1.31
+    ports:
+      - '127.0.0.1:8025:8025' # web UI
+      - '127.0.0.1:1025:1025' # SMTP
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 128m }
+    networks: [straight-salon]
+
+  # ---- optional tools (docker compose --profile tools up -d) ----------------------------
+  mongo-express:
+    image: mongo-express:1.0-20-alpine3.19
+    profiles: [tools]
+    depends_on:
+      mongo-init:
+        condition: service_completed_successfully
+    environment:
+      ME_CONFIG_MONGODB_URL: mongodb://mongo:27017/?replicaSet=rs0
+      ME_CONFIG_BASICAUTH: 'false' # bound to 127.0.0.1 only; local dev data
+    ports:
+      - '127.0.0.1:8081:8081'
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256m }
+    networks: [straight-salon]
+
+  redis-insight:
+    image: redis/redisinsight:3.8
+    profiles: [tools]
+    ports:
+      - '127.0.0.1:5540:5540'
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 512m }
+    networks: [straight-salon]
+
+volumes:
+  mongo_data:
+  redis_data:
+
+networks:
+  straight-salon:
+    name: straight-salon

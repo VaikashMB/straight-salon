@@ -1,8 +1,14 @@
 import { z } from 'zod';
 
-// Phase 0 subset of 03-backend §3. Later phases add their variables here, never read
+// Subset of 03-backend §3 needed so far. Later phases add their variables here, never read
 // process.env anywhere else.
 const envSchema = z.object({
+  MONGO_URI: z
+    .string({ error: 'Required' })
+    .regex(/^mongodb(\+srv)?:\/\//, 'Must be a mongodb:// or mongodb+srv:// URI'),
+  REDIS_URL: z
+    .string({ error: 'Required' })
+    .regex(/^rediss?:\/\//, 'Must be a redis:// or rediss:// URL'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z
     .string({ error: 'Required' })

@@ -1,7 +1,7 @@
 # 02 — Database (MongoDB)
 
 ## 1. General rules
-- MongoDB 7+ (local Docker image: `mongo:8.0`, the current long-term release), running as a **single-node replica set** (`rs0`) locally so multi-document transactions work. Required for booking creation and the outbox.
+- MongoDB 7+ (local Docker image: `mongo:8.2` for now; see 11 §1 for the kernel-compatibility reason and the plan to return to 8.0), running as a **single-node replica set** (`rs0`) locally so multi-document transactions work. Required for booking creation and the outbox.
 - Optional fields covered by a **sparse** unique index (e.g. `users.email`) must be omitted when empty, never stored as `null`, or the index treats every `null` as a duplicate.
 - ODM: Mongoose `[Mongo][Node]`. Every schema has `timestamps: true` (`createdAt`, `updatedAt`, stored UTC).
 - Collection names: `snake_case`, plural. Field names: `camelCase`.

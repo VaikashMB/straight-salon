@@ -1,0 +1,55 @@
+# SonarQube for local quality-gate runs (10-testing-and-quality §5, 11-docker §1).
+# Separate from the app stack because it is heavy (~2 GB RAM; needs vm.max_map_count >= 262144).
+#
+#   npm run sonar:up      then open http://localhost:9000 (first login admin/admin)
+
+name: straight-salon-sonar
+
+services:
+  sonarqube:
+    image: sonarqube:community
+    depends_on:
+      sonar-db:
+        condition: service_healthy
+    environment:
+      SONAR_JDBC_URL: jdbc:postgresql://sonar-db:5432/sonar
+      SONAR_JDBC_USERNAME: sonar
+      SONAR_JDBC_PASSWORD: ${SONAR_DB_PASSWORD:-sonar}
+    ports:
+      - '127.0.0.1:9000:9000'
+    volumes:
+      - sonar_data:/opt/sonarqube/data
+      - sonar_extensions:/opt/sonarqube/extensions
+      - sonar_logs:/opt/sonarqube/logs
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 3g }
+    networks: [sonar]
+
+  sonar-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: sonar
+      POSTGRES_PASSWORD: ${SONAR_DB_PASSWORD:-sonar} # local-only database, not exposed on the host
+      POSTGRES_DB: sonar
+    volumes:
+      - sonar_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U sonar -d sonar']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512m }
+    networks: [sonar]
+
+volumes:
+  sonar_data:
+  sonar_extensions:
+  sonar_logs:
+  sonar_db:
+
+networks:
+  sonar:
+    name: straight-salon-sonar

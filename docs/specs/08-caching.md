@@ -2,7 +2,7 @@
 
 ## 1. Principles
 - **Cache-aside** pattern: read from cache → on miss, load from Mongo, write to cache with TTL.
-- Cache is an **optimisation, never a source of truth**. If Redis is down, the API must still work (reads go to Mongo, a `warn` log is emitted once per minute, readiness stays OK but a `cache_errors_total` metric increments). Only rate limiting and locks degrade in a controlled way (see §5).
+- Cache is an **optimisation, never a source of truth**. If Redis is down, the API must still work (reads go to Mongo, a `warn` log is emitted once per minute, readiness stays HTTP 200 with status `degraded` (03 §6) and a `cache_errors_total` metric increments). Only rate limiting and locks degrade in a controlled way (see §5).
 - All keys are built by functions in `shared/cache/keys.ts` (no ad-hoc string keys), prefixed with `ss:` and a schema version: `ss:v1:...`. Bumping the version invalidates everything after a breaking change to cached shapes.
 - Values are JSON. Max value size 256 KB.
 - `CACHE_ENABLED=false` turns the cache layer into a pass-through (used in some tests).
