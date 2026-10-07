@@ -28,6 +28,9 @@ function fakeRepository(events: DomainEvent[]) {
   }));
   const repository: OutboxRepository = {
     insert: () => Promise.resolve(),
+    // Not used by the relay (outbox-cleanup job).
+    summarizeFailedBefore: () => Promise.resolve([]),
+    deleteFailedBefore: () => Promise.resolve(0),
     findPendingIds: (limit) =>
       Promise.resolve(
         rows

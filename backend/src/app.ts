@@ -33,6 +33,8 @@ export interface AppDeps {
   config: AppConfig;
   // Business modules, mounted at /api/v1 (built by modules/index.ts buildApiRouter).
   apiRouter: Router;
+  // Bull Board at /admin/queues with its own guard (09 §5); omitted when disabled.
+  queuesBoard?: Router;
 }
 
 // Express app factory without listen(), so tests can drive it with Supertest.
@@ -57,6 +59,7 @@ export function createApp(deps: AppDeps): Express {
   if (config.metricsEnabled) app.get('/metrics', metricsHandler(metrics));
   if (config.swaggerEnabled) app.use(docsRouter(generateOpenApiDocument(config.version)));
   if (config.uploadsDir) app.use(UPLOADS_PATH, uploadsStatic(config.uploadsDir));
+  if (deps.queuesBoard) app.use(deps.queuesBoard);
 
   app.use(API_BASE_PATH, deps.apiRouter);
 

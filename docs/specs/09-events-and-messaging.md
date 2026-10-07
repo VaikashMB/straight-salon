@@ -73,18 +73,23 @@ Future adapters: `RabbitMqEventBus` (topic exchange `ss.events`, one queue per c
 ### Consumers (in `workers/`)
 | Consumer | Subscribes to | Does |
 |---|---|---|
-| `notifications` | user.registered, user.password_reset_requested, booking.created/rescheduled/cancelled/no_show, booking.completed (thank-you + review link), booking.reminder_due (respects `smsOptIn`, FR-054) | Renders template, sends via provider for each opted-in channel, records in `notifications` with `dedupeKey = eventId:channel:template` |
+| `notifications` | user.registered, user.password_reset_requested, booking.created/rescheduled/cancelled/no_show, booking.completed (thank-you + review link), booking.reminder_due (respects `smsOptIn`, FR-054) | Renders template, sends via provider for each opted-in channel, records in `notifications` with `dedupeKey = eventId:channel:template`. A reminder whose booking is no longer `BOOKED` or has moved since it was queued is skipped |
 | `staff-notifications` | booking.created/rescheduled/cancelled | Notifies assigned stylist (old and new stylist on reassign) |
 | `cache-invalidation` | booking.*, staff.*, catalog.changed, settings.changed, holiday.changed, review.* | Invalidates cache tags (see 08) |
-| `ratings` | review.created, review.visibility_changed | Recomputes `ratingAvg/ratingCount` for staff & services |
-| `stats` | booking.created/cancelled/completed/no_show/payment_recorded, booking.rescheduled | Recomputes `daily_stats` for affected dates/staff (recompute-from-source, not increment, so it is idempotent) |
+| `ratings` (Phase 7) | review.created, review.visibility_changed | Recomputes `ratingAvg/ratingCount` for staff & services |
+| `stats` (Phase 7) | booking.created/cancelled/completed/no_show/payment_recorded, booking.rescheduled | Recomputes `daily_stats` for affected dates/staff (recompute-from-source, not increment, so it is idempotent) |
+
+**Channels (decision 2026-10-07).** Account messages (`welcome`, `password_reset`) go by email only, and always when the user has an address: they are not optional. Booking messages, to customers and to stylists, go by email when there is an address and `emailOptIn` is on, and by SMS when `smsOptIn` is on (FR-054). Walk-ins without an email get SMS only. Deactivated accounts get nothing. Channels are sent one after the other; a failure retries the job, and channels already sent are skipped by their `dedupeKey`.
+
+**Stylists (FR-052).** `booking.created` → `staff_booking_assigned`; a reschedule with the same stylist → `staff_booking_changed`; a reassignment → `staff_booking_assigned` to the new stylist and `staff_booking_cancelled` to the old one (showing the slot they had); `booking.cancelled` → `staff_booking_cancelled`. Staff messages show the customer's first name only (00 US-04).
 
 ### Queue settings (defaults)
 - Attempts: 5, exponential backoff starting 2 s (2, 4, 8, 16, 32 s).
 - Concurrency: notifications 5, others 10.
 - Completed jobs kept 1 day / max 1000; failed kept 7 days.
 - Failed after final attempt → stays in BullMQ failed set (acts as **dead-letter queue**) + error log. Admin script `npm run queues:retry-failed -- --queue=notifications` re-queues them.
-- Optional dev UI: **Bull Board** mounted at `/admin/queues` (ADMIN-only, disabled in prod by default).
+- Optional dev UI: **Bull Board** mounted at `/admin/queues` on the API (ADMIN-only, disabled in prod by default via `BULL_BOARD_ENABLED`). A browser cannot send the bearer token to that page and the refresh cookie is scoped to `/api/v1/auth`, so it uses **HTTP Basic** with an active ADMIN's email and password (decision 2026-10-07): the browser shows its own prompt, the same lockout as login applies (06 §2), failures are audited as `auth.login_failed` with `metadata.channel: "queues-board"`, and accepted credentials are remembered (as a hash, in memory) for 60 s because the board polls. Failed jobs can be retried from the board as well as with the script.
+- `GET /metrics` reports `queue_jobs{queue,state}` (waiting, active, delayed, failed) for every queue; the read gives up after 1 s so a scrape never hangs while Redis is down.
 
 ## 6. Idempotency in consumers
 Wrapper `idempotent(consumerName, handler)`:
@@ -98,17 +103,19 @@ Plus natural idempotency (e.g. `notifications.dedupeKey`, stats recompute).
 |---|---|---|
 | `reminders-24h` | every 5 min | Find `BOOKED` bookings with `startAt` in (now+23h55m, now+24h] and `reminders.h24SentAt` null. For each, in one transaction: set `h24SentAt` (atomic `findOneAndUpdate` on `h24SentAt: null` guards duplicates) and write outbox event EVT-017 `booking.reminder_due` |
 | `reminders-2h` | every 5 min | Same for 2 h window and `h2SentAt` |
+
+The reminder windows are as wide as the job interval, so consecutive runs tile the timeline. A reschedule (API-054) clears both reminder flags, so the new time gets its own reminders (decision 2026-10-07); a reminder queued for the old time is skipped by the consumer.
 | `auto-no-show` | every 5 min | `BOOKED` bookings with `startAt < now − noShowGraceMin` → status `NO_SHOW` (system actor), audit + outbox events EVT-013 and EVT-015 |
 | `outbox-cleanup` | daily 03:00 salon tz | Remove `FAILED` older than 30 days after logging summary (TTL handles published) |
-| `stats-reconcile` | daily 02:00 salon tz | Recompute yesterday's `daily_stats` from bookings (self-healing) |
+| `stats-reconcile` (Phase 7) | daily 02:00 salon tz | Recompute yesterday's `daily_stats` from bookings (self-healing) |
 
-Schedules are registered with `queue.upsertJobScheduler(<fixed scheduler id>, { every | pattern, tz: <salon timezone> }, template)`. Upserting by a fixed ID means running multiple worker replicas, or restarting, never duplicates a schedule. (This replaces BullMQ's deprecated repeatable-jobs API.)
+Schedules are registered with `queue.upsertJobScheduler(<fixed scheduler id>, { every | pattern, tz: <salon timezone> }, template)` on the `scheduled-jobs` queue. Upserting by a fixed ID means running multiple worker replicas, or restarting, never duplicates a schedule; schedulers whose job no longer exists are removed at start. (This replaces BullMQ's deprecated repeatable-jobs API.) Each run gets its own logging/audit context (`requestId = job-<id>-<runId>`), so events and audit rows from a job link to that run. Cron patterns use the salon timezone read when the worker starts; restart the worker after changing the timezone. Jobs run as the system actor (`{ id: "system", role: "SYSTEM" }`), retry 3 times with backoff, and run one at a time per worker.
 
 **Password reset token handling:** the API generates the raw token, stores its hash, and writes the raw token into the envelope field `secret` (next to, not inside, `payload`, so payload validation and logging never see it), encrypted with AES-256-GCM using `OUTBOX_ENCRYPTION_KEY` (env). The notification consumer decrypts it to build the link. Outbox rows are TTL-deleted after publish.
 
 ## 8. Notification templates
 Stored as code in `modules/notifications/templates/` (Handlebars or simple TS functions), each with `email.subject`, `email.html`, `email.text`, `sms.text` (≤ 160 chars). Templates: `welcome`, `password_reset`, `booking_confirmed`, `booking_rescheduled`, `booking_cancelled`, `booking_reminder_24h`, `booking_reminder_2h`, `booking_no_show`, `booking_thank_you`, `staff_booking_assigned`, `staff_booking_changed`, `staff_booking_cancelled`.
-Providers: `MockEmailProvider` / `MockSmsProvider` (store + log), `SmtpEmailProvider` (nodemailer → Mailpit locally). Interface allows adding SES/SendGrid/Twilio/MSG91 later.
+Providers: `MockEmailProvider` / `MockSmsProvider` (store + log), `SmtpEmailProvider` (nodemailer → Mailpit locally). Interface allows adding SES/SendGrid/Twilio/MSG91 later. The `notifications` row is the stored copy (`payload` = the rendered subject/text/html); values a template marks secret, such as the password-reset link, are replaced with `[redacted]` before storing. Logs never contain the recipient or the content (NFR-009); a provider error is logged by name and code only.
 
 ## 9. Tests required
 - Booking creation writes booking + audit + outbox in one transaction; aborting leaves none.

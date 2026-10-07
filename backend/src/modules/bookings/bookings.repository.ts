@@ -10,8 +10,12 @@ export type NewBooking = Omit<BookingDoc, '_id' | '__v' | 'createdAt' | 'updated
 
 export interface BookingChange {
   set?: Partial<Omit<BookingDoc, '_id' | '__v' | 'statusHistory'>>;
+  unset?: `reminders.${ReminderField}`[];
   pushHistory?: StatusChange;
 }
+
+// reminders.h24SentAt / reminders.h2SentAt (09 §7)
+export type ReminderField = 'h24SentAt' | 'h2SentAt';
 
 // Active bookings whose [startAt, blockedUntil) overlaps [from, to); no `to` = open-ended.
 export interface ActiveScope {
@@ -56,6 +60,24 @@ export interface BookingsRepository {
     now: Date,
     page: { skip: number; limit: number },
   ): Promise<{ data: BookingDoc[]; total: number }>;
+  // Scheduled jobs (09 §7), served by { status: 1, startAt: 1 }.
+  // BOOKED bookings starting in (after, until] whose reminder has not been sent.
+  findDueReminders(
+    field: ReminderField,
+    after: Date,
+    until: Date,
+    limit: number,
+  ): Promise<BookingDoc[]>;
+  // Sets the reminder flag if still unset and the booking is still BOOKED; null otherwise.
+  // The flag check makes it the duplicate guard when jobs overlap.
+  markReminderSent(
+    id: Types.ObjectId,
+    field: ReminderField,
+    at: Date,
+    session: ClientSession,
+  ): Promise<BookingDoc | null>;
+  // BOOKED bookings that started before `before` (auto no-show), oldest first.
+  findOverdueBooked(before: Date, limit: number): Promise<BookingDoc[]>;
 }
 
 const ACTIVE = () => mongoose.trusted({ $in: [...ACTIVE_BOOKING_STATUSES] });
@@ -132,6 +154,7 @@ export const bookingsRepository: BookingsRepository = {
   async apply(id, expectedVersion, change, session) {
     const update: Record<string, unknown> = { $inc: { __v: 1 } };
     if (change.set) update.$set = change.set;
+    if (change.unset?.length) update.$unset = Object.fromEntries(change.unset.map((f) => [f, 1]));
     if (change.pushHistory) update.$push = { statusHistory: change.pushHistory };
     const updated = await BookingModel.findOneAndUpdate({ _id: id, __v: expectedVersion }, update, {
       returnDocument: 'after',
@@ -181,4 +204,28 @@ export const bookingsRepository: BookingsRepository = {
     ]);
     return { data, total };
   },
+
+  findDueReminders: (field, after, until, limit) =>
+    BookingModel.find({
+      status: 'BOOKED',
+      startAt: mongoose.trusted({ $gt: after, $lte: until }),
+      // null matches a missing field too
+      [`reminders.${field}`]: null,
+    })
+      .sort({ startAt: 1 })
+      .limit(limit)
+      .lean<BookingDoc[]>(),
+
+  markReminderSent: (id, field, at, session) =>
+    BookingModel.findOneAndUpdate(
+      { _id: id, status: 'BOOKED', [`reminders.${field}`]: null },
+      { $set: { [`reminders.${field}`]: at } },
+      { returnDocument: 'after', session },
+    ).lean<BookingDoc>(),
+
+  findOverdueBooked: (before, limit) =>
+    BookingModel.find({ status: 'BOOKED', startAt: mongoose.trusted({ $lt: before }) })
+      .sort({ startAt: 1 })
+      .limit(limit)
+      .lean<BookingDoc[]>(),
 };

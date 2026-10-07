@@ -24,6 +24,9 @@ x-backend-env: &backend-env
   LOG_PRETTY: 'false' # pino-pretty is a dev dependency; not present in runtime images
   MONGO_URI: ${MONGO_URI_DOCKER:-mongodb://mongo:27017/straight_salon?replicaSet=rs0}
   REDIS_URL: redis://redis:6379
+  APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+  # Emails go to Mailpit (http://localhost:8025) in the Docker stack (09 §8).
+  EMAIL_PROVIDER: ${EMAIL_PROVIDER_DOCKER:-smtp}
   SMTP_HOST: mailpit
   SMTP_PORT: '1025'
   # Local ObjectStorage adapter (API-027): the API writes and serves /app/backend/uploads.

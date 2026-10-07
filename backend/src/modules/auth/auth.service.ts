@@ -54,6 +54,9 @@ export interface AuthService {
     newPassword: string,
     meta: ClientMeta,
   ): Promise<IssuedRefreshToken>;
+  // HTTP Basic login for ops pages (Bull Board, 09 §5): an active ADMIN's email and password.
+  // Same timing, lockout and failure audit as login; issues no session.
+  verifyAdmin(email: string, password: string): Promise<boolean>;
 }
 
 export interface AuthServiceDeps {
@@ -165,6 +168,35 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
         actor: actorOf(user),
       });
       return startSession({ ...user, lastLoginAt: now }, meta);
+    },
+
+    async verifyAdmin(email, password) {
+      await throttle.assertNotLocked(email);
+      const user = await users.findForLogin(email);
+      const usable = user?.isActive && user.role === 'ADMIN' ? user.passwordHash : undefined;
+      const valid = await hasher.verify(password, usable);
+      if (user && valid) {
+        await throttle.reset(email);
+        return true;
+      }
+      await throttle.recordFailure(email);
+      await audit.record({
+        action: 'auth.login_failed',
+        entityType: 'user',
+        entityId: user?._id.toHexString() ?? 'unknown',
+        metadata: {
+          channel: 'queues-board',
+          reason: !user
+            ? 'unknown_email'
+            : !user.isActive
+              ? 'inactive'
+              : user.role !== 'ADMIN'
+                ? 'not_admin'
+                : 'bad_password',
+        },
+        ...(user ? { actor: actorOf(user) } : {}),
+      });
+      return false;
     },
 
     async refresh(refreshToken, meta) {

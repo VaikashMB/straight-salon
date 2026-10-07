@@ -90,6 +90,21 @@ const envSchema = z
         }),
       )
       .transform((value) => value.replace(/\/+$/, '')),
+    // ---- Notifications (09 §8) ----
+    // Browser-facing frontend URL, used for links in emails (booking pages, password reset).
+    APP_BASE_URL: z
+      .string({ error: 'Required' })
+      .pipe(z.url({ protocol: /^https?$/, error: 'Must be an http(s) URL' }))
+      .transform((value) => value.replace(/\/+$/, '')),
+    EMAIL_PROVIDER: z.enum(['mock', 'smtp']).default('mock'),
+    SMS_PROVIDER: z.enum(['mock']).default('mock'),
+    EMAIL_FROM: z.string().min(3).default('Straight Salon <no-reply@straightsalon.local>'),
+    SMTP_HOST: z.string().optional(),
+    SMTP_PORT: positiveInt(1025).pipe(z.number().int().max(65535)),
+    SMTP_USER: z.string().optional(),
+    SMTP_PASS: z.string().optional(),
+    // Bull Board at /admin/queues (09 §5). Defaults to on outside production.
+    BULL_BOARD_ENABLED: z.stringbool().optional(),
   })
   .superRefine((env, ctx) => {
     if (env.BCRYPT_COST < 10 && env.NODE_ENV !== 'test') {
@@ -99,17 +114,39 @@ const envSchema = z
         message: 'Costs below 10 are only allowed when NODE_ENV=test (NFR-009 requires 12)',
       });
     }
+    if (env.EMAIL_PROVIDER === 'smtp' && !env.SMTP_HOST?.trim()) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SMTP_HOST'],
+        message: 'Required when EMAIL_PROVIDER=smtp',
+      });
+    }
   })
-  .transform(({ SWAGGER_ENABLED, COOKIE_SECURE, MIGRATE_ON_START, COOKIE_DOMAIN, ...rest }) => {
-    const production = rest.NODE_ENV === 'production';
-    return {
-      ...rest,
-      SWAGGER_ENABLED: SWAGGER_ENABLED ?? !production,
-      COOKIE_SECURE: COOKIE_SECURE ?? production,
-      MIGRATE_ON_START: MIGRATE_ON_START ?? !production,
-      COOKIE_DOMAIN: COOKIE_DOMAIN?.trim() ? COOKIE_DOMAIN.trim() : undefined,
-    };
-  });
+  .transform(
+    ({
+      SWAGGER_ENABLED,
+      COOKIE_SECURE,
+      MIGRATE_ON_START,
+      COOKIE_DOMAIN,
+      BULL_BOARD_ENABLED,
+      SMTP_USER,
+      SMTP_PASS,
+      ...rest
+    }) => {
+      const production = rest.NODE_ENV === 'production';
+      return {
+        ...rest,
+        SWAGGER_ENABLED: SWAGGER_ENABLED ?? !production,
+        COOKIE_SECURE: COOKIE_SECURE ?? production,
+        MIGRATE_ON_START: MIGRATE_ON_START ?? !production,
+        COOKIE_DOMAIN: COOKIE_DOMAIN?.trim() ? COOKIE_DOMAIN.trim() : undefined,
+        BULL_BOARD_ENABLED: BULL_BOARD_ENABLED ?? !production,
+        // Empty = no SMTP auth (Mailpit accepts anything).
+        SMTP_USER: SMTP_USER?.trim() ? SMTP_USER.trim() : undefined,
+        SMTP_PASS: SMTP_PASS ? SMTP_PASS : undefined,
+      };
+    },
+  );
 
 export type Env = z.infer<typeof envSchema>;
 

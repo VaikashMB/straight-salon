@@ -1,7 +1,7 @@
 import { Types, type ClientSession, type Connection } from 'mongoose';
 import type { BookingSource, BookingStatus } from '../../config/constants.js';
 import type { AuditRepository } from '../../shared/audit/audit.repository.js';
-import type { AuditService } from '../../shared/audit/audit.service.js';
+import { SYSTEM_ACTOR, type AuditService } from '../../shared/audit/audit.service.js';
 import type { AuthContext } from '../../shared/auth/accessToken.js';
 import { hasPermission } from '../../shared/auth/permissions.js';
 import type { Cache } from '../../shared/cache/cache.js';
@@ -9,6 +9,7 @@ import { availabilityTagsFor, cacheKeys } from '../../shared/cache/keys.js';
 import { bumpStaffDayGuards } from '../../shared/db/staffDayGuard.js';
 import { withTransaction } from '../../shared/db/withTransaction.js';
 import {
+  AppError,
   BusinessRuleError,
   ConflictError,
   ForbiddenError,
@@ -30,7 +31,7 @@ import type { UsersService } from '../users/users.service.js';
 import type { ActiveBookingScope, ActiveBookingsGate } from './bookings.gate.js';
 import { bookingAuditView, makeBookingRef, toBookingDto } from './bookings.mapper.js';
 import type { BookingDoc, Payment } from './bookings.model.js';
-import type { BookingsRepository, BookingSearch } from './bookings.repository.js';
+import type { BookingsRepository, BookingSearch, ReminderField } from './bookings.repository.js';
 import type {
   BookingDto,
   BookingHistoryDto,
@@ -63,7 +64,23 @@ export interface BookingsService {
   // Ports for availability, settings, holidays and staff
   activeIntervals(staffId: string, from: Date, to: Date): Promise<Interval[]>;
   gate: ActiveBookingsGate;
+  // Scheduled jobs (09 §7), run by the worker as the system actor
+  queueReminders(window: ReminderWindow, scanMs: number): Promise<number>;
+  markNoShows(): Promise<number>;
 }
+
+export type ReminderWindow = '24h' | '2h';
+
+const REMINDER_LEAD_MS: Record<ReminderWindow, number> = {
+  '24h': 24 * 60 * MINUTE,
+  '2h': 120 * MINUTE,
+};
+const REMINDER_FIELD: Record<ReminderWindow, ReminderField> = {
+  '24h': 'h24SentAt',
+  '2h': 'h2SentAt',
+};
+// Rows handled per job run; a backlog drains over the next runs.
+const JOB_BATCH = 200;
 
 export interface BookingsServiceDeps {
   repository: BookingsRepository;
@@ -456,6 +473,75 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
     );
   }
 
+  // One status change (BR-010) with its audit row and events EVT-013 (+ EVT-014 / EVT-015, 09 §3).
+  // The auto no-show job passes the system actor (07 §2.1).
+  async function transitionInSession(
+    booking: BookingDoc,
+    to: BookingStatus,
+    session: ClientSession,
+    details: { by: string; note?: string; system?: boolean },
+  ): Promise<BookingDoc> {
+    const id = booking._id.toHexString();
+    const actor = details.system ? { actor: SYSTEM_ACTOR } : {};
+    const next = await repository.apply(
+      booking._id,
+      booking.__v,
+      {
+        set: { status: to },
+        pushHistory: {
+          status: to,
+          at: clock.now(),
+          by: details.by,
+          ...(details.note ? { note: details.note } : {}),
+        },
+      },
+      session,
+    );
+    await audit.record(
+      {
+        action: 'booking.status_change',
+        entityType: 'booking',
+        entityId: id,
+        before: { status: booking.status },
+        after: { status: next.status },
+        ...(details.note ? { metadata: { note: details.note } } : {}),
+        ...actor,
+      },
+      session,
+    );
+    await outbox.add(session, {
+      type: 'booking.status_changed',
+      aggregateType: 'booking',
+      aggregateId: id,
+      payload: { bookingId: id, from: booking.status, to },
+      ...actor,
+    });
+    if (to === 'COMPLETED') {
+      await outbox.add(session, {
+        type: 'booking.completed',
+        aggregateType: 'booking',
+        aggregateId: id,
+        payload: {
+          bookingId: id,
+          staffId: booking.staffId.toHexString(),
+          serviceIds: booking.services.map((svc) => svc.serviceId.toHexString()),
+          totalPriceMinor: booking.totalPriceMinor,
+        },
+        ...actor,
+      });
+    }
+    if (to === 'NO_SHOW') {
+      await outbox.add(session, {
+        type: 'booking.no_show',
+        aggregateType: 'booking',
+        aggregateId: id,
+        payload: { bookingId: id, staffId: booking.staffId.toHexString() },
+        ...actor,
+      });
+    }
+    return next;
+  }
+
   const gate: ActiveBookingsGate = {
     countActive: (scope: ActiveBookingScope, session?: ClientSession) =>
       repository.countActive(scope, session),
@@ -651,7 +737,11 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
           const next = await repository.apply(
             booking._id,
             booking.__v,
-            { set: { startAt, endAt, blockedUntil, staffId: new Types.ObjectId(staffId) } },
+            {
+              set: { startAt, endAt, blockedUntil, staffId: new Types.ObjectId(staffId) },
+              // The new time gets its own reminders (decision 2026-10-07, 09 §7).
+              unset: ['reminders.h24SentAt', 'reminders.h2SentAt'],
+            },
             session,
           );
           await audit.record(
@@ -719,68 +809,79 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
         );
       }
       const s = await settings.get();
-      const updated = await withTransaction(connection, async (session) => {
-        const now = clock.now();
-        const next = await repository.apply(
-          booking._id,
-          booking.__v,
-          {
-            set: { status: body.status },
-            pushHistory: {
-              status: body.status,
-              at: now,
-              by: viewer.userId,
-              ...(body.note ? { note: body.note } : {}),
-            },
-          },
-          session,
-        );
-        await audit.record(
-          {
-            action: 'booking.status_change',
-            entityType: 'booking',
-            entityId: id,
-            before: { status: booking.status },
-            after: { status: next.status },
-            ...(body.note ? { metadata: { note: body.note } } : {}),
-          },
-          session,
-        );
-        // EVT-013, plus EVT-014 / EVT-015 in the same transaction (09 §3)
-        await outbox.add(session, {
-          type: 'booking.status_changed',
-          aggregateType: 'booking',
-          aggregateId: id,
-          payload: { bookingId: id, from: booking.status, to: body.status },
-        });
-        if (body.status === 'COMPLETED') {
-          await outbox.add(session, {
-            type: 'booking.completed',
-            aggregateType: 'booking',
-            aggregateId: id,
-            payload: {
-              bookingId: id,
-              staffId: booking.staffId.toHexString(),
-              serviceIds: booking.services.map((svc) => svc.serviceId.toHexString()),
-              totalPriceMinor: booking.totalPriceMinor,
-            },
-          });
-        }
-        if (body.status === 'NO_SHOW') {
-          await outbox.add(session, {
-            type: 'booking.no_show',
-            aggregateType: 'booking',
-            aggregateId: id,
-            payload: { bookingId: id, staffId: booking.staffId.toHexString() },
-          });
-        }
-        return next;
-      });
+      const updated = await withTransaction(connection, (session) =>
+        transitionInSession(booking, body.status, session, {
+          by: viewer.userId,
+          ...(body.note ? { note: body.note } : {}),
+        }),
+      );
       // 08 §2: a no-show frees the rest of the slot.
       if (body.status === 'NO_SHOW') {
         await invalidate(booking.staffId.toHexString(), [toZonedDate(booking.startAt, s.timezone)]);
       }
       return toDto(updated, viewer);
+    },
+
+    // reminders-24h / reminders-2h (09 §7): BOOKED bookings starting in (now + lead - scan,
+    // now + lead] get their flag set and EVT-017 queued, atomically. Runs every `scanMs`, so
+    // consecutive runs tile the timeline.
+    async queueReminders(window, scanMs) {
+      const now = clock.now();
+      const until = new Date(now.getTime() + REMINDER_LEAD_MS[window]);
+      const field = REMINDER_FIELD[window];
+      const due = await repository.findDueReminders(
+        field,
+        new Date(until.getTime() - scanMs),
+        until,
+        JOB_BATCH,
+      );
+      let queued = 0;
+      for (const booking of due) {
+        const id = booking._id.toHexString();
+        const marked = await withTransaction(connection, async (session) => {
+          if (!(await repository.markReminderSent(booking._id, field, now, session))) return false;
+          await outbox.add(session, {
+            type: 'booking.reminder_due',
+            aggregateType: 'booking',
+            aggregateId: id,
+            payload: {
+              bookingId: id,
+              customerId: booking.customerId.toHexString(),
+              startAt: booking.startAt.toISOString(),
+              window,
+            },
+            actor: SYSTEM_ACTOR,
+          });
+          return true;
+        });
+        if (marked) queued++;
+      }
+      return queued;
+    },
+
+    // auto-no-show (FR-042, 09 §7): BOOKED bookings that started more than noShowGraceMin ago.
+    async markNoShows() {
+      const s = await settings.get();
+      const now = clock.now();
+      const overdue = await repository.findOverdueBooked(
+        new Date(now.getTime() - s.noShowGraceMin * MINUTE),
+        JOB_BATCH,
+      );
+      let marked = 0;
+      for (const booking of overdue) {
+        try {
+          await withTransaction(connection, (session) =>
+            transitionInSession(booking, 'NO_SHOW', session, { by: 'system', system: true }),
+          );
+        } catch (err) {
+          // Changed since it was read (e.g. checked in just now): the next run re-reads it.
+          if (err instanceof AppError && err.code === 'STALE_VERSION') continue;
+          throw err;
+        }
+        marked++;
+        await invalidate(booking.staffId.toHexString(), [toZonedDate(booking.startAt, s.timezone)]);
+      }
+      return marked;
     },
 
     async history(id) {

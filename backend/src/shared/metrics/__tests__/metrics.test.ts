@@ -31,6 +31,25 @@ describe('metrics', () => {
     expect(res.text).toContain('cache_hits_total{prefix="catalog"} 1');
   });
 
+  it('labeled gauges report one sample per row, replacing the previous scrape', async () => {
+    const metrics = createMetrics({ defaultMetrics: false });
+    let rows = [
+      { labels: { queue: 'notifications', state: 'waiting' }, value: 3 },
+      { labels: { queue: 'stats', state: 'failed' }, value: 1 },
+    ];
+    metrics.registerLabeledGauge('queue_jobs', 'Jobs per queue and state', ['queue', 'state'], () =>
+      Promise.resolve(rows),
+    );
+    const first = await metrics.registry.metrics();
+    expect(first).toContain('queue_jobs{queue="notifications",state="waiting"} 3');
+    expect(first).toContain('queue_jobs{queue="stats",state="failed"} 1');
+
+    rows = [{ labels: { queue: 'notifications', state: 'waiting' }, value: 0 }];
+    const second = await metrics.registry.metrics();
+    expect(second).toContain('queue_jobs{queue="notifications",state="waiting"} 0');
+    expect(second).not.toContain('queue="stats"');
+  });
+
   it('includes default process metrics unless disabled', async () => {
     expect(await createMetrics().registry.metrics()).toContain('process_cpu_user_seconds_total');
     expect(await createMetrics({ defaultMetrics: false }).registry.metrics()).not.toContain(

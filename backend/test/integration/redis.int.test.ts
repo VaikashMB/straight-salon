@@ -200,6 +200,7 @@ describe('startOutboxRelay wiring: outbox -> relay -> BullMQ consumer queues (01
       OUTBOX_ENCRYPTION_KEY: key,
       JWT_ACCESS_SECRET: 'x'.repeat(32),
       UPLOADS_PUBLIC_URL: 'http://localhost:4000/uploads',
+      APP_BASE_URL: 'http://localhost:3000',
     });
     const { logger } = captureLogger();
     const { relay, bus } = startOutboxRelay(env, logger);

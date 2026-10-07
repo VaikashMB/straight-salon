@@ -136,7 +136,7 @@ Times are local wall-clock in salon timezone ("HH:mm"). Exactly 7 entries.
 | `notes` | string | customer notes ≤ 300 |
 | `cancellation` | object | `{ at, by, reason, overridden: bool }` |
 | `payment` | object | `{ status: UNPAID|PAID, method, amountPaidMinor, discountMinor, discountReason, recordedBy, recordedAt }` |
-| `reminders` | object | `{ h24SentAt, h2SentAt }` |
+| `reminders` | object | `{ h24SentAt, h2SentAt }`; absent until a reminder is queued. Cleared on reschedule (09 §7) |
 | `createdBy` | ObjectId | |
 | `version` | int | optimistic concurrency (`__v`) |
 
@@ -157,7 +157,8 @@ Indexes: `{ bookingId: 1 } unique`, `{ staffId: 1, isHidden: 1, createdAt: -1 }`
 
 ### 2.13 `notifications`
 `userId`, `channel` (`EMAIL|SMS`), `template` (e.g. `booking_confirmed`), `to`, `payload` (object), `status` (`QUEUED|SENT|FAILED`), `provider`, `providerMessageId`, `error`, `attempts`, `sentAt`, `dedupeKey` (unique).
-Indexes: `{ dedupeKey: 1 } unique`, `{ userId: 1, createdAt: -1 }`, TTL 180 days on `createdAt`.
+`payload` holds the rendered message (`subject`, `text`, `html`) with secrets redacted (09 §8).
+Indexes: `{ dedupeKey: 1 } unique`, `{ userId: 1, createdAt: -1 }` (API-065), TTL 180 days on `createdAt` (`{ createdAt: 1 }`, which also serves API-066's newest-first list).
 
 ### 2.14 `audit_logs` (append-only)
 See 07-logging-and-auditing for semantics.

@@ -33,7 +33,7 @@
 | `contract:check` | export (+ client gen from Phase 8); fail if `backend/openapi.json` is untracked or differs from the git index |
 | `sonar` | run sonar-scanner via Docker |
 | `db:seed` / `db:migrate` / `stats:rebuild` | backend data tasks. `db:migrate`/`db:seed` exist from Phase 3 (seed: admin only, grows per phase; `npm run seed` runs it inside the dev container). In the image: `node dist/db/runMigrations.js` (seed refuses `NODE_ENV=production`) |
-| `queues:retry-failed` | re-queue DLQ jobs |
+| `queues:retry-failed` | re-queue DLQ jobs: `npm run queues:retry-failed -- --queue=notifications` (any consumer queue or `scheduled-jobs`); in the image `node dist/workers/runRetryFailed.js --queue=…` |
 | `validate` | lint + format:check + typecheck + test:coverage + contract:check (what CI runs; developers run before pushing) |
 
 Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `queues:retry-failed` (6), `stats:rebuild` (7), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
@@ -68,6 +68,6 @@ Rules:
 `cd.yml`: on tag/release → push images to a registry (GHCR) with SHA + semver tags → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
 
 ## 4. In-app automation summary
-Specified in 09 §7: reminders (24 h, 2 h), auto no-show, daily stats reconcile, outbox cleanup. Plus:
+Specified in 09 §7: reminders (24 h, 2 h), auto no-show, outbox cleanup (Phase 6), daily stats reconcile (Phase 7). Plus:
 - **Migrations** run automatically on backend startup in dev (`MIGRATE_ON_START=true`); in prod they will run as a separate one-off job (later: Kubernetes Job / Helm hook).
 - **Seed** runs automatically in the e2e CI job.

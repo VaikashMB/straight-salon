@@ -38,6 +38,8 @@ No PII (no email/phone/name) in the token.
 
 **Logout / logout-all / password reset/change** revoke tokens as described in API-004..008. Password change/reset sets `passwordChangedAt` and revokes all families. **Change password** then starts a fresh family for the current device (decision 2026-10-06: the user stays signed in where they made the change; every other device is signed out). **Reset password** does not sign anyone in.
 
+**Ops pages (Bull Board, 09 §5):** HTTP Basic with an active ADMIN's email and password, checked like login (constant-time compare, the same per-email lockout, failures audited as `auth.login_failed` with `metadata.channel: "queues-board"`). It issues no session or token.
+
 **Login details:** wrong password, unknown email, inactive account and walk-in (no password) all return the same 401. The failure counter resets on a successful login. Deactivating a user or changing their role takes effect at their next refresh (the API stays stateless; access tokens live at most `JWT_ACCESS_TTL`).
 
 ## 3. Authorization (RBAC + ownership)

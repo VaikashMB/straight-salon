@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  formatZoned,
   isValidTimeZone,
   startOfZonedDay,
   toZonedDate,
@@ -12,6 +13,13 @@ const IST = 'Asia/Kolkata'; // UTC+05:30, no DST
 const NY = 'America/New_York'; // DST: 2026-03-08 and 2026-11-01
 
 describe('timezone helpers (03 §1: all tz math in shared/time)', () => {
+  it('formats instants as salon-local wall-clock text for messages', () => {
+    const at = new Date('2026-10-12T05:30:00Z');
+    expect(formatZoned(at, IST)).toBe('Mon 12 Oct 2026, 11:00');
+    expect(formatZoned(at, NY)).toBe('Mon 12 Oct 2026, 01:30');
+    expect(formatZoned(at, IST, 'HH:mm')).toBe('11:00');
+  });
+
   it('validates IANA names', () => {
     expect(isValidTimeZone(IST)).toBe(true);
     expect(isValidTimeZone('UTC')).toBe(true);

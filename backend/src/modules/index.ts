@@ -36,6 +36,10 @@ import { createCatalogController } from './catalog/catalog.controller.js';
 import { catalogRepository } from './catalog/catalog.repository.js';
 import { catalogRouter } from './catalog/catalog.routes.js';
 import { createCatalogService } from './catalog/catalog.service.js';
+import { createNotificationsController } from './notifications/notifications.controller.js';
+import { notificationsRepository } from './notifications/notifications.repository.js';
+import { notificationsRouter } from './notifications/notifications.routes.js';
+import { createNotificationsService } from './notifications/notifications.service.js';
 import { createHolidaysController } from './holidays/holidays.controller.js';
 import { holidaysRepository } from './holidays/holidays.repository.js';
 import { holidaysRouter } from './holidays/holidays.routes.js';
@@ -56,14 +60,17 @@ import { createUsersService } from './users/users.service.js';
 // Composition root for business modules: builds services from injected infrastructure and
 // returns the /api/v1 router. server.ts passes real clients; tests pass in-memory ones.
 
-export interface ModulesConfig {
+export interface ServicesConfig {
   accessToken: AccessTokenConfig;
   refreshTokenTtlDays: number;
   bcryptCost: number;
-  cookies: CookieConfig;
   outboxEncryptionKey: string;
-  rateLimit: { windowMs: number; max: number };
   cacheEnabled: boolean;
+}
+
+export interface ModulesConfig extends ServicesConfig {
+  cookies: CookieConfig;
+  rateLimit: { windowMs: number; max: number };
   bookingRateLimit?: { windowMs: number; max: number }; // default 20/hour/user (06 §4)
 }
 
@@ -85,7 +92,11 @@ export const BOOKING_RATE_LIMIT = { windowMs: 60 * 60_000, max: 20 };
 // 06 §4: login, register and forgot-password: 10 requests / 15 min / IP, fail closed.
 export const AUTH_RATE_LIMIT = { windowMs: 15 * 60_000, max: 10 };
 
-export function buildApiRouter(deps: ModulesDeps): Router {
+export type Services = ReturnType<typeof buildServices>;
+
+// Every module service, wired to injected infrastructure. Shared by the API router and the
+// worker (consumers and scheduled jobs call the same service interfaces, 01 §3).
+export function buildServices(deps: Omit<ModulesDeps, 'config'> & { config: ServicesConfig }) {
   const { connection, redis, clock, logger, config } = deps;
   const cache = createCache({
     redis,
@@ -206,6 +217,31 @@ export function buildApiRouter(deps: ModulesDeps): Router {
     staffIdFor: (userId) => staff.findIdByUserId(userId),
   });
 
+  const notifications = createNotificationsService({ repository: notificationsRepository });
+
+  return {
+    cache,
+    accessTokens,
+    users,
+    settings,
+    catalog,
+    holidays,
+    staff,
+    availability,
+    bookings: bookingsService,
+    payments,
+    auth,
+    notifications,
+  };
+}
+
+export function buildApiRouter(
+  deps: ModulesDeps,
+  services: Services = buildServices(deps),
+): Router {
+  const { redis, logger, config, clock } = deps;
+  const { accessTokens, users } = services;
+
   const router = Router();
   // Global limit: 300 req/min/IP by default; fails open if Redis is down (08 §5).
   router.use(
@@ -213,7 +249,12 @@ export function buildApiRouter(deps: ModulesDeps): Router {
   );
   router.use(
     authRouter({
-      controller: createAuthController({ auth, users, cookies: config.cookies, clock }),
+      controller: createAuthController({
+        auth: services.auth,
+        users,
+        cookies: config.cookies,
+        clock,
+      }),
       accessTokens,
       authLimiter: rateLimit({
         scope: 'auth',
@@ -226,17 +267,26 @@ export function buildApiRouter(deps: ModulesDeps): Router {
     }),
   );
   router.use(usersRouter({ controller: createUsersController(users), accessTokens }));
-  router.use(settingsRouter({ controller: createSettingsController(settings), accessTokens }));
-  router.use(holidaysRouter({ controller: createHolidaysController(holidays), accessTokens }));
-  router.use(catalogRouter({ controller: createCatalogController(catalog), accessTokens }));
-  router.use(staffRouter({ controller: createStaffController(staff), accessTokens }));
   router.use(
-    availabilityRouter({ controller: createAvailabilityController(availability), accessTokens }),
+    settingsRouter({ controller: createSettingsController(services.settings), accessTokens }),
+  );
+  router.use(
+    holidaysRouter({ controller: createHolidaysController(services.holidays), accessTokens }),
+  );
+  router.use(
+    catalogRouter({ controller: createCatalogController(services.catalog), accessTokens }),
+  );
+  router.use(staffRouter({ controller: createStaffController(services.staff), accessTokens }));
+  router.use(
+    availabilityRouter({
+      controller: createAvailabilityController(services.availability),
+      accessTokens,
+    }),
   );
   const idempotent = idempotency({ redis, logger });
   router.use(
     bookingsRouter({
-      controller: createBookingsController(bookingsService),
+      controller: createBookingsController(services.bookings),
       accessTokens,
       idempotency: idempotent,
       // Fails open like the global limit; booking creation fails closed on the lock (08 §5).
@@ -252,9 +302,15 @@ export function buildApiRouter(deps: ModulesDeps): Router {
   );
   router.use(
     paymentsRouter({
-      controller: createPaymentsController(payments),
+      controller: createPaymentsController(services.payments),
       accessTokens,
       idempotency: idempotent,
+    }),
+  );
+  router.use(
+    notificationsRouter({
+      controller: createNotificationsController(services.notifications),
+      accessTokens,
     }),
   );
   return router;

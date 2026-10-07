@@ -61,8 +61,8 @@ backend/src/
 │   ├── reports/               # daily_stats read model + queries + CSV
 │   ├── audit/                 # read API over audit_logs
 │   └── health/
-├── jobs/                      # BullMQ job scheduler definitions (reminders, no-show, stats)
-├── workers/                   # BullMQ processors wiring
+├── jobs/                      # BullMQ job scheduler definitions (reminders, no-show, outbox cleanup; stats in Phase 7)
+├── workers/                   # BullMQ processors wiring: consumers/, registerConsumers, retry-failed script
 ├── docs/                      # openapi registry & document builder
 ├── db/                        # connect.ts (connectMongo, pingMongo, disconnectMongo), migrations/, seed/
 ├── app.ts
@@ -93,7 +93,7 @@ All validated at boot in `config/env.ts`. Example values in `.env.example`. `env
 | `NODE_ENV` | `development` | development / test / production |
 | `PORT` | `4000` | required, no default (no hard-coded ports) |
 | `APP_VERSION` | `1.0.0` | logged as `version` on every line (07 §1.1); set from the image build arg in Docker; defaults to `0.0.0-dev` |
-| `APP_BASE_URL` | `http://localhost:3000` | used in emails |
+| `APP_BASE_URL` | `http://localhost:3000` | required; browser-facing frontend URL for links in emails (booking pages, password reset) |
 | `CORS_ORIGINS` | `http://localhost:3000` | comma-separated |
 | `MONGO_URI` | `mongodb://mongo:27017/straight_salon?replicaSet=rs0` | from the host add `&directConnection=true` and use `localhost` (see 11 §3) |
 | `REDIS_URL` | `redis://redis:6379` | |
@@ -111,7 +111,9 @@ All validated at boot in `config/env.ts`. Example values in `.env.example`. `env
 | `RATE_LIMIT_WINDOW_MS` / `RATE_LIMIT_MAX` | `60000` / `300` | |
 | `EMAIL_PROVIDER` | `mock` | mock / smtp / (later: ses, sendgrid) |
 | `SMS_PROVIDER` | `mock` | mock / (later: twilio, msg91) |
-| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | | used when `EMAIL_PROVIDER=smtp` (Mailpit in docker) |
+| `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | `localhost` / `1025` / / | used when `EMAIL_PROVIDER=smtp` (Mailpit in docker); `SMTP_HOST` is then required; port 465 means implicit TLS; empty user = no SMTP auth |
+| `EMAIL_FROM` | `Straight Salon <no-reply@straightsalon.local>` | sender address of every email |
+| `BULL_BOARD_ENABLED` | `true` | Bull Board at `/admin/queues` (09 §5); defaults to `false` when `NODE_ENV=production` |
 | `RUN_RELAY_IN_WORKER` | `true` | |
 | `OUTBOX_ENCRYPTION_KEY` | (32-byte base64) | encrypts secrets in outbox payloads (see 09 §7) |
 | `UPLOADS_DIR` | `uploads` | local ObjectStorage directory (relative to `backend/`; `/app/backend/uploads` volume in Docker), served by the API at `/uploads` (Phase 4) |
@@ -209,7 +211,8 @@ Implemented as pure functions in `shared/time/slots.ts` — **this must have nea
 
   Body: `{ "status": "degraded", "checks": { "mongo": { "status": "up" }, "redis": { "status": "down" } } }`. Error details are logged at `warn`, never returned (the endpoint is public).
 - At startup, a Mongo connection failure is fatal (log `fatal`, exit 1, 07 §1.2). A Redis failure is not: the client reconnects in the background, and readiness reports `degraded` meanwhile.
-- `GET /metrics` → Prometheus metrics (HTTP duration histogram by route/status, queue depth, outbox pending count) when `METRICS_ENABLED`.
+- `GET /metrics` → Prometheus metrics (HTTP duration histogram by route/status, queue depth as `queue_jobs{queue,state}`, outbox pending count) when `METRICS_ENABLED`.
+- `GET /admin/queues` → Bull Board (09 §5), HTTP Basic with an ADMIN's email and password, when `BULL_BOARD_ENABLED`. Not in OpenAPI.
 - `GET /api/docs` → Swagger UI; `GET /api/docs/openapi.json` → raw spec.
 
 ## 7. Graceful shutdown

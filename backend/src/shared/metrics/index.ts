@@ -12,6 +12,13 @@ export interface Metrics {
   cacheErrors: Counter;
   // Gauge whose value is read at scrape time (e.g. outbox pending count).
   registerGauge(name: string, help: string, read: () => Promise<number> | number): void;
+  // Same, with labels: one sample per returned row (e.g. jobs per queue and state).
+  registerLabeledGauge<L extends string>(
+    name: string,
+    help: string,
+    labelNames: readonly L[],
+    read: () => Promise<{ labels: Record<L, string>; value: number }[]>,
+  ): void;
 }
 
 export function createMetrics(options: { defaultMetrics?: boolean } = {}): Metrics {
@@ -53,6 +60,18 @@ export function createMetrics(options: { defaultMetrics?: boolean } = {}): Metri
         registers: [registry],
         async collect() {
           this.set(await read());
+        },
+      });
+    },
+    registerLabeledGauge(name, help, labelNames, read) {
+      new Gauge({
+        name,
+        help,
+        labelNames: [...labelNames],
+        registers: [registry],
+        async collect() {
+          this.reset();
+          for (const { labels, value } of await read()) this.set(labels, value);
         },
       });
     },

@@ -42,6 +42,7 @@ export function buildTestApp(
     readiness?: ReadinessService;
     apiRouter?: Router;
     metrics?: Metrics;
+    queuesBoard?: Router;
   } = {},
 ) {
   const { logger, lines } = captureLogger();
@@ -66,6 +67,7 @@ export function buildTestApp(
       ...overrides.config,
     },
     apiRouter: overrides.apiRouter ?? Router(),
+    ...(overrides.queuesBoard ? { queuesBoard: overrides.queuesBoard } : {}),
   });
   return { app, logs: lines, metrics };
 }

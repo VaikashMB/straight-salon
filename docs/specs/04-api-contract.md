@@ -129,8 +129,8 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 ### Notifications (`tags: Notifications`)
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
-| API-065 | `GET /notifications/me` | Auth | Own notification history. |
-| API-066 | `GET /notifications` | ADMIN | All, filterable; used to inspect mock-sent messages in dev. |
+| API-065 | `GET /notifications/me` | Auth | Own notification history, newest first, paginated (`page`, `pageSize`). Delivery internals (provider, its message id, error) are omitted. |
+| API-066 | `GET /notifications` | ADMIN | All, newest first, paginated; filters `userId`, `channel` (`EMAIL`/`SMS`), `status` (`QUEUED`/`SENT`/`FAILED`), `template`. Includes `provider`, `providerMessageId`, `error`. Used to inspect mock-sent messages in dev. Secrets such as reset links are redacted in both (09 §8). |
 
 ### Reports & audit (`tags: Reports, Audit`)
 | ID | Method & path | Auth | Description |
@@ -141,7 +141,7 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 | API-073 | `GET /audit-logs?entityType&entityId&actorId&action&from&to&page` | ADMIN | Paginated. |
 
 ### Ops (`tags: Ops`, outside `/api/v1`)
-`GET /health/live`, `GET /health/ready`, `GET /metrics`, `GET /api/docs`, `GET /api/docs/openapi.json`.
+`GET /health/live`, `GET /health/ready`, `GET /metrics`, `GET /api/docs`, `GET /api/docs/openapi.json`, `GET /admin/queues` (Bull Board, HTTP Basic ADMIN, not in OpenAPI; 09 §5).
 `GET /uploads/{key}` serves images stored by the local ObjectStorage adapter (API-027): read-only, `Cross-Origin-Resource-Policy: cross-origin` so the frontend origin can embed them, long-cached (random names never change). Misses are 404 problems. Not in OpenAPI (static files); an S3 adapter replaces it with bucket/CDN URLs.
 
 ## 4. Standard error codes

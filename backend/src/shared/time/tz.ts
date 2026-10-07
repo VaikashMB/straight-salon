@@ -43,6 +43,15 @@ export function zonedDateTime(date: string, time: string, timeZone: string): Dat
   );
 }
 
+// Human-readable salon-local time for messages, e.g. "Mon 12 Oct 2026, 11:00" (date-fns pattern).
+export function formatZoned(
+  instant: Date,
+  timeZone: string,
+  pattern = 'EEE d MMM yyyy, HH:mm',
+): string {
+  return format(new TZDate(instant.getTime(), timeZone), pattern);
+}
+
 // Calendar arithmetic on date strings; independent of any timezone.
 export function addDays(date: string, days: number): string {
   const [year, month, day] = parseDate(date);

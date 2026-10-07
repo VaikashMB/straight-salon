@@ -2,10 +2,14 @@ import type { Server } from 'node:http';
 import { createApp } from './app.js';
 import { connectMongo, disconnectMongo, pingMongo } from './db/connect.js';
 import { runMigrations } from './db/migrate.js';
-import { buildApiRouter } from './modules/index.js';
+import { SCHEDULED_JOBS_QUEUE } from './jobs/scheduler.js';
+import { buildApiRouter, buildServices, type ModulesDeps } from './modules/index.js';
 import { createReadinessService } from './modules/health/health.service.js';
 import { closeRedis, createRedisClient, pingRedis } from './shared/cache/redis.js';
 import { outboxRepository } from './shared/events/outbox.repository.js';
+import { createQueueInspector, queuesBoardRouter } from './shared/events/queues.js';
+import { CONSUMER_SUBSCRIPTIONS } from './shared/events/subscriptions.js';
+import { basicAuth } from './shared/http/basicAuth.js';
 import { createProcessLogger, loadEnvOrExit, registerShutdown } from './shared/lifecycle/index.js';
 import { createMetrics } from './shared/metrics/index.js';
 import { createLocalStorage } from './shared/storage/objectStorage.js';
@@ -27,6 +31,7 @@ logger.info(
     migrateOnStart: env.MIGRATE_ON_START,
     cookieSecure: env.COOKIE_SECURE,
     uploadsDir: env.UPLOADS_DIR,
+    bullBoardEnabled: env.BULL_BOARD_ENABLED,
   },
   'Starting API',
 );
@@ -57,6 +62,48 @@ const readiness = createReadinessService(
   logger,
 );
 
+const modulesDeps: ModulesDeps = {
+  connection: mongoConnection,
+  redis,
+  clock: systemClock,
+  logger,
+  metrics,
+  storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
+  config: {
+    accessToken: {
+      secret: env.JWT_ACCESS_SECRET,
+      ttl: env.JWT_ACCESS_TTL,
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+    },
+    refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
+    bcryptCost: env.BCRYPT_COST,
+    cookies: { secure: env.COOKIE_SECURE, domain: env.COOKIE_DOMAIN },
+    outboxEncryptionKey: env.OUTBOX_ENCRYPTION_KEY,
+    rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, max: env.RATE_LIMIT_MAX },
+    cacheEnabled: env.CACHE_ENABLED,
+  },
+};
+const services = buildServices(modulesDeps);
+
+// Queue depth on /metrics (03 §6) and Bull Board (09 §5) read the worker's queues.
+const queues =
+  env.METRICS_ENABLED || env.BULL_BOARD_ENABLED
+    ? createQueueInspector({
+        redisUrl: env.REDIS_URL,
+        queueNames: [...Object.keys(CONSUMER_SUBSCRIPTIONS), SCHEDULED_JOBS_QUEUE],
+        logger,
+      })
+    : undefined;
+if (queues && env.METRICS_ENABLED) {
+  metrics.registerLabeledGauge(
+    'queue_jobs',
+    'BullMQ jobs per queue and state',
+    ['queue', 'state'],
+    () => queues.counts(),
+  );
+}
+
 const app = createApp({
   logger,
   readiness,
@@ -68,28 +115,18 @@ const app = createApp({
     metricsEnabled: env.METRICS_ENABLED,
     uploadsDir: env.UPLOADS_DIR,
   },
-  apiRouter: buildApiRouter({
-    connection: mongoConnection,
-    redis,
-    clock: systemClock,
-    logger,
-    metrics,
-    storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
-    config: {
-      accessToken: {
-        secret: env.JWT_ACCESS_SECRET,
-        ttl: env.JWT_ACCESS_TTL,
-        issuer: env.JWT_ISSUER,
-        audience: env.JWT_AUDIENCE,
-      },
-      refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
-      bcryptCost: env.BCRYPT_COST,
-      cookies: { secure: env.COOKIE_SECURE, domain: env.COOKIE_DOMAIN },
-      outboxEncryptionKey: env.OUTBOX_ENCRYPTION_KEY,
-      rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, max: env.RATE_LIMIT_MAX },
-      cacheEnabled: env.CACHE_ENABLED,
-    },
-  }),
+  apiRouter: buildApiRouter(modulesDeps, services),
+  ...(queues && env.BULL_BOARD_ENABLED
+    ? {
+        queuesBoard: queuesBoardRouter(
+          queues,
+          basicAuth({
+            realm: 'Straight Salon queues',
+            verify: (email, password) => services.auth.verifyAdmin(email, password),
+          }),
+        ),
+      }
+    : {}),
 });
 
 const server: Server = app.listen(env.PORT, (err?: Error) => {
@@ -107,6 +144,7 @@ registerShutdown(logger, [
     run: () =>
       new Promise<void>((resolve, reject) => server.close((e) => (e ? reject(e) : resolve()))),
   },
+  ...(queues ? [{ name: 'queues', run: () => queues.close() }] : []),
   { name: 'redis', run: () => closeRedis(redis) },
   { name: 'mongo', run: disconnectMongo },
 ]);

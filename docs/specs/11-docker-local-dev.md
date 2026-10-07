@@ -27,7 +27,7 @@ Image tags are pinned to a major/minor line (never `latest`), so `docker compose
 - Host ports bind to **127.0.0.1** only, so databases and tools are not reachable from the local network.
 - Healthchecks: mongo (`mongosh --eval "db.adminCommand('ping')"`), redis (`redis-cli ping`), backend (`wget -qO- http://localhost:4000/health/ready`), frontend (`/` returns 200).
 - `depends_on` with `condition: service_healthy` / `service_completed_successfully` (backend waits for mongo-init and redis).
-- Environment from `.env` file (created with `npm run env:init`, which copies `.env.example` and generates the secrets; backend/worker refuse to start without `OUTBOX_ENCRYPTION_KEY`; `env_file` is optional, so the stack also starts without one). The frontend does **not** get `env_file`, so backend secrets never reach it. `.env.example` holds **host-mode** URLs (`localhost`); the compose file overrides the container-to-container ones with service names in each service's `environment:` (`MONGO_URI=mongodb://mongo:27017/straight_salon?replicaSet=rs0`, `REDIS_URL=redis://redis:6379`, `SMTP_HOST=mailpit`, `API_INTERNAL_URL=http://backend:4000`).
+- Environment from `.env` file (created with `npm run env:init`, which copies `.env.example` and generates the secrets; backend/worker refuse to start without `OUTBOX_ENCRYPTION_KEY`; `env_file` is optional, so the stack also starts without one). The frontend does **not** get `env_file`, so backend secrets never reach it. `.env.example` holds **host-mode** URLs (`localhost`); the compose file overrides the container-to-container ones with service names in each service's `environment:` (`MONGO_URI=mongodb://mongo:27017/straight_salon?replicaSet=rs0`, `REDIS_URL=redis://redis:6379`, `SMTP_HOST=mailpit`, `API_INTERNAL_URL=http://backend:4000`). It also sets `EMAIL_PROVIDER=smtp` for backend/worker, so emails from the Docker stack land in Mailpit (override with `EMAIL_PROVIDER_DOCKER=mock`).
 - Resource limits declared (`deploy.resources.limits`) to build the habit for Kubernetes later.
 - The base file sets `NODE_ENV=production`, `PORT=4000` and `LOG_PRETTY=false` for backend/worker (runtime images have no dev dependencies, so no `pino-pretty`); the dev override sets `development` / `true`.
 - One shared network `straight-salon`.
@@ -93,7 +93,7 @@ Verified against a real auth-enabled replica set: `ss_app` can insert/find `audi
 - API: http://localhost:4000/api/v1
 - Swagger UI: http://localhost:4000/api/docs
 - Mailpit: http://localhost:8025
-- Bull Board: http://localhost:4000/admin/queues (admin login required)
+- Bull Board: http://localhost:4000/admin/queues (the browser asks for an ADMIN email and password, e.g. `admin@straightsalon.local` / `Password@123` from the seed)
 - Mongo Express: http://localhost:8081 (tools profile)
 - SonarQube: http://localhost:9000
 

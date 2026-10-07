@@ -1,6 +1,7 @@
 import { Queue, Worker, type JobsOptions } from 'bullmq';
 import { Redis } from 'ioredis';
 import { runWithContext } from '../http/requestContext.js';
+import { logConnectionErrors } from './connectionErrors.js';
 import type { Logger } from '../logger/index.js';
 import type { DomainEvent } from './envelope.js';
 import type { EventBus } from './EventBus.js';
@@ -42,11 +43,13 @@ export function createBullMqEventBus({
   const queues = new Map<string, Queue>();
   const workers: Worker[] = [];
   const log = logger.child({ component: 'event-bus' });
+  logConnectionErrors(log, 'event-bus', [connection]);
 
   function queueFor(consumer: string): Queue {
     let queue = queues.get(consumer);
     if (!queue) {
       queue = new Queue(consumer, { connection, prefix, defaultJobOptions: jobOptions });
+      logConnectionErrors(log, `queue:${consumer}`, [queue]);
       queues.set(consumer, queue);
     }
     return queue;
@@ -82,6 +85,7 @@ export function createBullMqEventBus({
         },
         { connection, prefix, concurrency: options.concurrency ?? 10 },
       );
+      logConnectionErrors(log, `worker:${consumer}`, [worker]);
       worker.on('failed', (job, err) => {
         const final = job ? job.attemptsMade >= (job.opts.attempts ?? 1) : true;
         log[final ? 'error' : 'warn'](

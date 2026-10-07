@@ -6,9 +6,13 @@ import { createOutboxRelay, type OutboxRelay } from '../shared/events/relay.js';
 import { watchOutboxInserts } from '../shared/events/watchOutbox.js';
 import type { Logger } from '../shared/logger/index.js';
 
-// Wiring shared by relay.ts and worker.ts (when RUN_RELAY_IN_WORKER=true), 01 §1.
-export function startOutboxRelay(env: Env, logger: Logger): { relay: OutboxRelay; bus: EventBus } {
-  const bus = createBullMqEventBus({ redisUrl: env.REDIS_URL, logger });
+// Wiring shared by relay.ts and worker.ts (when RUN_RELAY_IN_WORKER=true), 01 §1. The worker
+// passes its own bus so publishing and consuming share connections.
+export function startOutboxRelay(
+  env: Pick<Env, 'REDIS_URL'>,
+  logger: Logger,
+  bus: EventBus = createBullMqEventBus({ redisUrl: env.REDIS_URL, logger }),
+): { relay: OutboxRelay; bus: EventBus } {
   const relay = createOutboxRelay({
     repository: outboxRepository,
     bus,

@@ -34,6 +34,7 @@ export default defineConfig({
         'src/relay.ts',
         'src/docs/export.ts',
         'src/db/runMigrations.ts',
+        'src/workers/runRetryFailed.ts',
         'src/db/seed/**',
         'src/db/migrations/**',
       ],

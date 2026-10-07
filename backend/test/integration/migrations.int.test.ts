@@ -30,6 +30,7 @@ describe('migrations (02 §1)', () => {
       '20261006000001-initial-indexes.js',
       '20261006000002-catalog-staff-indexes.js',
       '20261007000003-bookings-indexes.js',
+      '20261007000004-notifications-indexes.js',
     ]);
 
     for (const model of Object.values(mongoose.models)) {
@@ -59,6 +60,7 @@ describe('migrations (02 §1)', () => {
       '20261006000001-initial-indexes.js',
       '20261006000002-catalog-staff-indexes.js',
       '20261007000003-bookings-indexes.js',
+      '20261007000004-notifications-indexes.js',
     ]);
   });
 
@@ -87,9 +89,9 @@ describe('migrations (02 §1)', () => {
       runMigrations(uri, logger),
       runMigrations(uri, logger),
     ]);
-    expect(results.filter((r) => r.length === 3)).toHaveLength(1);
+    expect(results.filter((r) => r.length === 4)).toHaveLength(1);
     expect(results.filter((r) => r.length === 0)).toHaveLength(2);
-    expect(await mongoose.connection.collection(CHANGELOG_COLLECTION).countDocuments()).toBe(3);
+    expect(await mongoose.connection.collection(CHANGELOG_COLLECTION).countDocuments()).toBe(4);
     expect(await mongoose.connection.collection(LOCK_COLLECTION).countDocuments()).toBe(0);
   });
 });

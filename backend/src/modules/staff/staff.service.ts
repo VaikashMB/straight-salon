@@ -72,6 +72,7 @@ export interface StaffService {
 
 export interface StaffBrief {
   id: string;
+  userId: string; // the stylist's login account (notifications, 09 §5)
   displayName: string;
   isActive: boolean;
   serviceIds: string[];
@@ -79,6 +80,7 @@ export interface StaffBrief {
 
 const toBrief = (s: StaffDoc): StaffBrief => ({
   id: s._id.toHexString(),
+  userId: s.userId.toHexString(),
   displayName: s.displayName,
   isActive: s.isActive,
   serviceIds: s.serviceIds.map((id) => id.toHexString()),

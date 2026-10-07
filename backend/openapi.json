@@ -1072,6 +1072,168 @@
           "url": "http://localhost:4000/uploads/images/9f1c2a8e.webp"
         }
       },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "userId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "EMAIL",
+              "SMS"
+            ]
+          },
+          "template": {
+            "type": "string",
+            "enum": [
+              "welcome",
+              "password_reset",
+              "booking_confirmed",
+              "booking_rescheduled",
+              "booking_cancelled",
+              "booking_reminder_24h",
+              "booking_reminder_2h",
+              "booking_no_show",
+              "booking_thank_you",
+              "staff_booking_assigned",
+              "staff_booking_changed",
+              "staff_booking_cancelled"
+            ]
+          },
+          "to": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "QUEUED",
+              "SENT",
+              "FAILED"
+            ]
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-12T05:30:00.000Z"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-12T05:30:00.000Z"
+          },
+          "content": {
+            "type": "object",
+            "properties": {
+              "subject": {
+                "type": "string"
+              },
+              "text": {
+                "type": "string"
+              },
+              "html": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "text"
+            ],
+            "description": "The message as sent; secrets such as reset links are redacted"
+          },
+          "provider": {
+            "type": "string",
+            "example": "smtp"
+          },
+          "providerMessageId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string",
+            "description": "Last delivery error, if any"
+          }
+        },
+        "required": [
+          "id",
+          "userId",
+          "channel",
+          "template",
+          "to",
+          "status",
+          "attempts",
+          "createdAt",
+          "content"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60a01",
+          "userId": "6712c0f9a1b2c3d4e5f60111",
+          "channel": "EMAIL",
+          "template": "booking_confirmed",
+          "to": "ananya@example.com",
+          "status": "SENT",
+          "attempts": 1,
+          "sentAt": "2026-10-06T09:12:46.000Z",
+          "createdAt": "2026-10-06T09:12:45.000Z",
+          "content": {
+            "subject": "Booking confirmed: Mon 12 Oct 2026, 11:00",
+            "text": "Hi Ananya,\n\nYour appointment with Ravi is confirmed.\n..."
+          }
+        }
+      },
+      "NotificationList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Notification"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ],
+            "example": {
+              "page": 1,
+              "pageSize": 20,
+              "total": 134,
+              "totalPages": 7
+            }
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "Holiday": {
         "type": "object",
         "properties": {
@@ -4878,6 +5040,215 @@
           },
           "413": {
             "description": "File larger than 2 MB (INVALID_FILE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/me": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "My notification history (API-065)",
+        "description": "Any logged-in user. Emails and SMS sent to me, newest first.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "tags": [
+          "Notifications"
+        ],
+        "summary": "All notifications (API-066)",
+        "description": "ADMIN. Every message with its delivery state, newest first; used to inspect messages from the mock providers in development. Secrets such as reset links are redacted.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": false,
+            "name": "userId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "EMAIL",
+                "SMS"
+              ]
+            },
+            "required": false,
+            "name": "channel",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "QUEUED",
+                "SENT",
+                "FAILED"
+              ]
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "welcome",
+                "password_reset",
+                "booking_confirmed",
+                "booking_rescheduled",
+                "booking_cancelled",
+                "booking_reminder_24h",
+                "booking_reminder_2h",
+                "booking_no_show",
+                "booking_thank_you",
+                "staff_booking_assigned",
+                "staff_booking_changed",
+                "staff_booking_cancelled"
+              ]
+            },
+            "required": false,
+            "name": "template",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of notifications",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
             "content": {
               "application/problem+json": {
                 "schema": {

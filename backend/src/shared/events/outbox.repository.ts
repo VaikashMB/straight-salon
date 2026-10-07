@@ -19,6 +19,9 @@ export interface OutboxRepository {
   // PUBLISHING claims older than `before` go back to PENDING (relay crashed mid-publish).
   resetStaleClaims(before: Date): Promise<number>;
   countPending(): Promise<number>;
+  // outbox-cleanup job (09 §7): FAILED rows that occurred before `before`.
+  summarizeFailedBefore(before: Date): Promise<{ type: string; count: number }[]>;
+  deleteFailedBefore(before: Date): Promise<number>;
 }
 
 function toEvent(doc: OutboxDoc): DomainEvent {
@@ -92,5 +95,22 @@ export const outboxRepository: OutboxRepository = {
     return OutboxModel.countDocuments({
       status: mongoose.trusted({ $in: ['PENDING', 'PUBLISHING'] }),
     });
+  },
+
+  async summarizeFailedBefore(before) {
+    const rows = await OutboxModel.aggregate<{ _id: string; count: number }>([
+      { $match: { status: 'FAILED', occurredAt: { $lt: before } } },
+      { $group: { _id: '$type', count: { $sum: 1 } } },
+      { $sort: { _id: 1 } },
+    ]);
+    return rows.map((row) => ({ type: row._id, count: row.count }));
+  },
+
+  async deleteFailedBefore(before) {
+    const result = await OutboxModel.deleteMany({
+      status: 'FAILED',
+      occurredAt: mongoose.trusted({ $lt: before }),
+    });
+    return result.deletedCount;
   },
 };

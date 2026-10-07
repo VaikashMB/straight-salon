@@ -32,13 +32,13 @@ Build strictly in order. Each phase ends with the Definition of Done in `AGENTS.
 > Prompt: *"Implement Phase 5: availability and bookings. Start with the slot engine as pure functions and their tests, then endpoints API-040 to API-058 enforcing BR-001 to BR-015."*
 
 ## Phase 6 — Workers, notifications & scheduled jobs
-**Scope:** worker entrypoint; consumers (notifications, staff-notifications, cache-invalidation, ratings, stats); idempotent wrapper; templates; mock + SMTP providers (Mailpit); scheduled jobs (09 §7); Bull Board; API-065, 066.
+**Scope:** worker entrypoint; consumers (notifications, staff-notifications, cache-invalidation); idempotent wrapper; templates; mock + SMTP providers (Mailpit); scheduled jobs (09 §7: reminders, auto no-show, outbox cleanup); Bull Board; API-065, 066; `queues:retry-failed`. The `ratings` and `stats` consumers and the `stats-reconcile` job move to Phase 7 (decision 2026-10-07): they need `reviews` and `daily_stats`, which arrive there. Their queues already receive events from Phase 6 on, and the consumers work through that backlog when they start.
 **Done when:** booking in Swagger → email visible in Mailpit within seconds; reminders and auto no-show verified with fake clock tests.
 > Prompt: *"Implement Phase 6: worker process, all consumers and scheduled jobs from 09-events-and-messaging, with idempotency and tests."*
 
 ## Phase 7 — Reviews, reports, audit API
-**Scope:** API-060…062, API-070…073, `daily_stats` read model, CSV export, `stats:rebuild` script, seed reviews.
-> Prompt: *"Implement Phase 7: reviews, reports (with daily_stats), CSV export and audit log API (API-060 to API-073)."*
+**Scope:** API-060…062, API-070…073, `daily_stats` read model, CSV export, `stats:rebuild` script, seed reviews; the `ratings` and `stats` consumers and the `stats-reconcile` job (09 §5, §7; moved from Phase 6).
+> Prompt: *"Implement Phase 7: reviews, reports (with daily_stats), CSV export and audit log API (API-060 to API-073), plus the ratings and stats consumers and the stats-reconcile job."*
 
 ## Phase 8 — Frontend foundation
 **Scope:** Tailwind + shadcn setup, theme (05 §2), layouts per area, generated typed API client, AuthProvider with refresh single-flight, middleware route protection, error-code mapping, formatting utils, Vitest + MSW setup; login/register/forgot/reset pages.

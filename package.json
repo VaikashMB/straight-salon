@@ -38,7 +38,7 @@
     "db:seed": "npm run db:seed -w backend",
     "db:migrate": "npm run db:migrate -w backend",
     "stats:rebuild": "node scripts/not-yet.mjs stats:rebuild 7",
-    "queues:retry-failed": "node scripts/not-yet.mjs queues:retry-failed 6",
+    "queues:retry-failed": "npm run queues:retry-failed -w backend --",
     "validate": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run contract:check"
   },
   "devDependencies": {

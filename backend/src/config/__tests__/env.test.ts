@@ -11,6 +11,7 @@ const required = {
   OUTBOX_ENCRYPTION_KEY: key,
   JWT_ACCESS_SECRET: 'x'.repeat(32),
   UPLOADS_PUBLIC_URL: 'http://localhost:4000/uploads',
+  APP_BASE_URL: 'http://localhost:3000',
 };
 
 function issuesOf(source: NodeJS.ProcessEnv): { path: string; message: string }[] {
@@ -48,6 +49,14 @@ describe('parseEnv', () => {
       RATE_LIMIT_MAX: 300,
       MIGRATE_ON_START: true,
       UPLOADS_DIR: 'uploads',
+      EMAIL_PROVIDER: 'mock',
+      SMS_PROVIDER: 'mock',
+      EMAIL_FROM: 'Straight Salon <no-reply@straightsalon.local>',
+      SMTP_HOST: undefined,
+      SMTP_PORT: 1025,
+      SMTP_USER: undefined,
+      SMTP_PASS: undefined,
+      BULL_BOARD_ENABLED: true,
     });
   });
 
@@ -99,7 +108,46 @@ describe('parseEnv', () => {
         message: 'Required (run `npm run env:init` to create .env with one)',
       },
       { path: 'UPLOADS_PUBLIC_URL', message: 'Required' },
+      { path: 'APP_BASE_URL', message: 'Required' },
     ]);
+  });
+
+  it('notifications: SMTP needs a host; links use APP_BASE_URL without a trailing slash', () => {
+    expect(issuesOf({ ...required, EMAIL_PROVIDER: 'smtp' })).toEqual([
+      { path: 'SMTP_HOST', message: 'Required when EMAIL_PROVIDER=smtp' },
+    ]);
+    expect(
+      parseEnv({
+        ...required,
+        EMAIL_PROVIDER: 'smtp',
+        SMTP_HOST: 'mailpit',
+        SMTP_PORT: '2525',
+        SMTP_USER: ' mailer ',
+        SMTP_PASS: 'pw',
+        APP_BASE_URL: 'https://salon.example.com/',
+      }),
+    ).toMatchObject({
+      EMAIL_PROVIDER: 'smtp',
+      SMTP_HOST: 'mailpit',
+      SMTP_PORT: 2525,
+      SMTP_USER: 'mailer',
+      SMTP_PASS: 'pw',
+      APP_BASE_URL: 'https://salon.example.com',
+    });
+    expect(issuesOf({ ...required, APP_BASE_URL: 'salon.example.com' }).map((i) => i.path)).toEqual(
+      ['APP_BASE_URL'],
+    );
+    expect(issuesOf({ ...required, SMS_PROVIDER: 'twilio' }).map((i) => i.path)).toEqual([
+      'SMS_PROVIDER',
+    ]);
+  });
+
+  it('Bull Board is off by default in production and can be switched explicitly (09 §5)', () => {
+    expect(parseEnv({ ...required, NODE_ENV: 'production' }).BULL_BOARD_ENABLED).toBe(false);
+    expect(
+      parseEnv({ ...required, NODE_ENV: 'production', BULL_BOARD_ENABLED: 'true' })
+        .BULL_BOARD_ENABLED,
+    ).toBe(true);
   });
 
   it('uploads: the public URL must be http(s); a trailing slash is dropped (API-027)', () => {

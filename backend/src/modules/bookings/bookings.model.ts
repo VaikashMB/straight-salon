@@ -58,7 +58,8 @@ export interface BookingDoc {
   notes?: string;
   cancellation?: Cancellation;
   payment: Payment;
-  reminders: { h24SentAt?: Date; h2SentAt?: Date };
+  // Absent until a reminder is queued: Mongoose drops the empty object (minimize).
+  reminders?: { h24SentAt?: Date; h2SentAt?: Date };
   createdBy: Types.ObjectId;
   __v: number;
   createdAt: Date;
