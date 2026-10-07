@@ -76,6 +76,8 @@ export interface CatalogRepository {
     session?: ClientSession,
   ): Promise<ServiceDoc>;
   serviceSlugsLike(base: string): Promise<string[]>;
+  // Denormalised rating (FR-061), written by the ratings consumer; does not bump the version.
+  setServiceRating(id: Types.ObjectId, ratingAvg: number, ratingCount: number): Promise<void>;
 }
 
 const escapeRegex = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -171,5 +173,8 @@ export const catalogRepository: CatalogRepository = {
   },
   async serviceSlugsLike(base) {
     return (await ServiceModel.find(slugFilter(base), { slug: 1 }).lean()).map((s) => s.slug);
+  },
+  async setServiceRating(id, ratingAvg, ratingCount) {
+    await ServiceModel.updateOne({ _id: id }, { $set: { ratingAvg, ratingCount } });
   },
 };

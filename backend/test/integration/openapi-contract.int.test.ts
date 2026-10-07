@@ -22,6 +22,20 @@ describe('OpenAPI contract (04 §2)', () => {
     }
   });
 
+  it('documents every Phase 7 endpoint (API-060..062, API-070..073)', () => {
+    const ids = operations.map(({ op }) => /\(API-(\d{3})\)/.exec(op.summary ?? '')?.[1]);
+    for (const n of [60, 61, 62, 70, 71, 72, 73]) expect(ids, `API-0${n}`).toContain(`0${n}`);
+  });
+
+  it('API-072 is documented as text/csv; the booking DTO carries canReview', () => {
+    const csv = doc.paths?.['/api/v1/reports/summary.csv']?.get?.responses?.['200'] as {
+      content?: Record<string, unknown>;
+    };
+    expect(Object.keys(csv.content ?? {})).toEqual(['text/csv']);
+    const booking = doc.components?.schemas?.Booking as { required?: string[] };
+    expect(booking.required).toContain('canReview');
+  });
+
   it.each(operations.map((o) => [`${o.method.toUpperCase()} ${o.path}`, o] as const))(
     '%s has summary, tags, security and documented responses',
     (_name, { op, path }) => {
@@ -39,7 +53,7 @@ describe('OpenAPI contract (04 §2)', () => {
     },
   );
 
-  it('registers the Phase 4 components', () => {
+  it('registers the Phase 4 and Phase 7 components', () => {
     expect(Object.keys(doc.components?.schemas ?? {})).toEqual(
       expect.arrayContaining([
         'PublicSettings',
@@ -53,6 +67,12 @@ describe('OpenAPI contract (04 §2)', () => {
         'StaffProfile',
         'StaffSchedule',
         'TimeOff',
+        'Review',
+        'ReviewList',
+        'Dashboard',
+        'ReportSummary',
+        'AuditLog',
+        'AuditLogList',
       ]),
     );
   });

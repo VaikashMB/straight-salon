@@ -1,8 +1,16 @@
+import mongoose from 'mongoose';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { seedDatabase, SEED_CUSTOMER_COUNT, SEED_SERVICE_COUNT } from '../../src/db/seed/seed.js';
+import {
+  seedDatabase,
+  seedDerivedData,
+  SEED_CUSTOMER_COUNT,
+  SEED_SERVICE_COUNT,
+} from '../../src/db/seed/seed.js';
 import { BookingModel } from '../../src/modules/bookings/bookings.model.js';
 import { CategoryModel, ServiceModel } from '../../src/modules/catalog/catalog.model.js';
 import { HolidayModel } from '../../src/modules/holidays/holidays.model.js';
+import { DailyStatsModel } from '../../src/modules/reports/reports.model.js';
+import { ReviewModel } from '../../src/modules/reviews/reviews.model.js';
 import { SettingsModel } from '../../src/modules/settings/settings.model.js';
 import {
   StaffModel,
@@ -12,13 +20,14 @@ import {
 import { UserModel } from '../../src/modules/users/users.model.js';
 import { createManualClock } from '../../src/shared/time/clock.js';
 import { connectTestDb, disconnectTestDb } from '../helpers/db.js';
+import { buildWorkerHarness } from '../helpers/worker.js';
 import { captureLogger } from '../helpers/logger.js';
 
 beforeAll(connectTestDb);
 afterAll(disconnectTestDb);
 
-describe('db:seed (02 §3, Phase 4 scope)', () => {
-  it('seeds settings, users, catalogue, staff, schedules, a holiday and time-off; reruns add nothing', async () => {
+describe('db:seed (02 §3)', () => {
+  it('seeds settings, users, catalogue, staff, schedules, a holiday, time-off, bookings and reviews; reruns add nothing', async () => {
     const clock = createManualClock('2026-10-06T06:00:00Z');
     const { logger } = captureLogger();
     await seedDatabase({ logger, bcryptCost: 4, clock });
@@ -34,6 +43,7 @@ describe('db:seed (02 §3, Phase 4 scope)', () => {
       holidays: await HolidayModel.countDocuments(),
       timeOff: await TimeOffModel.countDocuments(),
       bookings: await BookingModel.countDocuments(),
+      reviews: await ReviewModel.countDocuments(),
     });
     const first = await counts();
     expect(first).toEqual({
@@ -47,6 +57,7 @@ describe('db:seed (02 §3, Phase 4 scope)', () => {
       holidays: 1,
       timeOff: 3,
       bookings: first.bookings,
+      reviews: first.reviews,
     });
     expect(first.bookings).toBeGreaterThanOrEqual(50);
     expect(first.bookings).toBeLessThanOrEqual(70);
@@ -88,7 +99,42 @@ describe('db:seed (02 §3, Phase 4 scope)', () => {
     const durations = (await ServiceModel.find().lean()).map((s) => s.durationMin % 15);
     expect(new Set(durations)).toEqual(new Set([0]));
 
+    // Phase 7: a handful of reviews, each on a completed booking by its own customer.
+    expect(first.reviews).toBeGreaterThanOrEqual(3);
+    expect(first.reviews).toBeLessThanOrEqual(8);
+    for (const review of await ReviewModel.find().lean()) {
+      const booking = bookings.find((b) => b._id.equals(review.bookingId))!;
+      expect(booking.status).toBe('COMPLETED');
+      expect(review.customerId.equals(booking.customerId)).toBe(true);
+    }
+
     await seedDatabase({ logger, bcryptCost: 4, clock });
     expect(await counts()).toEqual(first);
+  });
+
+  it('seedDerivedData computes ratings and daily_stats from the seeded data', async () => {
+    const clock = createManualClock('2026-10-06T06:00:00Z');
+    const { services } = buildWorkerHarness({ clock });
+    const { logger } = captureLogger();
+    await seedDerivedData(services, logger);
+
+    const reviewed = await ReviewModel.distinct('staffId');
+    const rated = await StaffModel.find({ ratingCount: mongoose.trusted({ $gt: 0 }) }).lean();
+    expect(rated.map((s) => s._id.toHexString()).sort()).toEqual(
+      reviewed.map((id) => id.toHexString()).sort(),
+    );
+    expect(
+      await ServiceModel.countDocuments({ ratingCount: mongoose.trusted({ $gt: 0 }) }),
+    ).toBeGreaterThan(0);
+
+    // A salon row for every date from the first to the last booking (past 14 + next 7 days).
+    const salonRows = await DailyStatsModel.find({ staffId: null }).lean();
+    expect(salonRows.length).toBeGreaterThanOrEqual(21);
+    const revenue = salonRows.reduce((sum, r) => sum + r.revenueMinor, 0);
+    const paid = (await BookingModel.find({ status: 'COMPLETED' }).lean()).reduce(
+      (sum, b) => sum + (b.payment.amountPaidMinor ?? 0),
+      0,
+    );
+    expect(revenue).toBe(paid);
   });
 });

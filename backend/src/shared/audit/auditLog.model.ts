@@ -1,4 +1,4 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { Schema, type Types } from 'mongoose';
 
 // audit_logs (02-database §2.14), append-only. The app's DB role can only insert and find here
 // (infra/docker/mongo-init.js), and the repository exposes nothing else (07 §2.3).
@@ -21,6 +21,9 @@ export interface AuditLogDoc {
   requestId?: string;
   metadata?: Record<string, unknown>;
 }
+
+// A stored row, as read back.
+export type AuditLogRecord = AuditLogDoc & { _id: Types.ObjectId };
 
 const auditLogSchema = new Schema<AuditLogDoc>(
   {

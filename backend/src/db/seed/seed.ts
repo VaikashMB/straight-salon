@@ -5,6 +5,9 @@ import type { StatusChange } from '../../modules/bookings/bookings.model.js';
 import { bookingsRepository } from '../../modules/bookings/bookings.repository.js';
 import { catalogRepository } from '../../modules/catalog/catalog.repository.js';
 import { holidaysRepository } from '../../modules/holidays/holidays.repository.js';
+import type { ReportsService } from '../../modules/reports/reports.service.js';
+import { ReviewModel } from '../../modules/reviews/reviews.model.js';
+import type { ReviewsService } from '../../modules/reviews/reviews.service.js';
 import { DEFAULT_SETTINGS, type SettingsFields } from '../../modules/settings/settings.model.js';
 import { settingsRepository } from '../../modules/settings/settings.repository.js';
 import { defaultWeekly } from '../../modules/staff/staff.mapper.js';
@@ -17,8 +20,9 @@ import { overlaps, weekdayOf } from '../../shared/time/slots.js';
 import { addDays, toZonedDate, zonedDateTime } from '../../shared/time/tz.js';
 
 // Seed data for local dev and e2e (02 §3). Grows with the build plan: Phase 3 seeded the admin;
-// Phase 4 adds settings, users, catalogue, staff, schedules, holidays and time-off. Bookings
-// follow in Phase 5, reviews in Phase 7. Every step skips records that already exist.
+// Phase 4 adds settings, users, catalogue, staff, schedules, holidays and time-off; Phase 5
+// bookings and payments; Phase 7 reviews. Every step skips records that already exist. The
+// derived data (ratings, daily_stats) is then recomputed by seedDerivedData.
 
 export const SEED_PASSWORD = 'Password@123'; // dev/e2e only (02 §3)
 const DOMAIN = 'straightsalon.local';
@@ -517,6 +521,44 @@ export async function seedDatabase({
     }
   }
 
+  // A handful of reviews on recently completed bookings, within the review window (Phase 7).
+  if ((await ReviewModel.countDocuments()) === 0) {
+    const comments = [
+      'Great cut, exactly what I asked for.',
+      undefined,
+      'Friendly and on time. Will come back.',
+      'Good, but the wait was a little long.',
+      undefined,
+      'Best beard trim in town!',
+      'Very relaxing, thank you.',
+      undefined,
+    ];
+    const ratings = [5, 4, 5, 3, 4, 5, 5, 4];
+    const windowStart = new Date(clock.now().getTime() - settings.reviewWindowDays * 86_400_000);
+    const { data: recent } = await bookingsRepository.search({
+      from: windowStart,
+      to: clock.now(),
+      status: 'COMPLETED',
+      skip: 0,
+      limit: ratings.length * 2,
+      sort: { startAt: -1 },
+    });
+    // Every other completed booking, so not every visit has a review.
+    for (const [i, booking] of recent.filter((_, k) => k % 2 === 0).entries()) {
+      const comment = comments[i];
+      await ReviewModel.create({
+        bookingId: booking._id,
+        customerId: booking.customerId,
+        staffId: booking.staffId,
+        serviceIds: booking.services.map((svc) => svc.serviceId),
+        rating: ratings[i]!,
+        ...(comment ? { comment } : {}),
+        isHidden: false,
+      });
+      count('reviews');
+    }
+  }
+
   log.info(
     { created },
     `Seed complete. Every seeded account uses the password ${SEED_PASSWORD} (e.g. admin@${DOMAIN}).`,
@@ -526,3 +568,17 @@ export async function seedDatabase({
 export const SEED_STAFF_EMAILS = STAFF.map((s) => `${s.user}@${DOMAIN}`);
 export const SEED_SERVICE_COUNT = SERVICES.length;
 export const SEED_CUSTOMER_COUNT = USERS.filter((u) => u.role === 'CUSTOMER').length;
+
+// Ratings (FR-061) and daily_stats (02 §2.17) derive from the seeded reviews and bookings, which
+// were written directly (no events), so they are recomputed through the services here.
+export async function seedDerivedData(
+  services: {
+    reviews: Pick<ReviewsService, 'refreshAllRatings'>;
+    reports: Pick<ReportsService, 'rebuildAll'>;
+  },
+  logger: Logger,
+): Promise<void> {
+  const ratings = await services.reviews.refreshAllRatings();
+  const stats = await services.reports.rebuildAll();
+  logger.child({ component: 'seed' }).info({ ratings, stats }, 'Derived data recomputed');
+}

@@ -174,6 +174,7 @@ describe('auto-no-show (FR-042, 09 §7)', () => {
     const [job] = scheduledJobs({
       bookings: worker.services.bookings,
       outbox: outboxRepository,
+      reports: worker.services.reports,
       clock,
       logger,
     }).filter((j) => j.id === 'auto-no-show');
@@ -243,6 +244,7 @@ describe('outbox-cleanup (09 §7)', () => {
     const [job] = scheduledJobs({
       bookings: worker.services.bookings,
       outbox: outboxRepository,
+      reports: worker.services.reports,
       clock,
       logger,
     }).filter((j) => j.id === 'outbox-cleanup');

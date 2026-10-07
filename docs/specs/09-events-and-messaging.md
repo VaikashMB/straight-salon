@@ -76,8 +76,8 @@ Future adapters: `RabbitMqEventBus` (topic exchange `ss.events`, one queue per c
 | `notifications` | user.registered, user.password_reset_requested, booking.created/rescheduled/cancelled/no_show, booking.completed (thank-you + review link), booking.reminder_due (respects `smsOptIn`, FR-054) | Renders template, sends via provider for each opted-in channel, records in `notifications` with `dedupeKey = eventId:channel:template`. A reminder whose booking is no longer `BOOKED` or has moved since it was queued is skipped |
 | `staff-notifications` | booking.created/rescheduled/cancelled | Notifies assigned stylist (old and new stylist on reassign) |
 | `cache-invalidation` | booking.*, staff.*, catalog.changed, settings.changed, holiday.changed, review.* | Invalidates cache tags (see 08) |
-| `ratings` (Phase 7) | review.created, review.visibility_changed | Recomputes `ratingAvg/ratingCount` for staff & services |
-| `stats` (Phase 7) | booking.created/cancelled/completed/no_show/payment_recorded, booking.rescheduled | Recomputes `daily_stats` for affected dates/staff (recompute-from-source, not increment, so it is idempotent) |
+| `ratings` | review.created, review.visibility_changed | Recomputes `ratingAvg/ratingCount` for the review's stylist and each of its services from the visible reviews, then clears the `staff`/`catalog` caches |
+| `stats` | booking.created/cancelled/completed/no_show/payment_recorded, booking.rescheduled | Recomputes `daily_stats` for the affected salon-local dates, every stylist of each date (recompute-from-source, not increment, so it is idempotent; 02 §2.17), then clears the `reports` cache tag. Events without a start time re-read the booking |
 
 **Channels (decision 2026-10-07).** Account messages (`welcome`, `password_reset`) go by email only, and always when the user has an address: they are not optional. Booking messages, to customers and to stylists, go by email when there is an address and `emailOptIn` is on, and by SMS when `smsOptIn` is on (FR-054). Walk-ins without an email get SMS only. Deactivated accounts get nothing. Channels are sent one after the other; a failure retries the job, and channels already sent are skipped by their `dedupeKey`.
 
@@ -107,7 +107,7 @@ Plus natural idempotency (e.g. `notifications.dedupeKey`, stats recompute).
 The reminder windows are as wide as the job interval, so consecutive runs tile the timeline. A reschedule (API-054) clears both reminder flags, so the new time gets its own reminders (decision 2026-10-07); a reminder queued for the old time is skipped by the consumer.
 | `auto-no-show` | every 5 min | `BOOKED` bookings with `startAt < now − noShowGraceMin` → status `NO_SHOW` (system actor), audit + outbox events EVT-013 and EVT-015 |
 | `outbox-cleanup` | daily 03:00 salon tz | Remove `FAILED` older than 30 days after logging summary (TTL handles published) |
-| `stats-reconcile` (Phase 7) | daily 02:00 salon tz | Recompute yesterday's `daily_stats` from bookings (self-healing) |
+| `stats-reconcile` | daily 02:00 salon tz | Recompute yesterday's `daily_stats` from bookings (self-healing) |
 
 Schedules are registered with `queue.upsertJobScheduler(<fixed scheduler id>, { every | pattern, tz: <salon timezone> }, template)` on the `scheduled-jobs` queue. Upserting by a fixed ID means running multiple worker replicas, or restarting, never duplicates a schedule; schedulers whose job no longer exists are removed at start. (This replaces BullMQ's deprecated repeatable-jobs API.) Each run gets its own logging/audit context (`requestId = job-<id>-<runId>`), so events and audit rows from a job link to that run. Cron patterns use the salon timezone read when the worker starts; restart the worker after changing the timezone. Jobs run as the system actor (`{ id: "system", role: "SYSTEM" }`), retry 3 times with backoff, and run one at a time per worker.
 

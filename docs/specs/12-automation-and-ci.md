@@ -32,11 +32,11 @@
 | `api:client` | regenerate `frontend/src/lib/api/schema.d.ts` from openapi.json |
 | `contract:check` | export (+ client gen from Phase 8); fail if `backend/openapi.json` is untracked or differs from the git index |
 | `sonar` | run sonar-scanner via Docker |
-| `db:seed` / `db:migrate` / `stats:rebuild` | backend data tasks. `db:migrate`/`db:seed` exist from Phase 3 (seed: admin only, grows per phase; `npm run seed` runs it inside the dev container). In the image: `node dist/db/runMigrations.js` (seed refuses `NODE_ENV=production`) |
+| `db:seed` / `db:migrate` / `stats:rebuild` | backend data tasks. `db:migrate`/`db:seed` exist from Phase 3 (seed: admin only, grows per phase; `npm run seed` runs it inside the dev container). In the image: `node dist/db/runMigrations.js` (seed refuses `NODE_ENV=production`). `stats:rebuild` (Phase 7) recomputes `daily_stats` for every booking date, or a range with `npm run stats:rebuild -- --from=2026-10-01 --to=2026-10-31`; in the image `node dist/db/runStatsRebuild.js [--from=… --to=…]` |
 | `queues:retry-failed` | re-queue DLQ jobs: `npm run queues:retry-failed -- --queue=notifications` (any consumer queue or `scheduled-jobs`); in the image `node dist/workers/runRetryFailed.js --queue=…` |
 | `validate` | lint + format:check + typecheck + test:coverage + contract:check (what CI runs; developers run before pushing) |
 
-Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `queues:retry-failed` (6), `stats:rebuild` (7), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
+Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `queues:retry-failed` (6, done), `stats:rebuild` (7, done), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
 
 ## 3. CI pipeline (GitHub Actions)
 

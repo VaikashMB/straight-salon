@@ -6,13 +6,44 @@ import type { BookingDto } from './bookings.schemas.js';
 
 const MINUTE = 60_000;
 
+const DAY = 24 * 60 * MINUTE;
+
 export interface BookingViewContext {
   viewer: AuthContext;
   now: Date;
   currency: string;
   cancellationCutoffMin: number;
+  reviewWindowDays: number;
+  reviewed: Set<string>; // ids of these bookings that already have a review
   customers: Map<string, { name: string; phone: string }>;
   staffNames: Map<string, string>;
+}
+
+// When the booking was completed: the COMPLETED history entry, else its scheduled end.
+export function completedAt(booking: BookingDoc): Date {
+  return booking.statusHistory.findLast((h) => h.status === 'COMPLETED')?.at ?? booking.endAt;
+}
+
+// BR-012 timing: COMPLETED, and at most reviewWindowDays since completion.
+export function reviewWindowOpen(booking: BookingDoc, now: Date, windowDays: number): boolean {
+  if (booking.status !== 'COMPLETED') return false;
+  return now.getTime() - completedAt(booking).getTime() <= windowDays * DAY;
+}
+
+// BR-012 for this viewer: the booking's own customer, inside the window, not yet reviewed.
+export function canReview(
+  booking: BookingDoc,
+  viewer: AuthContext,
+  now: Date,
+  windowDays: number,
+  reviewed: boolean,
+): boolean {
+  return (
+    viewer.role === 'CUSTOMER' &&
+    booking.customerId.toHexString() === viewer.userId &&
+    !reviewed &&
+    reviewWindowOpen(booking, now, windowDays)
+  );
 }
 
 // BR-006 for this viewer: customers until the cut-off; reception/admin always (with override
@@ -73,6 +104,13 @@ export function toBookingDto(booking: BookingDoc, ctx: BookingViewContext): Book
     payment,
     canCancel: allowed,
     canReschedule: allowed,
+    canReview: canReview(
+      booking,
+      ctx.viewer,
+      ctx.now,
+      ctx.reviewWindowDays,
+      ctx.reviewed.has(booking._id.toHexString()),
+    ),
     createdAt: booking.createdAt.toISOString(),
   };
   if (booking.notes) dto.notes = booking.notes;

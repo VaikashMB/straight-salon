@@ -1,7 +1,7 @@
 import { connectMongo, disconnectMongo } from './db/connect.js';
 import { scheduledJobs } from './jobs/definitions.js';
 import { startJobScheduler } from './jobs/scheduler.js';
-import { buildServices } from './modules/index.js';
+import { buildServices, servicesConfigFromEnv } from './modules/index.js';
 import { createNotificationSender } from './modules/notifications/notifications.sender.js';
 import { notificationsRepository } from './modules/notifications/notifications.repository.js';
 import { createProviders } from './modules/notifications/providers/index.js';
@@ -43,18 +43,7 @@ const services = buildServices({
   logger,
   metrics: createMetrics({ defaultMetrics: false }), // not exposed: the worker has no HTTP port
   storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
-  config: {
-    accessToken: {
-      secret: env.JWT_ACCESS_SECRET,
-      ttl: env.JWT_ACCESS_TTL,
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE,
-    },
-    refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
-    bcryptCost: env.BCRYPT_COST,
-    outboxEncryptionKey: env.OUTBOX_ENCRYPTION_KEY,
-    cacheEnabled: env.CACHE_ENABLED,
-  },
+  config: servicesConfigFromEnv(env),
 });
 
 const providers = createProviders(
@@ -99,7 +88,13 @@ const consumers = registerConsumers(
 const { timezone } = await services.settings.get();
 const scheduler = await startJobScheduler({
   redisUrl: env.REDIS_URL,
-  jobs: scheduledJobs({ bookings: services.bookings, outbox: outboxRepository, clock, logger }),
+  jobs: scheduledJobs({
+    bookings: services.bookings,
+    outbox: outboxRepository,
+    reports: services.reports,
+    clock,
+    logger,
+  }),
   timeZone: timezone,
   logger,
 }).catch((err: unknown) => {

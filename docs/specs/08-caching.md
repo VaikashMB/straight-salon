@@ -21,7 +21,7 @@
 | Availability for a day | `ss:v1:avail:{staffId}:{date}:{durationSpan}` | 60 s | booking create/reschedule/cancel/status→CANCELLED/NO_SHOW, time-off change, schedule change, holiday/settings change |
 | Available-days calendar | `ss:v1:availdays:{staffId|any}:{servicesHash}:{from}:{to}` | 2 min | same as above (by tag) |
 | Dashboard summary | `ss:v1:reports:dashboard:{date}` | 30 s | none (short TTL) |
-| Report summary | `ss:v1:reports:summary:{from}:{to}` | 5 min | `daily_stats` updates for dates within range (tag) |
+| Report summary | `ss:v1:reports:summary:{from}:{to}` | 5 min | `daily_stats` recompute (tag `reports`: any recompute clears every cached summary, simpler than tracking ranges) and settings changes (tag `settings`) |
 | Idempotency responses | `ss:v1:idem:{userId}:{key}` | 24 h | expiry only |
 
 **Availability granularity:** cache per stylist per date per required span, so "any stylist" requests combine per-stylist cached results. This keeps invalidation precise: a booking for stylist X on date D only clears X/D keys.

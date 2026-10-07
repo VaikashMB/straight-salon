@@ -152,8 +152,9 @@ Indexes:
 > Why the guard is needed: a transaction that reads "no overlap" and then inserts a new booking does not conflict with another transaction doing the same for a *different* new booking (snapshot isolation allows this "write skew"). Both would commit. Writing the same guard document in both transactions turns the race into a write conflict, so one of them aborts.
 
 ### 2.12 `reviews`
-`bookingId` (unique), `customerId`, `staffId`, `serviceIds[]`, `rating` (1–5), `comment` (≤ 500), `isHidden`, `hiddenBy`, `hiddenReason`.
-Indexes: `{ bookingId: 1 } unique`, `{ staffId: 1, isHidden: 1, createdAt: -1 }`.
+`bookingId` (unique), `customerId`, `staffId`, `serviceIds[]`, `rating` (1–5), `comment` (≤ 500), `isHidden`, `hiddenBy`, `hiddenReason`. `hiddenBy`/`hiddenReason` are removed again on unhide (the audit row keeps them).
+Indexes: `{ bookingId: 1 } unique`, `{ staffId: 1, isHidden: 1, createdAt: -1 }` (API-061 by stylist, staff rating), `{ serviceIds: 1, isHidden: 1, createdAt: -1 }` (API-061 by service, service rating), `{ isHidden: 1, createdAt: -1 }` (API-061 unfiltered).
+`ratingAvg`/`ratingCount` on `staff` and `services` are the average and count of **visible** reviews, `ratingAvg` rounded to two decimals; a review of a multi-service booking counts towards each of its services.
 
 ### 2.13 `notifications`
 `userId`, `channel` (`EMAIL|SMS`), `template` (e.g. `booking_confirmed`), `to`, `payload` (object), `status` (`QUEUED|SENT|FAILED`), `provider`, `providerMessageId`, `error`, `attempts`, `sentAt`, `dedupeKey` (unique).
@@ -175,14 +176,24 @@ Indexes: `{ eventId: 1 } unique`, `{ status: 1, occurredAt: 1 }`, `{ status: 1, 
 
 ### 2.17 `daily_stats` (read model for reports)
 `date` ("YYYY-MM-DD", salon tz), `staffId` (nullable = salon total), `bookings`, `completed`, `cancelled`, `noShows`, `revenueMinor`, `bookedMinutes`, `availableMinutes`, `byService: [{ serviceId, count, revenueMinor }]`.
-Index `{ date: 1, staffId: 1 } unique`. Rebuildable from `bookings` via `npm run stats:rebuild`.
+Index `{ date: 1, staffId: 1 } unique` (also serves the range reads of API-071/072). Rebuildable from `bookings` via `npm run stats:rebuild`.
+
+Field definitions (decision 2026-10-07):
+- A booking belongs to the salon-local date of its `startAt` (FR-071), whatever its status. `bookings` counts all of them; `completed`, `cancelled`, `noShows` count by status.
+- `revenueMinor` = `payment.amountPaidMinor` of `COMPLETED` bookings with `payment.status: PAID` (US-05).
+- `byService`: `count` = completed bookings that included the service; `revenueMinor` = the booking's payment split across its services in proportion to their price snapshots (largest-remainder rounding), so per-service revenue always sums to total revenue, discounts included.
+- `bookedMinutes` = `totalDurationMin` of `COMPLETED` and still-active (`BOOKED`, `CHECKED_IN`, `IN_SERVICE`) bookings. Cancelled and no-show time is not utilised.
+- `availableMinutes` = the stylist's working time that day: salon hours ∩ weekly schedule, minus breaks and time-off; 0 on a holiday.
+- Rows: one per stylist who is active or has bookings that day (stylists with neither bookings nor working time are left out), plus the salon total (`staffId: null`, the sum of the stylist rows), which is always written.
+- A date is always recomputed whole from its bookings inside one transaction (delete + insert), never incremented, so repeats and out-of-order events are harmless and concurrent recomputes of a date conflict and retry.
+- Writers: the `stats` consumer (dates touched by booking events, 09 §5), the `stats-reconcile` job (yesterday, 09 §7), `npm run stats:rebuild` and the seed. Schedule, time-off and holiday changes are not events for `stats`; past dates are settled by `stats-reconcile`.
 
 ### 2.18 `staff_day_guards` (BR-004 concurrency guard)
 `staffId`, `date` ("YYYY-MM-DD", salon tz), `seq` (int). Index `{ staffId: 1, date: 1 } unique`.
 Every transaction that creates or moves an active booking (create, reschedule, walk-in), or creates time-off for a stylist, does `updateOne({ staffId, date }, { $inc: { seq: 1 } }, { upsert: true, session })` for each affected stylist/date **before** running its overlap query. Concurrent transactions on the same stylist/day then hit a write conflict; the driver's transient-error retry re-runs the loser, whose overlap check now sees the winner's booking. If two transactions race to *create* the same guard row, the loser gets a duplicate-key error (11000); `withTransaction` treats that as retryable for this collection. Cancellations and status exits do not need the guard (freeing time cannot create an overlap). No TTL: old rows are tiny and serve as a per-day change counter.
 
 ## 3. Seed data (`npm run db:seed`)
-Idempotent seed for local dev and e2e tests. It grows with the build plan: each phase seeds only the collections that exist so far (admin user in Phase 3; settings, users, catalogue, staff, schedules, holidays and time-off in Phase 4; bookings and payments in Phase 5; reviews in Phase 7). The complete seed below is what exists by Phase 7.
+Idempotent seed for local dev and e2e tests. It grows with the build plan: each phase seeds only the collections that exist so far (admin user in Phase 3; settings, users, catalogue, staff, schedules, holidays and time-off in Phase 4; bookings and payments in Phase 5; reviews in Phase 7). The complete seed below is what exists by Phase 7. Because the seed writes directly (no events), it then recomputes the derived data through the services: rating aggregates and `daily_stats` for every booking date.
 - Settings singleton with defaults above.
 - Users: 1 admin (`admin@straightsalon.local`, phone `+919000000001`; seeded from Phase 3), 1 receptionist, 4 staff, 10 customers. The seed writes directly (no audit rows; seed data is not a business action) and runs pending migrations first. Password for all: `Password@123` (dev only; seed refuses to run when `NODE_ENV=production`).
 - Categories: Hair, Beard & Grooming, Skin, Nails.

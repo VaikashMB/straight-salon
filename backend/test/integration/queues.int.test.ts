@@ -73,11 +73,12 @@ describe('job scheduler (09 §7, BullMQ Job Schedulers)', () => {
     const jobs = scheduledJobs({
       bookings: fakeBookings,
       outbox: outboxRepository,
+      reports: { reconcileYesterday: () => Promise.resolve('2026-10-12') },
       clock: systemClock,
       logger,
     });
     const queue = new Queue(queueName, { connection: redis.duplicate(), prefix: 'ss' });
-    await queue.upsertJobScheduler('stats-reconcile-old', { every: 60_000 }, { name: 'gone' });
+    await queue.upsertJobScheduler('stats-old', { every: 60_000 }, { name: 'gone' });
 
     const start = () =>
       startJobScheduler({ redisUrl: REDIS_URL, jobs, timeZone: 'Asia/Kolkata', logger, queueName });
@@ -86,7 +87,13 @@ describe('job scheduler (09 §7, BullMQ Job Schedulers)', () => {
     try {
       const schedulers = await queue.getJobSchedulers();
       expect(schedulers.map((s) => s.key).sort()).toEqual(
-        ['auto-no-show', 'outbox-cleanup', 'reminders-24h', 'reminders-2h'].sort(),
+        [
+          'auto-no-show',
+          'outbox-cleanup',
+          'reminders-24h',
+          'reminders-2h',
+          'stats-reconcile',
+        ].sort(),
       );
       expect(schedulers.find((s) => s.key === 'outbox-cleanup')).toMatchObject({
         pattern: '0 3 * * *',

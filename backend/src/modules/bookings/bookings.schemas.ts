@@ -44,6 +44,7 @@ const bookingExample = {
   payment: { status: 'UNPAID' },
   canCancel: true,
   canReschedule: true,
+  canReview: false,
   createdAt: '2026-10-06T09:12:44.000Z',
 };
 
@@ -88,6 +89,10 @@ export const BookingSchema = registry.register(
         .boolean()
         .openapi({ description: 'For the current user (BR-006), server-computed' }),
       canReschedule: z.boolean(),
+      canReview: z.boolean().openapi({
+        description:
+          'For the current user (BR-012): own COMPLETED booking, inside the review window, not yet reviewed',
+      }),
       createdAt: z.string(),
     })
     .openapi({ example: bookingExample }),

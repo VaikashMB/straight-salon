@@ -136,6 +136,164 @@
           "totalPages": 7
         }
       },
+      "AuditLog": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "at": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-12T05:30:00.000Z"
+          },
+          "actor": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "A user id, or \"system\" for jobs"
+              },
+              "role": {
+                "type": "string"
+              },
+              "ip": {
+                "type": "string"
+              },
+              "userAgent": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "role"
+            ]
+          },
+          "action": {
+            "type": "string"
+          },
+          "entityType": {
+            "type": "string"
+          },
+          "entityId": {
+            "type": "string"
+          },
+          "before": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {}
+          },
+          "after": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "additionalProperties": {}
+          },
+          "diff": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "requestId": {
+            "type": "string"
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": {}
+          }
+        },
+        "required": [
+          "id",
+          "at",
+          "actor",
+          "action",
+          "entityType",
+          "entityId",
+          "before",
+          "after",
+          "diff"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60d01",
+          "at": "2026-10-06T09:12:44.123Z",
+          "actor": {
+            "id": "6712c0f9a1b2c3d4e5f60222",
+            "role": "RECEPTIONIST",
+            "ip": "10.0.0.5"
+          },
+          "action": "booking.cancel",
+          "entityType": "booking",
+          "entityId": "6712c0f9a1b2c3d4e5f60789",
+          "before": {
+            "status": "BOOKED"
+          },
+          "after": {
+            "status": "CANCELLED",
+            "cancellation": {
+              "reason": "Customer called",
+              "overridden": true
+            }
+          },
+          "diff": [
+            "status",
+            "cancellation"
+          ],
+          "requestId": "6f1c2a8e-4d1b-4c0e-9a57-2b8f0e1d3c4a",
+          "metadata": {
+            "override": true
+          }
+        }
+      },
+      "AuditLogList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AuditLog"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ],
+            "example": {
+              "page": 1,
+              "pageSize": 20,
+              "total": 134,
+              "totalPages": 7
+            }
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
       "Role": {
         "type": "string",
         "enum": [
@@ -575,6 +733,10 @@
           "canReschedule": {
             "type": "boolean"
           },
+          "canReview": {
+            "type": "boolean",
+            "description": "For the current user (BR-012): own COMPLETED booking, inside the review window, not yet reviewed"
+          },
           "createdAt": {
             "type": "string"
           }
@@ -593,6 +755,7 @@
           "payment",
           "canCancel",
           "canReschedule",
+          "canReview",
           "createdAt"
         ],
         "example": {
@@ -640,6 +803,7 @@
           },
           "canCancel": true,
           "canReschedule": true,
+          "canReview": false,
           "createdAt": "2026-10-06T09:12:44.000Z"
         }
       },
@@ -1265,6 +1429,615 @@
         "items": {
           "$ref": "#/components/schemas/Holiday"
         }
+      },
+      "Dashboard": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-12"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "generatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-12T05:30:00.000Z"
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "BOOKED": {
+                "type": "integer"
+              },
+              "CHECKED_IN": {
+                "type": "integer"
+              },
+              "IN_SERVICE": {
+                "type": "integer"
+              },
+              "COMPLETED": {
+                "type": "integer"
+              },
+              "CANCELLED": {
+                "type": "integer"
+              },
+              "NO_SHOW": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "BOOKED",
+              "CHECKED_IN",
+              "IN_SERVICE",
+              "COMPLETED",
+              "CANCELLED",
+              "NO_SHOW"
+            ],
+            "description": "Bookings that day by status"
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "bookings": {
+                "type": "integer"
+              },
+              "revenue": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/Money"
+                  },
+                  {
+                    "description": "Payments recorded for that day so far"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "bookings",
+              "revenue"
+            ]
+          },
+          "staff": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "staffId": {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "bookings": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": {
+                        "type": "string",
+                        "pattern": "^[a-f\\d]{24}$/i",
+                        "example": "6712c0f9a1b2c3d4e5f60789"
+                      },
+                      "bookingRef": {
+                        "type": "string"
+                      },
+                      "status": {
+                        "$ref": "#/components/schemas/BookingStatus"
+                      },
+                      "startAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-12T05:30:00.000Z"
+                      },
+                      "endAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "example": "2026-10-12T05:30:00.000Z"
+                      },
+                      "customerName": {
+                        "type": "string"
+                      },
+                      "services": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "bookingRef",
+                      "status",
+                      "startAt",
+                      "endAt",
+                      "customerName",
+                      "services"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "staffId",
+                "displayName",
+                "bookings"
+              ]
+            },
+            "description": "Per-stylist timeline: active stylists and anyone with bookings that day, by name; cancelled bookings are left out"
+          }
+        },
+        "required": [
+          "date",
+          "timezone",
+          "generatedAt",
+          "counts",
+          "totals",
+          "staff"
+        ],
+        "example": {
+          "date": "2026-10-12",
+          "timezone": "Asia/Kolkata",
+          "generatedAt": "2026-10-12T06:00:00.000Z",
+          "counts": {
+            "BOOKED": 6,
+            "CHECKED_IN": 1,
+            "IN_SERVICE": 1,
+            "COMPLETED": 3,
+            "CANCELLED": 1,
+            "NO_SHOW": 0
+          },
+          "totals": {
+            "bookings": 12,
+            "revenue": {
+              "amountMinor": 135000,
+              "currency": "INR"
+            }
+          },
+          "staff": [
+            {
+              "staffId": "6712c0f9a1b2c3d4e5f60601",
+              "displayName": "Ravi",
+              "bookings": [
+                {
+                  "id": "6712c0f9a1b2c3d4e5f60789",
+                  "bookingRef": "SS-261012-7KQ2",
+                  "status": "COMPLETED",
+                  "startAt": "2026-10-12T05:30:00.000Z",
+                  "endAt": "2026-10-12T06:30:00.000Z",
+                  "customerName": "Ananya Rao",
+                  "services": [
+                    "Haircut",
+                    "Beard Trim"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "ReportSummary": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-12"
+          },
+          "to": {
+            "type": "string",
+            "format": "date",
+            "example": "2026-10-12"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "bookings": {
+                "type": "integer",
+                "description": "All bookings, any status"
+              },
+              "completed": {
+                "type": "integer"
+              },
+              "cancelled": {
+                "type": "integer"
+              },
+              "noShows": {
+                "type": "integer"
+              },
+              "noShowRate": {
+                "type": "number",
+                "description": "noShows / (bookings - cancelled), 0..1"
+              },
+              "revenue": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "bookedMinutes": {
+                "type": "integer",
+                "description": "Completed and still-active bookings (not cancelled or no-show)"
+              },
+              "availableMinutes": {
+                "type": "integer"
+              },
+              "utilisation": {
+                "type": "number",
+                "description": "bookedMinutes / availableMinutes, 0..1"
+              }
+            },
+            "required": [
+              "bookings",
+              "completed",
+              "cancelled",
+              "noShows",
+              "noShowRate",
+              "revenue",
+              "bookedMinutes",
+              "availableMinutes",
+              "utilisation"
+            ]
+          },
+          "byDay": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string",
+                  "format": "date",
+                  "example": "2026-10-12"
+                },
+                "bookings": {
+                  "type": "integer",
+                  "description": "All bookings, any status"
+                },
+                "completed": {
+                  "type": "integer"
+                },
+                "cancelled": {
+                  "type": "integer"
+                },
+                "noShows": {
+                  "type": "integer"
+                },
+                "noShowRate": {
+                  "type": "number",
+                  "description": "noShows / (bookings - cancelled), 0..1"
+                },
+                "revenue": {
+                  "$ref": "#/components/schemas/Money"
+                },
+                "bookedMinutes": {
+                  "type": "integer",
+                  "description": "Completed and still-active bookings (not cancelled or no-show)"
+                },
+                "availableMinutes": {
+                  "type": "integer"
+                },
+                "utilisation": {
+                  "type": "number",
+                  "description": "bookedMinutes / availableMinutes, 0..1"
+                }
+              },
+              "required": [
+                "date",
+                "bookings",
+                "completed",
+                "cancelled",
+                "noShows",
+                "noShowRate",
+                "revenue",
+                "bookedMinutes",
+                "availableMinutes",
+                "utilisation"
+              ]
+            }
+          },
+          "byService": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "count": {
+                  "type": "integer",
+                  "description": "Completed bookings with it"
+                },
+                "revenue": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/Money"
+                    },
+                    {
+                      "description": "Payments split across services by price"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "serviceId",
+                "name",
+                "count",
+                "revenue"
+              ]
+            },
+            "description": "By revenue, highest first"
+          },
+          "byStaff": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "staffId": {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                },
+                "displayName": {
+                  "type": "string"
+                },
+                "bookings": {
+                  "type": "integer",
+                  "description": "All bookings, any status"
+                },
+                "completed": {
+                  "type": "integer"
+                },
+                "cancelled": {
+                  "type": "integer"
+                },
+                "noShows": {
+                  "type": "integer"
+                },
+                "noShowRate": {
+                  "type": "number",
+                  "description": "noShows / (bookings - cancelled), 0..1"
+                },
+                "revenue": {
+                  "$ref": "#/components/schemas/Money"
+                },
+                "bookedMinutes": {
+                  "type": "integer",
+                  "description": "Completed and still-active bookings (not cancelled or no-show)"
+                },
+                "availableMinutes": {
+                  "type": "integer"
+                },
+                "utilisation": {
+                  "type": "number",
+                  "description": "bookedMinutes / availableMinutes, 0..1"
+                }
+              },
+              "required": [
+                "staffId",
+                "displayName",
+                "bookings",
+                "completed",
+                "cancelled",
+                "noShows",
+                "noShowRate",
+                "revenue",
+                "bookedMinutes",
+                "availableMinutes",
+                "utilisation"
+              ]
+            }
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "timezone",
+          "totals",
+          "byDay",
+          "byService",
+          "byStaff"
+        ],
+        "description": "Totals and breakdowns for bookings whose appointment date (salon timezone) is in the range (FR-071). Built from daily_stats.",
+        "example": {
+          "from": "2026-10-01",
+          "to": "2026-10-31",
+          "timezone": "Asia/Kolkata",
+          "totals": {
+            "bookings": 120,
+            "completed": 98,
+            "cancelled": 12,
+            "noShows": 4,
+            "noShowRate": 0.037,
+            "revenue": {
+              "amountMinor": 6540000,
+              "currency": "INR"
+            },
+            "bookedMinutes": 5400,
+            "availableMinutes": 9600,
+            "utilisation": 0.5625
+          },
+          "byDay": [],
+          "byService": [
+            {
+              "serviceId": "6712c0f9a1b2c3d4e5f60501",
+              "name": "Haircut",
+              "count": 40,
+              "revenue": {
+                "amountMinor": 1600000,
+                "currency": "INR"
+              }
+            }
+          ],
+          "byStaff": []
+        }
+      },
+      "Review": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "rating": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 5
+          },
+          "comment": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f\\d]{24}$/i",
+                "example": "6712c0f9a1b2c3d4e5f60789",
+                "description": "ADMIN view only"
+              },
+              "name": {
+                "type": "string",
+                "description": "First name only, except in the ADMIN view"
+              }
+            },
+            "required": [
+              "name"
+            ]
+          },
+          "staff": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f\\d]{24}$/i",
+                "example": "6712c0f9a1b2c3d4e5f60789"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "displayName"
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "example": "2026-10-12T05:30:00.000Z"
+          },
+          "bookingId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "isHidden": {
+            "type": "boolean"
+          },
+          "hiddenReason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "rating",
+          "customer",
+          "staff",
+          "services",
+          "createdAt"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60c01",
+          "rating": 5,
+          "comment": "Great fade, very relaxed atmosphere.",
+          "customer": {
+            "name": "Ananya"
+          },
+          "staff": {
+            "id": "6712c0f9a1b2c3d4e5f60601",
+            "displayName": "Ravi"
+          },
+          "services": [
+            {
+              "id": "6712c0f9a1b2c3d4e5f60501",
+              "name": "Haircut"
+            }
+          ],
+          "createdAt": "2026-10-12T12:02:11.000Z"
+        }
+      },
+      "ReviewList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Review"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ],
+            "example": {
+              "page": 1,
+              "pageSize": 20,
+              "total": 134,
+              "totalPages": 7
+            }
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
       },
       "PublicSettings": {
         "type": "object",
@@ -1983,6 +2756,163 @@
                 "schema": {
                   "type": "string",
                   "example": "http_request_duration_seconds_bucket{...} 3"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/audit-logs": {
+      "get": {
+        "tags": [
+          "Audit"
+        ],
+        "summary": "Search the audit log (API-073)",
+        "description": "ADMIN. Newest first, filtered by entity, actor, action and salon-local date range (FR-073). User PII in before/after is masked (07 §2.2).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z_]{1,40}$",
+              "example": "booking"
+            },
+            "required": false,
+            "name": "entityType",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 64
+            },
+            "required": false,
+            "name": "entityId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                },
+                {
+                  "type": "string",
+                  "enum": [
+                    "system"
+                  ]
+                }
+              ],
+              "description": "A user id, or \"system\""
+            },
+            "required": false,
+            "description": "A user id, or \"system\"",
+            "name": "actorId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z_]{1,40}\\.[a-z_]{1,40}$",
+              "example": "booking.cancel"
+            },
+            "required": false,
+            "name": "action",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "Salon-local date, inclusive"
+            },
+            "required": false,
+            "description": "Salon-local date, inclusive",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "Salon-local date, inclusive"
+            },
+            "required": false,
+            "description": "Salon-local date, inclusive",
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of audit entries",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditLogList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
                 }
               }
             }
@@ -5451,6 +6381,575 @@
         "responses": {
           "204": {
             "description": "Removed"
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/dashboard": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Day dashboard (API-070)",
+        "description": "ADMIN, RECEPTIONIST. Live counts by status, revenue recorded so far and a per-stylist timeline for one salon-local date (default today, FR-070). Cached 30 s.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "Salon-local date; default today"
+            },
+            "required": false,
+            "description": "Salon-local date; default today",
+            "name": "date",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/summary": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Report for a date range (API-071)",
+        "description": "ADMIN. Revenue, bookings, cancellations, no-show rate, revenue by service and stylist, utilisation (FR-071), for appointment dates from..to inclusive, at most 366 days. Built from daily_stats; cached 5 min.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Summary",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReportSummary"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/summary.csv": {
+      "get": {
+        "tags": [
+          "Reports"
+        ],
+        "summary": "Report as CSV (API-072)",
+        "description": "ADMIN. The API-071 summary as a CSV download (FR-072).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV file (Content-Disposition: attachment)",
+            "content": {
+              "text/csv": {
+                "schema": {
+                  "type": "string",
+                  "description": "One table: section (total | day | staff | service), key (date, staffId or serviceId), name, then the totals columns; money in minor units",
+                  "example": "section,key,name,bookings,completed,cancelled,no_shows,no_show_rate,revenue_minor,currency,booked_minutes,available_minutes,utilisation\r\ntotal,,,120,98,12,4,0.037,6540000,INR,5400,9600,0.5625\r\n"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/review": {
+      "post": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Review a completed booking (API-060)",
+        "description": "The booking's CUSTOMER, once it is COMPLETED and within reviewWindowDays of completion; one review per booking (BR-012). Other customers' bookings are not found.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "rating": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 5,
+                    "example": 5
+                  },
+                  "comment": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500,
+                    "example": "Great fade, very relaxed atmosphere."
+                  }
+                },
+                "required": [
+                  "rating"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Review created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, including other customers' bookings (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already reviewed (DUPLICATE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not completed or the review window has passed (REVIEW_NOT_ALLOWED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reviews": {
+      "get": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "List reviews (API-061)",
+        "description": "Public: visible reviews, newest first, optionally for one stylist or service. ADMIN may pass includeHidden=true to moderate (adds bookingId, isHidden, hiddenReason and the full customer name).",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": false,
+            "name": "staffId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": false,
+            "name": "serviceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "ADMIN only: also list hidden reviews"
+            },
+            "required": false,
+            "description": "ADMIN only: also list hidden reviews",
+            "name": "includeHidden",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of reviews",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reviews/{id}": {
+      "patch": {
+        "tags": [
+          "Reviews"
+        ],
+        "summary": "Hide or unhide a review (API-062)",
+        "description": "ADMIN. Hiding needs a reason (FR-062, audited); hidden reviews leave the stylist and service ratings.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "isHidden": {
+                    "type": "boolean"
+                  },
+                  "hiddenReason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "example": "Abusive language"
+                  }
+                },
+                "required": [
+                  "isHidden"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Review (admin view)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Review"
+                }
+              }
+            }
           },
           "400": {
             "description": "Validation failed (VALIDATION_FAILED)",

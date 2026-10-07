@@ -65,6 +65,10 @@ export interface StaffRepository {
   findTimeOff(id: string | Types.ObjectId): Promise<TimeOffDoc | null>;
   createTimeOff(timeOff: NewTimeOff, session?: ClientSession): Promise<TimeOffDoc>;
   deleteTimeOff(id: Types.ObjectId, session?: ClientSession): Promise<boolean>;
+
+  // Denormalised rating (FR-061), written by the ratings consumer. Not a profile edit: it
+  // does not bump the version, so an admin's concurrent edit is not rejected.
+  setRating(id: Types.ObjectId, ratingAvg: number, ratingCount: number): Promise<void>;
 }
 
 function toUpdate(changes: StaffChanges): {
@@ -145,5 +149,9 @@ export const staffRepository: StaffRepository = {
   },
   async deleteTimeOff(id, session) {
     return (await TimeOffModel.deleteOne({ _id: id }, { session })).deletedCount === 1;
+  },
+
+  async setRating(id, ratingAvg, ratingCount) {
+    await StaffModel.updateOne({ _id: id }, { $set: { ratingAvg, ratingCount } });
   },
 };

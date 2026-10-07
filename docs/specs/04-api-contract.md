@@ -114,17 +114,18 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
   "payment": { "status": "UNPAID" },
   "canCancel": true,
   "canReschedule": true,
+  "canReview": false,
   "createdAt": "2026-10-06T09:12:44.000Z"
 }
 ```
-`canCancel` / `canReschedule` are computed server-side for the current user so the UI never duplicates BR-006 logic.
+`canCancel` / `canReschedule` are computed server-side for the current user so the UI never duplicates BR-006 logic. Likewise `canReview` (decision 2026-10-07) is true only for the booking's own CUSTOMER, when it is `COMPLETED`, within `reviewWindowDays` of completion and not yet reviewed (BR-012); it drives the "Leave a review" button (05 §4.2).
 
 ### Reviews (`tags: Reviews`)
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
-| API-060 | `POST /bookings/{id}/review` | Owner CUSTOMER | `{rating, comment?}`. BR-012. |
-| API-061 | `GET /reviews?staffId|serviceId&page` | Public | Visible reviews only. |
-| API-062 | `PATCH /reviews/{id}` | ADMIN | `{isHidden, hiddenReason}`. |
+| API-060 | `POST /bookings/{id}/review` | Owner CUSTOMER | `{rating, comment?}`. BR-012. 201 review. The window runs from the booking's `COMPLETED` history entry. 404 for other customers' bookings (06 §3); 422 `REVIEW_NOT_ALLOWED` if not `COMPLETED` or the window has passed; 409 `DUPLICATE` for a second review. |
+| API-061 | `GET /reviews?staffId|serviceId&page` | Public | Visible reviews only, newest first, paginated; the reviewer's first name only. ADMIN can pass `includeHidden=true` (optional bearer, 04 §1 pattern; decision 2026-10-07) to moderate: hidden reviews too, plus `bookingId`, `isHidden`, `hiddenReason` and the full customer name. |
+| API-062 | `PATCH /reviews/{id}` | ADMIN | `{isHidden, hiddenReason}`; `hiddenReason` is required to hide and not allowed to unhide. Audited as `review.hide` / `review.unhide`; emits EVT-021. Setting the current state again records nothing. Returns the admin view. |
 
 ### Notifications (`tags: Notifications`)
 | ID | Method & path | Auth | Description |
@@ -135,10 +136,10 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 ### Reports & audit (`tags: Reports, Audit`)
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
-| API-070 | `GET /reports/dashboard?date` | ADMIN, RECEPTIONIST | Today counts by status, per-stylist timeline summary. |
-| API-071 | `GET /reports/summary?from&to` | ADMIN | Totals + breakdowns (FR-071). Max range 366 days. |
-| API-072 | `GET /reports/summary.csv?from&to` | ADMIN | `text/csv` download. |
-| API-073 | `GET /audit-logs?entityType&entityId&actorId&action&from&to&page` | ADMIN | Paginated. |
+| API-070 | `GET /reports/dashboard?date` | ADMIN, RECEPTIONIST | `date` defaults to today (salon tz). Live from bookings (cached 30 s): `counts` per status, `totals {bookings, revenue}` (payments recorded so far), and `staff[]`: every active stylist plus anyone with bookings that day, by name, each with their bookings (cancelled left out) as `{id, bookingRef, status, startAt, endAt, customerName, services[]}`. |
+| API-071 | `GET /reports/summary?from&to` | ADMIN | Totals + breakdowns (FR-071) from `daily_stats` (02 §2.17); `from`/`to` are salon-local dates, inclusive, max range 366 days. `totals`, `byDay[]` (every date in the range), `byStaff[]` each `{bookings, completed, cancelled, noShows, noShowRate, revenue, bookedMinutes, availableMinutes, utilisation}`; `byService[] {serviceId, name, count, revenue}` by revenue. `noShowRate` = noShows / (bookings − cancelled); `utilisation` = bookedMinutes / availableMinutes (both 0..1, four decimals, 0 when the denominator is 0). |
+| API-072 | `GET /reports/summary.csv?from&to` | ADMIN | `text/csv` download (`Content-Disposition: attachment`) of the API-071 data as one table: `section` (`total`, `day`, `staff`, `service`), `key` (date / staffId / serviceId), `name`, then the totals columns with money in minor units plus a `currency` column. Service rows fill only `completed` (their count) and revenue. Text that a spreadsheet would run as a formula is prefixed with `'`. |
+| API-073 | `GET /audit-logs?entityType&entityId&actorId&action&from&to&page` | ADMIN | Paginated, newest first. `from`/`to` are salon-local dates, inclusive; `actorId` is a user id or `system`; `action` is exact (e.g. `booking.cancel`). |
 
 ### Ops (`tags: Ops`, outside `/api/v1`)
 `GET /health/live`, `GET /health/ready`, `GET /metrics`, `GET /api/docs`, `GET /api/docs/openapi.json`, `GET /admin/queues` (Bull Board, HTTP Basic ADMIN, not in OpenAPI; 09 §5).

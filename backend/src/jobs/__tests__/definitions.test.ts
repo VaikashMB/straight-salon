@@ -20,13 +20,15 @@ function deps(overrides: Partial<JobDeps> = {}) {
     summarizeFailedBefore: vi.fn(() => Promise.resolve([{ type: 'booking.created', count: 3 }])),
     deleteFailedBefore: vi.fn(() => Promise.resolve(3)),
   };
+  const reports = { reconcileYesterday: vi.fn(() => Promise.resolve('2026-10-12')) };
   const clock = createManualClock('2026-10-12T21:30:00.000Z');
   return {
     bookings,
     outbox,
+    reports,
     clock,
     lines,
-    jobs: scheduledJobs({ bookings, outbox, clock, logger, ...overrides }),
+    jobs: scheduledJobs({ bookings, outbox, reports, clock, logger, ...overrides }),
     logger,
   };
 }
@@ -35,14 +37,21 @@ const byId = (jobs: ReturnType<typeof scheduledJobs>, id: string) =>
   jobs.find((job) => job.id === id)!;
 
 describe('scheduled jobs (09 §7)', () => {
-  it('defines the Phase 6 jobs with their schedules', () => {
+  it('defines every 09 §7 job with its schedule', () => {
     const { jobs } = deps();
     expect(jobs.map((j) => [j.id, j.schedule])).toEqual([
       ['reminders-24h', { every: 300_000 }],
       ['reminders-2h', { every: 300_000 }],
       ['auto-no-show', { every: 300_000 }],
       ['outbox-cleanup', { pattern: '0 3 * * *' }],
+      ['stats-reconcile', { pattern: '0 2 * * *' }],
     ]);
+  });
+
+  it('stats-reconcile recomputes yesterday through the reports service', async () => {
+    const { jobs, reports } = deps();
+    expect(await byId(jobs, 'stats-reconcile').run()).toEqual({ days: 1 });
+    expect(reports.reconcileYesterday).toHaveBeenCalledOnce();
   });
 
   it('reminder jobs scan a window as wide as their interval', async () => {

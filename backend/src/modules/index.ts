@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import type { Redis } from 'ioredis';
 import type { Connection } from 'mongoose';
+import type { Env } from '../config/env.js';
 import { auditRepository } from '../shared/audit/audit.repository.js';
 import { createAuditService } from '../shared/audit/audit.service.js';
 import { createAccessTokenService, type AccessTokenConfig } from '../shared/auth/accessToken.js';
@@ -16,6 +17,10 @@ import type { Logger } from '../shared/logger/index.js';
 import type { Metrics } from '../shared/metrics/index.js';
 import type { ObjectStorage } from '../shared/storage/objectStorage.js';
 import type { Clock } from '../shared/time/clock.js';
+import { createAuditController } from './audit/audit.controller.js';
+import { auditLogsRepository } from './audit/audit.repository.js';
+import { auditRouter } from './audit/audit.routes.js';
+import { createAuditLogsService } from './audit/audit.service.js';
 import { createAuthController } from './auth/auth.controller.js';
 import { authRouter } from './auth/auth.routes.js';
 import { createAuthService } from './auth/auth.service.js';
@@ -44,6 +49,14 @@ import { createHolidaysController } from './holidays/holidays.controller.js';
 import { holidaysRepository } from './holidays/holidays.repository.js';
 import { holidaysRouter } from './holidays/holidays.routes.js';
 import { createHolidaysService } from './holidays/holidays.service.js';
+import { createReportsController } from './reports/reports.controller.js';
+import { reportsRepository } from './reports/reports.repository.js';
+import { reportsRouter } from './reports/reports.routes.js';
+import { createReportsService } from './reports/reports.service.js';
+import { createReviewsController } from './reviews/reviews.controller.js';
+import { reviewsRepository } from './reviews/reviews.repository.js';
+import { reviewsRouter } from './reviews/reviews.routes.js';
+import { createReviewsService } from './reviews/reviews.service.js';
 import { createSettingsController } from './settings/settings.controller.js';
 import { settingsRepository } from './settings/settings.repository.js';
 import { settingsRouter } from './settings/settings.routes.js';
@@ -87,6 +100,22 @@ export interface ModulesDeps {
   lock?: RedisLock;
 }
 
+// The services' settings from validated env; shared by every entrypoint (api, worker, scripts).
+export function servicesConfigFromEnv(env: Env): ServicesConfig {
+  return {
+    accessToken: {
+      secret: env.JWT_ACCESS_SECRET,
+      ttl: env.JWT_ACCESS_TTL,
+      issuer: env.JWT_ISSUER,
+      audience: env.JWT_AUDIENCE,
+    },
+    refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
+    bcryptCost: env.BCRYPT_COST,
+    outboxEncryptionKey: env.OUTBOX_ENCRYPTION_KEY,
+    cacheEnabled: env.CACHE_ENABLED,
+  };
+}
+
 export const BOOKING_RATE_LIMIT = { windowMs: 60 * 60_000, max: 20 };
 
 // 06 §4: login, register and forgot-password: 10 requests / 15 min / IP, fail closed.
@@ -122,7 +151,7 @@ export function buildServices(deps: Omit<ModulesDeps, 'config'> & { config: Serv
     connection,
   });
   // Some services need each other (settings <-> catalog, catalog <-> staff, availability <->
-  // bookings, and the active-booking gate). The ports below resolve the other service at call
+  // bookings, bookings <-> reviews, and the active-booking gate). The ports below resolve the other service at call
   // time; requests only arrive after every service exists.
   const bookings: ActiveBookingsGate = deps.bookingsGate ?? {
     countActive: (scope, session) => bookingsService.gate.countActive(scope, session),
@@ -194,6 +223,31 @@ export function buildServices(deps: Omit<ModulesDeps, 'config'> & { config: Serv
     availability,
     staff,
     users,
+    reviews: { reviewedBookingIds: (ids) => reviews.reviewedBookingIds(ids) },
+  });
+  const reviews = createReviewsService({
+    repository: reviewsRepository,
+    audit,
+    outbox,
+    connection,
+    clock,
+    settings,
+    bookings: bookingsService,
+    users,
+    staff,
+    catalog,
+  });
+  const reports = createReportsService({
+    repository: reportsRepository,
+    connection,
+    cache,
+    clock,
+    settings,
+    bookings: bookingsService,
+    availability,
+    staff,
+    catalog,
+    users,
   });
   const payments = createPaymentsService({
     bookings: bookingsService,
@@ -218,6 +272,7 @@ export function buildServices(deps: Omit<ModulesDeps, 'config'> & { config: Serv
   });
 
   const notifications = createNotificationsService({ repository: notificationsRepository });
+  const auditLogs = createAuditLogsService({ repository: auditLogsRepository, settings });
 
   return {
     cache,
@@ -232,6 +287,9 @@ export function buildServices(deps: Omit<ModulesDeps, 'config'> & { config: Serv
     payments,
     auth,
     notifications,
+    reviews,
+    reports,
+    auditLogs,
   };
 }
 
@@ -313,5 +371,12 @@ export function buildApiRouter(
       accessTokens,
     }),
   );
+  router.use(
+    reviewsRouter({ controller: createReviewsController(services.reviews), accessTokens }),
+  );
+  router.use(
+    reportsRouter({ controller: createReportsController(services.reports), accessTokens }),
+  );
+  router.use(auditRouter({ controller: createAuditController(services.auditLogs), accessTokens }));
   return router;
 }

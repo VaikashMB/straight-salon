@@ -66,8 +66,11 @@ export interface StaffService {
   // For availability and bookings (03 §5)
   bookable(serviceIds: string[]): Promise<StaffBrief[]>; // active, can perform all, by name
   briefs(ids: string[]): Promise<StaffBrief[]>; // any status
+  active(): Promise<StaffBrief[]>; // every active stylist, by name (reports)
   weeklySchedule(id: string): Promise<ScheduleDay[]>; // stored, or the salon-hours default
   timeOffBetween(id: string, from: Date, to: Date): Promise<{ start: number; end: number }[]>;
+  // For the ratings consumer (FR-061)
+  setRating(id: string, rating: { avg: number; count: number }): Promise<void>;
 }
 
 export interface StaffBrief {
@@ -471,6 +474,18 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
     async briefs(ids) {
       const valid = ids.filter((id) => Types.ObjectId.isValid(id));
       return valid.length === 0 ? [] : (await repository.findByIds(valid)).map(toBrief);
+    },
+
+    async active() {
+      return (await repository.list({ includeInactive: false })).map(toBrief);
+    },
+
+    // A derived aggregate, not a business edit: no audit row. Public reads embed the rating
+    // (staff list/profile, service detail), so their caches are cleared (08 §2).
+    async setRating(id, rating) {
+      if (!Types.ObjectId.isValid(id)) return;
+      await repository.setRating(new Types.ObjectId(id), rating.avg, rating.count);
+      for (const tag of STAFF_EVENT_TAGS) await cache.invalidateTag(tag);
     },
 
     async weeklySchedule(id) {

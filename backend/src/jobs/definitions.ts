@@ -1,11 +1,11 @@
 import type { BookingsService } from '../modules/bookings/bookings.service.js';
+import type { ReportsService } from '../modules/reports/reports.service.js';
 import type { OutboxRepository } from '../shared/events/outbox.repository.js';
 import type { Logger } from '../shared/logger/index.js';
 import type { Clock } from '../shared/time/clock.js';
 
 // Scheduled jobs (09 §7). The worker registers them as BullMQ Job Schedulers (scheduler.ts);
-// each run calls a service, so the rules live with their module. `stats-reconcile` arrives
-// in Phase 7 with daily_stats.
+// each run calls a service, so the rules live with their module.
 
 export const REMINDER_SCAN_MS = 5 * 60_000; // the reminder windows are as wide as the interval
 export const FAILED_OUTBOX_RETENTION_DAYS = 30;
@@ -23,12 +23,13 @@ export interface ScheduledJob {
 export interface JobDeps {
   bookings: Pick<BookingsService, 'queueReminders' | 'markNoShows'>;
   outbox: Pick<OutboxRepository, 'summarizeFailedBefore' | 'deleteFailedBefore'>;
+  reports: Pick<ReportsService, 'reconcileYesterday'>;
   clock: Clock;
   logger: Logger;
 }
 
 export function scheduledJobs(deps: JobDeps): ScheduledJob[] {
-  const { bookings, outbox, clock } = deps;
+  const { bookings, outbox, reports, clock } = deps;
   return [
     {
       id: 'reminders-24h',
@@ -58,6 +59,15 @@ export function scheduledJobs(deps: JobDeps): ScheduledJob[] {
           'Removing FAILED outbox events',
         );
         return { deleted: await outbox.deleteFailedBefore(before) };
+      },
+    },
+    {
+      // Self-healing: yesterday's daily_stats rebuilt from bookings, whatever events were lost.
+      id: 'stats-reconcile',
+      schedule: { pattern: '0 2 * * *' }, // daily 02:00 salon time
+      async run() {
+        await reports.reconcileYesterday();
+        return { days: 1 };
       },
     },
   ];

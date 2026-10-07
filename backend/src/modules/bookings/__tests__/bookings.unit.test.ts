@@ -1,7 +1,14 @@
 import { Types } from 'mongoose';
 import { describe, expect, it } from 'vitest';
 import { BOOKING_STATUSES, type BookingStatus } from '../../../config/constants.js';
-import { canChange, makeBookingRef, toBookingDto } from '../bookings.mapper.js';
+import {
+  canChange,
+  canReview,
+  completedAt,
+  makeBookingRef,
+  reviewWindowOpen,
+  toBookingDto,
+} from '../bookings.mapper.js';
 import type { BookingDoc } from '../bookings.model.js';
 import { CreateBookingBodySchema, RescheduleBodySchema } from '../bookings.schemas.js';
 import { canTransition } from '../bookings.service.js';
@@ -74,6 +81,8 @@ describe('booking DTO', () => {
     now,
     currency: 'INR',
     cancellationCutoffMin: 120,
+    reviewWindowDays: 14,
+    reviewed: new Set<string>(),
     customers: new Map([
       [b.customerId.toHexString(), { name: 'Ananya Rao Iyer', phone: '+919876543212' }],
     ]),
@@ -117,6 +126,63 @@ describe('booking DTO', () => {
       discountReason: 'Promo',
     });
     expect(dto.notes).toBe('Window seat');
+  });
+});
+
+describe('BR-012 review eligibility (canReview)', () => {
+  const DAY = 86_400_000;
+  const done = new Date('2026-10-01T06:00:00.000Z');
+  const completed = (overrides: Partial<BookingDoc> = {}) =>
+    booking({
+      status: 'COMPLETED',
+      endAt: new Date('2026-10-01T05:00:00.000Z'),
+      statusHistory: [
+        { status: 'BOOKED', at: new Date('2026-09-28T00:00:00.000Z'), by: 'u' },
+        { status: 'COMPLETED', at: done, by: 'r' },
+      ],
+      ...overrides,
+    });
+
+  it('the window counts from the COMPLETED entry, falling back to endAt', () => {
+    expect(completedAt(completed())).toEqual(done);
+    expect(completedAt(completed({ statusHistory: [] })).toISOString()).toBe(
+      '2026-10-01T05:00:00.000Z',
+    );
+  });
+
+  it('BR-012 open up to reviewWindowDays after completion, closed after; only COMPLETED', () => {
+    expect(reviewWindowOpen(completed(), new Date(done.getTime() + 14 * DAY), 14)).toBe(true);
+    expect(reviewWindowOpen(completed(), new Date(done.getTime() + 14 * DAY + 1), 14)).toBe(false);
+    expect(reviewWindowOpen(booking(), now, 14)).toBe(false);
+  });
+
+  it('BR-012 only the booking customer, once, inside the window', () => {
+    const b = completed();
+    const owner = { userId: b.customerId.toHexString(), role: 'CUSTOMER' as const };
+    const at = new Date(done.getTime() + DAY);
+    expect(canReview(b, owner, at, 14, false)).toBe(true);
+    expect(canReview(b, owner, at, 14, true)).toBe(false);
+    expect(canReview(b, { userId: 'other', role: 'CUSTOMER' }, at, 14, false)).toBe(false);
+    expect(canReview(b, { userId: owner.userId, role: 'ADMIN' }, at, 14, false)).toBe(false);
+    expect(canReview(b, owner, new Date(done.getTime() + 15 * DAY), 14, false)).toBe(false);
+  });
+
+  it('the DTO carries canReview for the viewer', () => {
+    const b = completed();
+    const viewer = { userId: b.customerId.toHexString(), role: 'CUSTOMER' as const };
+    const base = {
+      viewer,
+      now: new Date(done.getTime() + DAY),
+      currency: 'INR',
+      cancellationCutoffMin: 120,
+      reviewWindowDays: 14,
+      customers: new Map<string, { name: string; phone: string }>(),
+      staffNames: new Map<string, string>(),
+    };
+    expect(toBookingDto(b, { ...base, reviewed: new Set() }).canReview).toBe(true);
+    expect(toBookingDto(b, { ...base, reviewed: new Set([b._id.toHexString()]) }).canReview).toBe(
+      false,
+    );
   });
 });
 

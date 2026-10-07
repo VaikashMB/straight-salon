@@ -78,6 +78,9 @@ export interface BookingsRepository {
   ): Promise<BookingDoc | null>;
   // BOOKED bookings that started before `before` (auto no-show), oldest first.
   findOverdueBooked(before: Date, limit: number): Promise<BookingDoc[]>;
+  // Reports (daily_stats, dashboard), served by { startAt: 1 }.
+  findStartingBetween(from: Date, to: Date, session?: ClientSession): Promise<BookingDoc[]>;
+  startRange(): Promise<{ first: Date; last: Date } | null>;
 }
 
 const ACTIVE = () => mongoose.trusted({ $in: [...ACTIVE_BOOKING_STATUSES] });
@@ -222,6 +225,19 @@ export const bookingsRepository: BookingsRepository = {
       { $set: { [`reminders.${field}`]: at } },
       { returnDocument: 'after', session },
     ).lean<BookingDoc>(),
+
+  findStartingBetween: (from, to, session) =>
+    BookingModel.find({ startAt: mongoose.trusted({ $gte: from, $lt: to }) }, null, { session })
+      .sort({ startAt: 1, _id: 1 })
+      .lean<BookingDoc[]>(),
+
+  async startRange() {
+    const [first, last] = await Promise.all([
+      BookingModel.findOne({}, { startAt: 1 }).sort({ startAt: 1 }).lean<{ startAt: Date }>(),
+      BookingModel.findOne({}, { startAt: 1 }).sort({ startAt: -1 }).lean<{ startAt: Date }>(),
+    ]);
+    return first && last ? { first: first.startAt, last: last.startAt } : null;
+  },
 
   findOverdueBooked: (before, limit) =>
     BookingModel.find({ status: 'BOOKED', startAt: mongoose.trusted({ $lt: before }) })

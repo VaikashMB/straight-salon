@@ -10,7 +10,7 @@ export interface StaffDoc {
   photoUrl?: string;
   serviceIds: Types.ObjectId[];
   isActive: boolean;
-  ratingAvg: number; // denormalised by the ratings consumer (Phase 6)
+  ratingAvg: number; // denormalised by the ratings consumer (FR-061)
   ratingCount: number;
   __v: number;
   createdAt: Date;

@@ -3,7 +3,12 @@ import { createApp } from './app.js';
 import { connectMongo, disconnectMongo, pingMongo } from './db/connect.js';
 import { runMigrations } from './db/migrate.js';
 import { SCHEDULED_JOBS_QUEUE } from './jobs/scheduler.js';
-import { buildApiRouter, buildServices, type ModulesDeps } from './modules/index.js';
+import {
+  buildApiRouter,
+  buildServices,
+  servicesConfigFromEnv,
+  type ModulesDeps,
+} from './modules/index.js';
 import { createReadinessService } from './modules/health/health.service.js';
 import { closeRedis, createRedisClient, pingRedis } from './shared/cache/redis.js';
 import { outboxRepository } from './shared/events/outbox.repository.js';
@@ -70,18 +75,9 @@ const modulesDeps: ModulesDeps = {
   metrics,
   storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
   config: {
-    accessToken: {
-      secret: env.JWT_ACCESS_SECRET,
-      ttl: env.JWT_ACCESS_TTL,
-      issuer: env.JWT_ISSUER,
-      audience: env.JWT_AUDIENCE,
-    },
-    refreshTokenTtlDays: env.REFRESH_TOKEN_TTL_DAYS,
-    bcryptCost: env.BCRYPT_COST,
+    ...servicesConfigFromEnv(env),
     cookies: { secure: env.COOKIE_SECURE, domain: env.COOKIE_DOMAIN },
-    outboxEncryptionKey: env.OUTBOX_ENCRYPTION_KEY,
     rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, max: env.RATE_LIMIT_MAX },
-    cacheEnabled: env.CACHE_ENABLED,
   },
 };
 const services = buildServices(modulesDeps);

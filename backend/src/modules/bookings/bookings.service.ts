@@ -61,6 +61,10 @@ export interface BookingsService {
   findById(id: string): Promise<BookingDoc | null>;
   setPayment(booking: BookingDoc, payment: Payment, session: ClientSession): Promise<BookingDoc>;
   toDto(booking: BookingDoc, viewer: AuthContext): Promise<BookingDto>;
+  // For reports (daily_stats, dashboard): bookings starting in [from, to), soonest first, and
+  // the first/last start of all bookings (stats:rebuild).
+  findStartingBetween(from: Date, to: Date, session?: ClientSession): Promise<BookingDoc[]>;
+  startRange(): Promise<{ first: Date; last: Date } | null>;
   // Ports for availability, settings, holidays and staff
   activeIntervals(staffId: string, from: Date, to: Date): Promise<Interval[]>;
   gate: ActiveBookingsGate;
@@ -95,7 +99,13 @@ export interface BookingsServiceDeps {
   availability: Pick<AvailabilityService, 'plan' | 'workingWindows' | 'freshSlots' | 'notBefore'>;
   staff: Pick<StaffService, 'briefs'>;
   users: Pick<UsersService, 'findActiveById' | 'findByIds' | 'idsByPhonePrefix'>;
+  reviews: ReviewedBookings;
   random?: () => number;
+}
+
+// Implemented by the reviews module (passed in to avoid an import cycle): canReview (BR-012).
+export interface ReviewedBookings {
+  reviewedBookingIds(bookingIds: string[]): Promise<Set<string>>;
 }
 
 // BR-010 / FR-040: the status graph for API-056. Cancellation has its own endpoint.
@@ -135,6 +145,7 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
     availability,
     staff,
     users,
+    reviews,
   } = deps;
   const random = deps.random ?? Math.random;
 
@@ -146,15 +157,25 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
 
   async function toDtos(bookings: BookingDoc[], viewer: AuthContext): Promise<BookingDto[]> {
     const s = await settings.get();
-    const [customers, stylists] = await Promise.all([
+    // Only a customer can review (BR-012), and only completed bookings.
+    const reviewable =
+      viewer.role === 'CUSTOMER'
+        ? bookings.filter((b) => b.status === 'COMPLETED').map((b) => b._id.toHexString())
+        : [];
+    const [customers, stylists, reviewed] = await Promise.all([
       users.findByIds([...new Set(bookings.map((b) => b.customerId.toHexString()))]),
       staff.briefs([...new Set(bookings.map((b) => b.staffId.toHexString()))]),
+      reviewable.length > 0
+        ? reviews.reviewedBookingIds(reviewable)
+        : Promise.resolve(new Set<string>()),
     ]);
     const ctx = {
       viewer,
       now: clock.now(),
       currency: s.currency,
       cancellationCutoffMin: s.cancellationCutoffMin,
+      reviewWindowDays: s.reviewWindowDays,
+      reviewed,
       customers: new Map(
         customers.map((u) => [u._id.toHexString(), { name: u.name, phone: u.phone }]),
       ),
@@ -570,6 +591,9 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
       const bookings = await repository.findActive({ staffId, from, to });
       return bookings.map((b) => ({ start: b.startAt.getTime(), end: b.blockedUntil.getTime() }));
     },
+
+    findStartingBetween: (from, to, session) => repository.findStartingBetween(from, to, session),
+    startRange: () => repository.startRange(),
 
     async setPayment(booking, payment, session) {
       return repository.apply(booking._id, booking.__v, { set: { payment } }, session);

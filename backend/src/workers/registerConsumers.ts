@@ -10,8 +10,6 @@ import type { Clock } from '../shared/time/clock.js';
 
 // Wires consumers onto the bus (09 §5): each is idempotent (09 §6) and logs its jobs (07 §1.5:
 // start at debug, success at info with duration; failures are logged by the bus adapter).
-// `ratings` and `stats` arrive in Phase 7 with their collections; until then their queues keep
-// receiving events, which they process when they start.
 
 export type ConsumerHandlers = Partial<Record<ConsumerName, EventHandler>>;
 

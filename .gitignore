@@ -15,6 +15,7 @@ backend/uploads/
 # Tests & reports
 coverage/
 reports/
+!backend/src/modules/reports/
 test-results/
 playwright-report/
 .scannerwork/

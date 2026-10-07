@@ -58,6 +58,8 @@ export interface CatalogService {
   // For other modules
   activeServiceDurations(): Promise<{ name: string; durationMin: number }[]>;
   findServices(ids: string[]): Promise<ServiceDto[]>; // any status, sorted by name
+  // For the ratings consumer (FR-061)
+  setServiceRating(id: string, rating: { avg: number; count: number }): Promise<void>;
 }
 
 // Implemented by the staff module; passed in to avoid a catalog <-> staff import cycle.
@@ -431,6 +433,16 @@ export function createCatalogService(deps: CatalogServiceDeps): CatalogService {
         name: s.name,
         durationMin: s.durationMin,
       }));
+    },
+
+    // A derived aggregate, not a business edit: no audit row. Public reads show the rating, so
+    // their caches are cleared like for any catalogue change (08 §2).
+    async setServiceRating(id, rating) {
+      const objectId = asObjectId(id);
+      if (!objectId) return;
+      await repository.setServiceRating(objectId, rating.avg, rating.count);
+      await cache.invalidateTag(cacheTags.catalog);
+      await cache.invalidateTag(cacheTags.staff);
     },
 
     async findServices(ids) {

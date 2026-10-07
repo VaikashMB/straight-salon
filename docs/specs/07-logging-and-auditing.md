@@ -73,6 +73,8 @@ Every create/update/delete/state-change of a business entity, plus security even
 | `review.create`, `review.hide/unhide` | review |
 | System actions (auto no-show) | booking, with `actor: { id: "system", role: "SYSTEM" }` |
 
+Derived read models are not audited (decision 2026-10-07): the rating aggregates on `staff`/`services` and `daily_stats` are recomputed by consumers and jobs from audited sources (reviews, bookings), so an audit row per recompute would add noise without accountability.
+
 ### 2.2 Audit record
 ```json
 {
