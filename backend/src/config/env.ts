@@ -77,6 +77,19 @@ const envSchema = z
     RATE_LIMIT_MAX: positiveInt(300),
     // Run pending migrations when the API starts. Defaults to on outside production (12 §4).
     MIGRATE_ON_START: z.stringbool().optional(),
+    // ---- Uploads (API-027, local ObjectStorage adapter) ----
+    // Directory the local adapter writes to; the API serves it at /uploads.
+    UPLOADS_DIR: z.string().min(1).default('uploads'),
+    // Public base URL of that directory, stored in services.imageUrl / staff.photoUrl.
+    UPLOADS_PUBLIC_URL: z
+      .string({ error: 'Required' })
+      .pipe(
+        z.url({
+          protocol: /^https?$/,
+          error: 'Must be an http(s) URL such as http://localhost:4000/uploads',
+        }),
+      )
+      .transform((value) => value.replace(/\/+$/, '')),
   })
   .superRefine((env, ctx) => {
     if (env.BCRYPT_COST < 10 && env.NODE_ENV !== 'test') {

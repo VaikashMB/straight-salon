@@ -303,6 +303,877 @@
           "accessToken"
         ]
       },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "sortOrder": {
+            "type": "integer"
+          },
+          "isActive": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "sortOrder",
+          "isActive"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60401",
+          "name": "Hair",
+          "slug": "hair",
+          "description": "Cuts, colour and treatments",
+          "sortOrder": 1,
+          "isActive": true
+        }
+      },
+      "CategoryList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Category"
+        }
+      },
+      "Service": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "durationMin": {
+            "type": "integer"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "ratingAvg": {
+            "type": "number"
+          },
+          "ratingCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "categoryId",
+          "durationMin",
+          "price",
+          "isActive",
+          "ratingAvg",
+          "ratingCount"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60501",
+          "slug": "haircut",
+          "name": "Haircut",
+          "description": "Consultation, wash, cut and style",
+          "categoryId": "6712c0f9a1b2c3d4e5f60401",
+          "durationMin": 45,
+          "price": {
+            "amountMinor": 40000,
+            "currency": "INR"
+          },
+          "isActive": true,
+          "ratingAvg": 4.6,
+          "ratingCount": 18
+        }
+      },
+      "ServiceList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Service"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ],
+            "example": {
+              "page": 1,
+              "pageSize": 20,
+              "total": 134,
+              "totalPages": 7
+            }
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "StylistSummary": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "ratingAvg": {
+            "type": "number"
+          },
+          "ratingCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "ratingAvg",
+          "ratingCount"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60601",
+          "displayName": "Ravi",
+          "ratingAvg": 4.8,
+          "ratingCount": 31
+        }
+      },
+      "ServiceDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "categoryId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "durationMin": {
+            "type": "integer"
+          },
+          "price": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "imageUrl": {
+            "type": "string"
+          },
+          "isActive": {
+            "type": "boolean"
+          },
+          "ratingAvg": {
+            "type": "number"
+          },
+          "ratingCount": {
+            "type": "integer"
+          },
+          "stylists": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/StylistSummary"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "categoryId",
+          "durationMin",
+          "price",
+          "isActive",
+          "ratingAvg",
+          "ratingCount",
+          "stylists"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60501",
+          "slug": "haircut",
+          "name": "Haircut",
+          "description": "Consultation, wash, cut and style",
+          "categoryId": "6712c0f9a1b2c3d4e5f60401",
+          "durationMin": 45,
+          "price": {
+            "amountMinor": 40000,
+            "currency": "INR"
+          },
+          "isActive": true,
+          "ratingAvg": 4.6,
+          "ratingCount": 18,
+          "stylists": [
+            {
+              "id": "6712c0f9a1b2c3d4e5f60601",
+              "displayName": "Ravi",
+              "ratingAvg": 4.8,
+              "ratingCount": 31
+            }
+          ]
+        }
+      },
+      "UploadedImage": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "example": {
+          "url": "http://localhost:4000/uploads/images/9f1c2a8e.webp"
+        }
+      },
+      "Holiday": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "date": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "date",
+          "name"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60301",
+          "date": "2026-11-01",
+          "name": "Kannada Rajyotsava"
+        }
+      },
+      "HolidayList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Holiday"
+        }
+      },
+      "PublicSettings": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "businessHours": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dayOfWeek": {
+                  "type": "integer"
+                },
+                "isOpen": {
+                  "type": "boolean"
+                },
+                "open": {
+                  "type": "string"
+                },
+                "close": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "dayOfWeek",
+                "isOpen",
+                "open",
+                "close"
+              ]
+            }
+          },
+          "slotGranularityMin": {
+            "type": "integer",
+            "example": 15
+          },
+          "minLeadTimeMin": {
+            "type": "integer",
+            "example": 60
+          },
+          "maxAdvanceDays": {
+            "type": "integer",
+            "example": 30
+          },
+          "cancellationCutoffMin": {
+            "type": "integer",
+            "example": 120
+          }
+        },
+        "required": [
+          "name",
+          "timezone",
+          "currency",
+          "businessHours",
+          "slotGranularityMin",
+          "minLeadTimeMin",
+          "maxAdvanceDays",
+          "cancellationCutoffMin"
+        ],
+        "example": {
+          "name": "Straight Salon",
+          "address": "12 MG Road, Bengaluru",
+          "phone": "+918041234567",
+          "email": "hello@straightsalon.in",
+          "timezone": "Asia/Kolkata",
+          "currency": "INR",
+          "businessHours": [
+            {
+              "dayOfWeek": 0,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 1,
+              "isOpen": false,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 2,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 3,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 4,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 5,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 6,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            }
+          ],
+          "slotGranularityMin": 15,
+          "minLeadTimeMin": 60,
+          "maxAdvanceDays": 30,
+          "cancellationCutoffMin": 120
+        }
+      },
+      "Settings": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/PublicSettings"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "bufferMin": {
+                "type": "integer"
+              },
+              "noShowGraceMin": {
+                "type": "integer"
+              },
+              "reviewWindowDays": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string",
+                "format": "date-time",
+                "example": "2026-10-12T05:30:00.000Z",
+                "description": "Absent until an admin first saves settings (defaults are served)"
+              }
+            },
+            "required": [
+              "bufferMin",
+              "noShowGraceMin",
+              "reviewWindowDays"
+            ]
+          }
+        ],
+        "example": {
+          "name": "Straight Salon",
+          "address": "12 MG Road, Bengaluru",
+          "phone": "+918041234567",
+          "email": "hello@straightsalon.in",
+          "timezone": "Asia/Kolkata",
+          "currency": "INR",
+          "businessHours": [
+            {
+              "dayOfWeek": 0,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 1,
+              "isOpen": false,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 2,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 3,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 4,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 5,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            },
+            {
+              "dayOfWeek": 6,
+              "isOpen": true,
+              "open": "09:30",
+              "close": "20:30"
+            }
+          ],
+          "slotGranularityMin": 15,
+          "minLeadTimeMin": 60,
+          "maxAdvanceDays": 30,
+          "cancellationCutoffMin": 120,
+          "bufferMin": 0,
+          "noShowGraceMin": 30,
+          "reviewWindowDays": 14,
+          "updatedAt": "2026-10-06T09:12:44.000Z"
+        }
+      },
+      "Staff": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            }
+          },
+          "ratingAvg": {
+            "type": "number"
+          },
+          "ratingCount": {
+            "type": "integer"
+          },
+          "userId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789",
+            "description": "ADMIN view only"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "ADMIN view only"
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "serviceIds",
+          "ratingAvg",
+          "ratingCount"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60601",
+          "displayName": "Ravi",
+          "bio": "Precision cuts and beard styling, 8 years.",
+          "serviceIds": [
+            "6712c0f9a1b2c3d4e5f60501"
+          ],
+          "ratingAvg": 4.8,
+          "ratingCount": 31
+        }
+      },
+      "StaffList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/Staff"
+        }
+      },
+      "StaffProfile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "bio": {
+            "type": "string"
+          },
+          "photoUrl": {
+            "type": "string"
+          },
+          "serviceIds": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            }
+          },
+          "ratingAvg": {
+            "type": "number"
+          },
+          "ratingCount": {
+            "type": "integer"
+          },
+          "userId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789",
+            "description": "ADMIN view only"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "ADMIN view only"
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Service"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "displayName",
+          "serviceIds",
+          "ratingAvg",
+          "ratingCount",
+          "services"
+        ],
+        "description": "Profile with the services the stylist performs (active ones for the public)"
+      },
+      "StaffSchedule": {
+        "type": "object",
+        "properties": {
+          "staffId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "weekly": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "dayOfWeek": {
+                  "type": "integer"
+                },
+                "isWorking": {
+                  "type": "boolean"
+                },
+                "start": {
+                  "type": "string"
+                },
+                "end": {
+                  "type": "string"
+                },
+                "breaks": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "start": {
+                        "type": "string"
+                      },
+                      "end": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "start",
+                      "end"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "dayOfWeek",
+                "isWorking",
+                "start",
+                "end",
+                "breaks"
+              ]
+            }
+          }
+        },
+        "required": [
+          "staffId",
+          "weekly"
+        ],
+        "example": {
+          "staffId": "6712c0f9a1b2c3d4e5f60601",
+          "weekly": [
+            {
+              "dayOfWeek": 0,
+              "isWorking": true,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            },
+            {
+              "dayOfWeek": 1,
+              "isWorking": false,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            },
+            {
+              "dayOfWeek": 2,
+              "isWorking": true,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            },
+            {
+              "dayOfWeek": 3,
+              "isWorking": true,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            },
+            {
+              "dayOfWeek": 4,
+              "isWorking": true,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            },
+            {
+              "dayOfWeek": 5,
+              "isWorking": true,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            },
+            {
+              "dayOfWeek": 6,
+              "isWorking": true,
+              "start": "10:00",
+              "end": "19:00",
+              "breaks": [
+                {
+                  "start": "13:30",
+                  "end": "14:15"
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "TimeOff": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "staffId": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "endAt": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "createdBy": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "staffId",
+          "startAt",
+          "endAt",
+          "createdBy",
+          "createdAt"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60701",
+          "staffId": "6712c0f9a1b2c3d4e5f60601",
+          "startAt": "2026-10-14T08:30:00.000Z",
+          "endAt": "2026-10-14T10:30:00.000Z",
+          "reason": "Doctor appointment",
+          "createdBy": "6712c0f9a1b2c3d4e5f60111",
+          "createdAt": "2026-10-06T09:12:44.000Z"
+        }
+      },
+      "TimeOffList": {
+        "type": "array",
+        "items": {
+          "$ref": "#/components/schemas/TimeOff"
+        }
+      },
       "Liveness": {
         "type": "object",
         "properties": {
@@ -1169,6 +2040,2595 @@
           },
           "401": {
             "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "List categories (API-021)",
+        "description": "Active categories by sortOrder, then name. Cached 30 min. ADMIN may pass includeInactive=true.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "ADMIN only: also return deactivated entries (401/403 for anyone else)",
+              "example": false
+            },
+            "required": false,
+            "description": "ADMIN only: also return deactivated entries (401/403 for anyone else)",
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CategoryList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Create a category (API-022)",
+        "description": "ADMIN. The slug is generated from the name.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60,
+                    "example": "Hair"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000,
+                    "example": 1
+                  }
+                },
+                "required": [
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Name already used (DUPLICATE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "patch": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Update a category (API-022)",
+        "description": "ADMIN. isActive: true reactivates a deactivated category.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  },
+                  "sortOrder": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 1000
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated category",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Name already used (DUPLICATE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Deactivate a category (API-022)",
+        "description": "ADMIN. Soft delete: the category is hidden from the public list.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deactivated"
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "List services (API-023)",
+        "description": "Active services, paginated, sorted by name by default. Filter by category, search words with q. Cached 10 min. ADMIN may pass includeInactive=true.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "example": "-startAt"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": false,
+            "name": "categoryId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 100,
+              "description": "Words in the name or description",
+              "example": "haircut"
+            },
+            "required": false,
+            "description": "Words in the name or description",
+            "name": "q",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "ADMIN only: also return deactivated entries (401/403 for anyone else)",
+              "example": false
+            },
+            "required": false,
+            "description": "ADMIN only: also return deactivated entries (401/403 for anyone else)",
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of services",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Create a service (API-025)",
+        "description": "ADMIN. durationMin must be a multiple of the slot granularity (BR-013).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80,
+                    "example": "Haircut"
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "pattern": "^[a-f\\d]{24}$/i",
+                    "example": "6712c0f9a1b2c3d4e5f60789"
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "durationMin": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 600,
+                    "description": "Multiple of the slot granularity (BR-013)",
+                    "example": 45
+                  },
+                  "priceMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000,
+                    "example": 40000
+                  },
+                  "imageUrl": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "format": "uri",
+                    "example": "http://localhost:4000/uploads/images/9f1c2a8e.webp"
+                  },
+                  "isActive": {
+                    "type": "boolean",
+                    "description": "Default true"
+                  }
+                },
+                "required": [
+                  "name",
+                  "categoryId",
+                  "durationMin",
+                  "priceMinor"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Service created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "An active service has this name (DUPLICATE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Duration is not a multiple of the slot granularity (INVALID_DURATION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{idOrSlug}": {
+      "get": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Service detail (API-024)",
+        "description": "By id or slug, with the active stylists who perform it and its rating. Deactivated services are not found, except for ADMIN.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-z0-9-]{1,120}$/i",
+              "example": "haircut"
+            },
+            "required": true,
+            "name": "idOrSlug",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ServiceDetail"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/services/{id}": {
+      "patch": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Update a service (API-025)",
+        "description": "ADMIN. null clears description or imageUrl. isActive: true reactivates (BR-013 re-checked).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "categoryId": {
+                    "type": "string",
+                    "pattern": "^[a-f\\d]{24}$/i",
+                    "example": "6712c0f9a1b2c3d4e5f60789"
+                  },
+                  "description": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 1000
+                  },
+                  "durationMin": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 600
+                  },
+                  "priceMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "imageUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500,
+                    "format": "uri",
+                    "example": "http://localhost:4000/uploads/images/9f1c2a8e.webp"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated service",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Name used by an active service (DUPLICATE) or changed concurrently (STALE_VERSION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Duration is not a multiple of the slot granularity (INVALID_DURATION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Deactivate a service (API-026)",
+        "description": "ADMIN. Hidden from the catalogue; historical bookings keep their snapshot (FR-013).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deactivated"
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/uploads/images": {
+      "post": {
+        "tags": [
+          "Catalog"
+        ],
+        "summary": "Upload an image (API-027)",
+        "description": "ADMIN. One `file` field: PNG, JPEG or WebP up to 2 MB. The type is detected from the content, the image is re-encoded without metadata and stored under a random name. Set the returned url as services.imageUrl or staff.photoUrl.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary",
+                    "description": "PNG, JPEG or WebP, max 2 MB"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stored image",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UploadedImage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing, unreadable or unsupported file (INVALID_FILE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "File larger than 2 MB (INVALID_FILE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/holidays": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "List holidays (API-019)",
+        "description": "Full-day closures, by date ascending. Both bounds are optional and inclusive.",
+        "security": [],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "First date, inclusive"
+            },
+            "required": false,
+            "description": "First date, inclusive",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-12-31",
+              "description": "Last date, inclusive"
+            },
+            "required": false,
+            "description": "Last date, inclusive",
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Holidays",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HolidayList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Add a holiday (API-020)",
+        "description": "ADMIN. Fails with ACTIVE_BOOKINGS_EXIST when active bookings exist that day, unless force: true cancels them and notifies the customers.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "date": {
+                    "type": "string",
+                    "format": "date",
+                    "example": "2026-10-12"
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100,
+                    "example": "Diwali"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "description": "Cancel the active bookings on that date and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST"
+                  }
+                },
+                "required": [
+                  "date",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Holiday created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Holiday"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Date is already a holiday (DUPLICATE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Active bookings exist that day (ACTIVE_BOOKINGS_EXIST)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/holidays/{id}": {
+      "delete": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Remove a holiday (API-020)",
+        "description": "ADMIN. No booking check.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings/public": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Public salon information (API-016)",
+        "description": "Name, address, contact, business hours, timezone, currency and the booking policy the booking wizard needs. Cached 10 min.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Public settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicSettings"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/settings": {
+      "get": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Full settings (API-017)",
+        "description": "ADMIN. Defaults are returned until settings are first saved.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Settings"
+        ],
+        "summary": "Replace settings (API-018)",
+        "description": "ADMIN. Full replacement of every FR-080 field. A new slot granularity must fit every active service duration (BR-013). The timezone cannot change while future active bookings exist.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 80
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 300
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+[1-9]\\d{7,14}$",
+                    "example": "+919876543212"
+                  },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "example": "ananya@example.com"
+                  },
+                  "timezone": {
+                    "type": "string",
+                    "example": "Asia/Kolkata"
+                  },
+                  "currency": {
+                    "type": "string",
+                    "pattern": "^[A-Z]{3}$",
+                    "example": "INR"
+                  },
+                  "businessHours": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "dayOfWeek": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6,
+                          "description": "0 = Sunday … 6 = Saturday",
+                          "example": 1
+                        },
+                        "isOpen": {
+                          "type": "boolean"
+                        },
+                        "open": {
+                          "type": "string",
+                          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                          "example": "09:30"
+                        },
+                        "close": {
+                          "type": "string",
+                          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                          "example": "20:30"
+                        }
+                      },
+                      "required": [
+                        "dayOfWeek",
+                        "isOpen",
+                        "open",
+                        "close"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "slotGranularityMin": {
+                    "type": "integer",
+                    "minimum": 5,
+                    "maximum": 60,
+                    "example": 15
+                  },
+                  "bufferMin": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 120,
+                    "example": 0
+                  },
+                  "minLeadTimeMin": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10080,
+                    "example": 60
+                  },
+                  "maxAdvanceDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "example": 30
+                  },
+                  "cancellationCutoffMin": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 10080,
+                    "example": 120
+                  },
+                  "noShowGraceMin": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 240,
+                    "example": 30
+                  },
+                  "reviewWindowDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365,
+                    "example": 14
+                  }
+                },
+                "required": [
+                  "name",
+                  "timezone",
+                  "currency",
+                  "businessHours",
+                  "slotGranularityMin",
+                  "bufferMin",
+                  "minLeadTimeMin",
+                  "maxAdvanceDays",
+                  "cancellationCutoffMin",
+                  "noShowGraceMin",
+                  "reviewWindowDays"
+                ],
+                "additionalProperties": false,
+                "example": {
+                  "name": "Straight Salon",
+                  "address": "12 MG Road, Bengaluru",
+                  "phone": "+918041234567",
+                  "email": "hello@straightsalon.in",
+                  "timezone": "Asia/Kolkata",
+                  "currency": "INR",
+                  "businessHours": [
+                    {
+                      "dayOfWeek": 0,
+                      "isOpen": true,
+                      "open": "09:30",
+                      "close": "20:30"
+                    },
+                    {
+                      "dayOfWeek": 1,
+                      "isOpen": false,
+                      "open": "09:30",
+                      "close": "20:30"
+                    },
+                    {
+                      "dayOfWeek": 2,
+                      "isOpen": true,
+                      "open": "09:30",
+                      "close": "20:30"
+                    },
+                    {
+                      "dayOfWeek": 3,
+                      "isOpen": true,
+                      "open": "09:30",
+                      "close": "20:30"
+                    },
+                    {
+                      "dayOfWeek": 4,
+                      "isOpen": true,
+                      "open": "09:30",
+                      "close": "20:30"
+                    },
+                    {
+                      "dayOfWeek": 5,
+                      "isOpen": true,
+                      "open": "09:30",
+                      "close": "20:30"
+                    },
+                    {
+                      "dayOfWeek": 6,
+                      "isOpen": true,
+                      "open": "09:30",
+                      "close": "20:30"
+                    }
+                  ],
+                  "slotGranularityMin": 15,
+                  "minLeadTimeMin": 60,
+                  "maxAdvanceDays": 30,
+                  "cancellationCutoffMin": 120,
+                  "bufferMin": 0,
+                  "noShowGraceMin": 30,
+                  "reviewWindowDays": 14
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved settings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Changed concurrently (STALE_VERSION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Granularity does not fit a service (INVALID_DURATION) or timezone change with future bookings (ACTIVE_BOOKINGS_EXIST)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "List stylists (API-030)",
+        "description": "Active stylists, public fields only, by name. Filter by a service they perform. Cached 10 min. ADMIN may pass includeInactive=true for every stylist with admin fields.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789",
+              "description": "Only stylists who perform this service"
+            },
+            "required": false,
+            "description": "Only stylists who perform this service",
+            "name": "serviceId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "ADMIN only: include deactivated stylists and admin fields (401/403 for anyone else)"
+            },
+            "required": false,
+            "description": "ADMIN only: include deactivated stylists and admin fields (401/403 for anyone else)",
+            "name": "includeInactive",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stylists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Create a stylist profile (API-032)",
+        "description": "ADMIN. Links an active STAFF user (create it with POST /users first). The weekly schedule starts as the salon hours (FR-023). The user gets staffId in their token at the next login or refresh.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "userId": {
+                    "type": "string",
+                    "pattern": "^[a-f\\d]{24}$/i",
+                    "example": "6712c0f9a1b2c3d4e5f60789",
+                    "description": "An active user with role STAFF and no profile yet"
+                  },
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60,
+                    "example": "Ravi"
+                  },
+                  "bio": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "photoUrl": {
+                    "type": "string",
+                    "maxLength": 500,
+                    "format": "uri",
+                    "example": "http://localhost:4000/uploads/images/1c2d3e4f.webp"
+                  },
+                  "serviceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-f\\d]{24}$/i",
+                      "example": "6712c0f9a1b2c3d4e5f60789"
+                    },
+                    "maxItems": 50,
+                    "description": "Services this stylist can perform"
+                  }
+                },
+                "required": [
+                  "userId",
+                  "displayName",
+                  "serviceIds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Stylist created (admin view)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Staff"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The user already has a profile (DUPLICATE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff/{id}": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Stylist profile (API-031)",
+        "description": "Profile, services and rating. Deactivated stylists are not found, except for ADMIN, who also gets admin fields.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffProfile"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Update or deactivate a stylist (API-032)",
+        "description": "ADMIN. isActive: false is blocked by future active bookings unless force: true cancels them and notifies the customers (BR-014).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "displayName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "bio": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500
+                  },
+                  "photoUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "maxLength": 500,
+                    "format": "uri",
+                    "example": "http://localhost:4000/uploads/images/1c2d3e4f.webp"
+                  },
+                  "serviceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-f\\d]{24}$/i",
+                      "example": "6712c0f9a1b2c3d4e5f60789"
+                    },
+                    "maxItems": 50,
+                    "description": "Services this stylist can perform"
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "description": "With isActive: false, cancel the stylist's future active bookings and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST (BR-014)"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated stylist (admin view)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Staff"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Changed concurrently (STALE_VERSION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Active bookings are affected (ACTIVE_BOOKINGS_EXIST)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff/{id}/schedule": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Weekly schedule (API-033)",
+        "description": "ADMIN, RECEPTIONIST, or the stylist themself. Times are salon-local HH:mm.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffSchedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Replace the weekly schedule (API-034)",
+        "description": "ADMIN. Exactly 7 days; breaks must lie within working hours and not overlap.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "weekly": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "dayOfWeek": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 6,
+                          "description": "0 = Sunday … 6 = Saturday",
+                          "example": 1
+                        },
+                        "isWorking": {
+                          "type": "boolean"
+                        },
+                        "start": {
+                          "type": "string",
+                          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                          "example": "10:00"
+                        },
+                        "end": {
+                          "type": "string",
+                          "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                          "example": "19:00"
+                        },
+                        "breaks": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "start": {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                                "example": "09:30"
+                              },
+                              "end": {
+                                "type": "string",
+                                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+                                "example": "19:00"
+                              }
+                            },
+                            "required": [
+                              "start",
+                              "end"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 5,
+                          "default": []
+                        }
+                      },
+                      "required": [
+                        "dayOfWeek",
+                        "isWorking",
+                        "start",
+                        "end"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "weekly"
+                ],
+                "additionalProperties": false,
+                "example": {
+                  "weekly": [
+                    {
+                      "dayOfWeek": 0,
+                      "isWorking": true,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    },
+                    {
+                      "dayOfWeek": 1,
+                      "isWorking": false,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    },
+                    {
+                      "dayOfWeek": 2,
+                      "isWorking": true,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    },
+                    {
+                      "dayOfWeek": 3,
+                      "isWorking": true,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    },
+                    {
+                      "dayOfWeek": 4,
+                      "isWorking": true,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    },
+                    {
+                      "dayOfWeek": 5,
+                      "isWorking": true,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    },
+                    {
+                      "dayOfWeek": 6,
+                      "isWorking": true,
+                      "start": "10:00",
+                      "end": "19:00",
+                      "breaks": [
+                        {
+                          "start": "13:30",
+                          "end": "14:15"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Saved schedule",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffSchedule"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff/{id}/time-off": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "List time-off (API-035)",
+        "description": "ADMIN, RECEPTIONIST, or the stylist themself. Blocks overlapping the optional salon-local date range.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "First salon-local date, inclusive"
+            },
+            "required": false,
+            "description": "First salon-local date, inclusive",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-31",
+              "description": "Last salon-local date, inclusive"
+            },
+            "required": false,
+            "description": "Last salon-local date, inclusive",
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Time-off",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeOffList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Block time off (API-036)",
+        "description": "ADMIN, or the stylist themself. Overlapping active bookings fail with ACTIVE_BOOKINGS_EXIST; ADMIN may pass force: true to cancel them and notify the customers (FR-024).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-12T05:30:00.000Z"
+                  },
+                  "endAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-12T07:30:00.000Z"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 200,
+                    "example": "Doctor appointment"
+                  },
+                  "force": {
+                    "type": "boolean",
+                    "description": "ADMIN only: cancel overlapping active bookings and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST (FR-024)"
+                  }
+                },
+                "required": [
+                  "startAt",
+                  "endAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Time-off created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TimeOff"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Active bookings are affected (ACTIVE_BOOKINGS_EXIST)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/staff/{id}/time-off/{timeOffId}": {
+      "delete": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Remove time-off (API-037)",
+        "description": "ADMIN, or the stylist themself.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "timeOffId",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Removed"
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed, or another stylist's profile (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
             "content": {
               "application/problem+json": {
                 "schema": {

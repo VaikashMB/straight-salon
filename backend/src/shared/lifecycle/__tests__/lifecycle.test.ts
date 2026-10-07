@@ -9,6 +9,7 @@ const validEnv = {
   PORT: '4000',
   MONGO_URI: 'mongodb://localhost:27017/straight_salon',
   REDIS_URL: 'redis://localhost:6379',
+  UPLOADS_PUBLIC_URL: 'http://localhost:4000/uploads',
   LOG_LEVEL: 'warn',
 };
 

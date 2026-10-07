@@ -68,6 +68,8 @@ export interface AuthServiceDeps {
   clock: Clock;
   logger: Logger;
   refreshTokenTtlDays: number;
+  // STAFF tokens carry staffId (06 §1) for "own profile" checks; implemented by the staff module.
+  staffIdFor?: (userId: string) => Promise<string | undefined>;
 }
 
 export const sha256 = (value: string): string => createHash('sha256').update(value).digest('hex');
@@ -88,6 +90,7 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
     connection,
     clock,
     refreshTokenTtlDays,
+    staffIdFor,
   } = deps;
   const log = deps.logger.child({ module: 'auth' });
 
@@ -109,11 +112,15 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
     return { token, expiresAt };
   }
 
+  // Role and staffId are read fresh at every login/refresh, so changes reach the token there.
+  async function signAccess(user: UserDoc): Promise<string> {
+    const userId = user._id.toHexString();
+    const staffId = user.role === 'STAFF' && staffIdFor ? await staffIdFor(userId) : undefined;
+    return accessTokens.sign({ userId, role: user.role, ...(staffId ? { staffId } : {}) });
+  }
+
   async function startSession(user: UserDoc, meta: ClientMeta): Promise<SessionResult> {
-    const accessToken = await accessTokens.sign({
-      userId: user._id.toHexString(),
-      role: user.role,
-    });
+    const accessToken = await signAccess(user);
     const refresh = await issueRefresh(user._id, randomUUID(), meta);
     return { user: toUserDto(user), accessToken, refresh };
   }
@@ -203,10 +210,7 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
         ...(meta.userAgent ? { userAgent: meta.userAgent.slice(0, 512) } : {}),
         ...(meta.ip ? { ip: meta.ip } : {}),
       });
-      const accessToken = await accessTokens.sign({
-        userId: user._id.toHexString(),
-        role: user.role,
-      });
+      const accessToken = await signAccess(user);
       return { accessToken, refresh: { token: next, expiresAt } };
     },
 

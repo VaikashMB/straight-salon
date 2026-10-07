@@ -23,3 +23,32 @@ export const emailSchema = z
   .openapi({ example: 'ananya@example.com' });
 
 export const personNameSchema = z.string().trim().min(2).max(80).openapi({ example: 'Ananya R' });
+
+// Calendar date in the salon timezone (04 §1).
+export const dateSchema = z.iso.date().openapi({ example: '2026-10-12' });
+
+// UTC instant in requests and responses (04 §1).
+export const dateTimeSchema = z.iso
+  .datetime({ offset: true })
+  .openapi({ example: '2026-10-12T05:30:00.000Z' });
+
+// Wall-clock time in the salon timezone (02 §2.7, §2.10).
+export const localTimeSchema = z
+  .string()
+  .regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Must be a 24-hour time like 09:30')
+  .openapi({ example: '09:30' });
+
+export const dayOfWeekSchema = z
+  .number()
+  .int()
+  .min(0)
+  .max(6)
+  .openapi({ description: '0 = Sunday … 6 = Saturday', example: 1 });
+
+// "true"/"false" query flags.
+export const queryFlagSchema = z.stringbool();
+
+// Validates 7 entries, one per weekday; used by business hours and staff schedules.
+export function oneEntryPerWeekday(entries: { dayOfWeek: number }[]): boolean {
+  return entries.length === 7 && new Set(entries.map((e) => e.dayOfWeek)).size === 7;
+}

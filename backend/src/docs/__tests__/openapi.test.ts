@@ -21,7 +21,9 @@ describe('OpenAPI document (04 §2)', () => {
 
   it('registers the reusable components and security schemes', () => {
     const schemas = Object.keys(doc.components?.schemas ?? {});
-    expect(schemas).toEqual(expect.arrayContaining(['Problem', 'Money', 'PaginationMeta', 'Liveness', 'Readiness']));
+    expect(schemas).toEqual(
+      expect.arrayContaining(['Problem', 'Money', 'PaginationMeta', 'Liveness', 'Readiness']),
+    );
     expect(doc.components?.securitySchemes).toMatchObject({
       bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
       refreshCookie: { type: 'apiKey', in: 'cookie', name: 'ss_rt' },

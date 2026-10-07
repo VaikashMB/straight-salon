@@ -1,6 +1,6 @@
 import compression from 'compression';
 import cors from 'cors';
-import express, { json, type Express, type Router } from 'express';
+import express, { json, static as serveStatic, type Express, type Router } from 'express';
 import helmet from 'helmet';
 import { docsRouter, generateOpenApiDocument } from './docs/openapi.js';
 import { createHealthController } from './modules/health/health.controller.js';
@@ -13,6 +13,7 @@ import type { Logger } from './shared/logger/index.js';
 import { httpMetricsMiddleware, metricsHandler, type Metrics } from './shared/metrics/index.js';
 
 export const API_BASE_PATH = '/api/v1';
+export const UPLOADS_PATH = '/uploads';
 const JSON_BODY_LIMIT = '100kb';
 
 export interface AppConfig {
@@ -20,6 +21,8 @@ export interface AppConfig {
   corsOrigins: string[];
   swaggerEnabled: boolean;
   metricsEnabled: boolean;
+  // Local ObjectStorage directory, served read-only at /uploads (API-027). Omit to not serve.
+  uploadsDir?: string;
 }
 
 // Infrastructure the app needs, injected so tests can use fakes (01-architecture §3.5).
@@ -53,10 +56,27 @@ export function createApp(deps: AppDeps): Express {
   app.use(healthRouter(createHealthController(deps.readiness)));
   if (config.metricsEnabled) app.get('/metrics', metricsHandler(metrics));
   if (config.swaggerEnabled) app.use(docsRouter(generateOpenApiDocument(config.version)));
+  if (config.uploadsDir) app.use(UPLOADS_PATH, uploadsStatic(config.uploadsDir));
 
   app.use(API_BASE_PATH, deps.apiRouter);
 
   app.use(notFoundHandler);
   app.use(createErrorHandler(logger));
   return app;
+}
+
+// Uploaded images (local ObjectStorage adapter). The frontend origin embeds them, so the
+// resource policy is relaxed from helmet's same-origin; files are inert (nosniff, own names,
+// re-encoded images only). Misses fall through to the problem+json 404.
+function uploadsStatic(dir: string) {
+  return serveStatic(dir, {
+    index: false,
+    dotfiles: 'deny',
+    redirect: false,
+    maxAge: '7d',
+    immutable: true, // random names: content never changes
+    setHeaders: (res) => {
+      res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
+    },
+  });
 }

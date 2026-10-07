@@ -15,7 +15,7 @@
 | Full settings (server use) | `ss:v1:settings:full` | 10 min | `settings.update` |
 | Category list | `ss:v1:catalog:categories` | 30 min | any category change |
 | Service list (per filter) | `ss:v1:catalog:services:{hash(query)}` | 10 min | any service/category change → delete by tag |
-| Service detail | `ss:v1:catalog:service:{id}` | 30 min | that service change, review aggregate change |
+| Service detail | `ss:v1:catalog:service:{id}` | 30 min | that service change, review aggregate change, staff change (it embeds the stylists who perform it; tags `catalog` + `staff`) |
 | Public staff list | `ss:v1:staff:list:{serviceId|all}` | 10 min | staff/service change → tag |
 | Staff profile | `ss:v1:staff:{id}` | 30 min | that staff change, review aggregate change |
 | Availability for a day | `ss:v1:avail:{staffId}:{date}:{durationSpan}` | 60 s | booking create/reschedule/cancel/status→CANCELLED/NO_SHOW, time-off change, schedule change, holiday/settings change |

@@ -10,6 +10,7 @@ const required = {
   REDIS_URL: 'redis://localhost:6379',
   OUTBOX_ENCRYPTION_KEY: key,
   JWT_ACCESS_SECRET: 'x'.repeat(32),
+  UPLOADS_PUBLIC_URL: 'http://localhost:4000/uploads',
 };
 
 function issuesOf(source: NodeJS.ProcessEnv): { path: string; message: string }[] {
@@ -46,6 +47,7 @@ describe('parseEnv', () => {
       RATE_LIMIT_WINDOW_MS: 60_000,
       RATE_LIMIT_MAX: 300,
       MIGRATE_ON_START: true,
+      UPLOADS_DIR: 'uploads',
     });
   });
 
@@ -96,7 +98,20 @@ describe('parseEnv', () => {
         path: 'JWT_ACCESS_SECRET',
         message: 'Required (run `npm run env:init` to create .env with one)',
       },
+      { path: 'UPLOADS_PUBLIC_URL', message: 'Required' },
     ]);
+  });
+
+  it('uploads: the public URL must be http(s); a trailing slash is dropped (API-027)', () => {
+    expect(
+      parseEnv({ ...required, UPLOADS_PUBLIC_URL: 'https://cdn.example.net/u/' }),
+    ).toMatchObject({ UPLOADS_PUBLIC_URL: 'https://cdn.example.net/u' });
+    expect(
+      issuesOf({ ...required, UPLOADS_PUBLIC_URL: 'ftp://files/u' }).map((i) => i.path),
+    ).toEqual(['UPLOADS_PUBLIC_URL']);
+    expect(parseEnv({ ...required, UPLOADS_DIR: '/data/uploads' }).UPLOADS_DIR).toBe(
+      '/data/uploads',
+    );
   });
 
   it('rejects an encryption key that is not 32 bytes of base64', () => {

@@ -26,6 +26,9 @@ x-backend-env: &backend-env
   REDIS_URL: redis://redis:6379
   SMTP_HOST: mailpit
   SMTP_PORT: '1025'
+  # Local ObjectStorage adapter (API-027): the API writes and serves /app/backend/uploads.
+  UPLOADS_DIR: /app/backend/uploads
+  UPLOADS_PUBLIC_URL: ${UPLOADS_PUBLIC_URL:-http://localhost:4000/uploads}
 
 x-backend-depends: &backend-depends
   mongo-init:
@@ -101,6 +104,8 @@ services:
     environment:
       <<: *backend-env
     depends_on: *backend-depends
+    volumes:
+      - uploads_data:/app/backend/uploads
     ports:
       - '127.0.0.1:4000:4000'
     healthcheck:
@@ -209,6 +214,7 @@ services:
 volumes:
   mongo_data:
   redis_data:
+  uploads_data: # uploaded images (local ObjectStorage adapter)
 
 networks:
   straight-salon:

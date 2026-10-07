@@ -26,7 +26,10 @@ describe('migrations (02 §1)', () => {
   it('create every schema index, then are idempotent', async () => {
     const { logger, lines } = captureLogger();
     const applied = await runMigrations(uri, logger);
-    expect(applied).toEqual(['20261006000001-initial-indexes.js']);
+    expect(applied).toEqual([
+      '20261006000001-initial-indexes.js',
+      '20261006000002-catalog-staff-indexes.js',
+    ]);
 
     for (const model of Object.values(mongoose.models)) {
       if (model.modelName.startsWith('Probe')) continue; // test-only models from other files
@@ -43,6 +46,8 @@ describe('migrations (02 §1)', () => {
         if (options.expireAfterSeconds !== undefined)
           expect(match?.expireAfterSeconds).toBe(options.expireAfterSeconds);
         if (options.sparse) expect(match?.sparse).toBe(true);
+        if (options.partialFilterExpression)
+          expect(match?.partialFilterExpression).toEqual(options.partialFilterExpression);
       }
     }
 
@@ -51,6 +56,7 @@ describe('migrations (02 §1)', () => {
     const changelog = await mongoose.connection.collection(CHANGELOG_COLLECTION).find().toArray();
     expect(changelog.map((c) => c.fileName as string)).toEqual([
       '20261006000001-initial-indexes.js',
+      '20261006000002-catalog-staff-indexes.js',
     ]);
   });
 
@@ -79,8 +85,9 @@ describe('migrations (02 §1)', () => {
       runMigrations(uri, logger),
       runMigrations(uri, logger),
     ]);
-    expect(results.filter((r) => r.length === 1)).toHaveLength(1);
-    expect(await mongoose.connection.collection(CHANGELOG_COLLECTION).countDocuments()).toBe(1);
+    expect(results.filter((r) => r.length === 2)).toHaveLength(1);
+    expect(results.filter((r) => r.length === 0)).toHaveLength(2);
+    expect(await mongoose.connection.collection(CHANGELOG_COLLECTION).countDocuments()).toBe(2);
     expect(await mongoose.connection.collection(LOCK_COLLECTION).countDocuments()).toBe(0);
   });
 });

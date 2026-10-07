@@ -23,7 +23,7 @@ SonarQube lives in a separate `docker-compose.sonar.yml` (it's heavy: needs ~2 G
 Image tags are pinned to a major/minor line (never `latest`), so `docker compose up` is reproducible; Dependabot (12 §1) proposes bumps.
 
 ## 2. Requirements for the compose file
-- Named volumes: `mongo_data`, `redis_data` (app stack); `sonar_data`, `sonar_extensions`, `sonar_logs`, `sonar_db` (sonar file); `mongo_config` (auth overlay, holds the keyfile).
+- Named volumes: `mongo_data`, `redis_data`, `uploads_data` (app stack; `uploads_data` is mounted on the backend's `/app/backend/uploads`, which the runtime image pre-creates owned by 1000:1000 so the non-root API can write to it); `sonar_data`, `sonar_extensions`, `sonar_logs`, `sonar_db` (sonar file); `mongo_config` (auth overlay, holds the keyfile).
 - Host ports bind to **127.0.0.1** only, so databases and tools are not reachable from the local network.
 - Healthchecks: mongo (`mongosh --eval "db.adminCommand('ping')"`), redis (`redis-cli ping`), backend (`wget -qO- http://localhost:4000/health/ready`), frontend (`/` returns 200).
 - `depends_on` with `condition: service_healthy` / `service_completed_successfully` (backend waits for mongo-init and redis).

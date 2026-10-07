@@ -53,7 +53,8 @@ backend/src/
 │   ├── staff/                 # staff profiles, schedules, time-off
 │   ├── holidays/
 │   ├── availability/
-│   ├── bookings/
+│   ├── bookings/              # Phase 4 ships only bookings.gate.ts: the ActiveBookingsGate port settings/holidays/staff
+│   │                          #   use for ACTIVE_BOOKINGS_EXIST / force (no-op until Phase 5 implements it)
 │   ├── payments/              # recording payments on bookings
 │   ├── reviews/
 │   ├── notifications/         # templates, providers (email/sms/mock), sender
@@ -113,6 +114,8 @@ All validated at boot in `config/env.ts`. Example values in `.env.example`. `env
 | `SMTP_HOST`/`SMTP_PORT`/`SMTP_USER`/`SMTP_PASS` | | used when `EMAIL_PROVIDER=smtp` (Mailpit in docker) |
 | `RUN_RELAY_IN_WORKER` | `true` | |
 | `OUTBOX_ENCRYPTION_KEY` | (32-byte base64) | encrypts secrets in outbox payloads (see 09 §7) |
+| `UPLOADS_DIR` | `uploads` | local ObjectStorage directory (relative to `backend/`; `/app/backend/uploads` volume in Docker), served by the API at `/uploads` (Phase 4) |
+| `UPLOADS_PUBLIC_URL` | `http://localhost:4000/uploads` | required; browser-facing URL of `/uploads`, stored in `services.imageUrl` / `staff.photoUrl`. An S3 adapter would use a bucket/CDN URL instead |
 | `SWAGGER_ENABLED` | `true` | false in prod unless protected |
 | `METRICS_ENABLED` | `true` | |
 

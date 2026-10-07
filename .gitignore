@@ -9,6 +9,9 @@ build/
 *.tsbuildinfo
 frontend/next-env.d.ts
 
+# Uploaded images from the local ObjectStorage adapter (UPLOADS_DIR, host mode)
+backend/uploads/
+
 # Tests & reports
 coverage/
 reports/

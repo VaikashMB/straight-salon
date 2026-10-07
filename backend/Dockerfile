@@ -27,6 +27,7 @@ RUN --mount=type=cache,target=/root/.npm \
 FROM deps AS dev
 COPY tsconfig.base.json ./
 COPY backend/ backend/
+RUN mkdir -p /app/backend/uploads
 WORKDIR /app/backend
 EXPOSE 4000 9229
 CMD ["npx", "tsx", "watch", "src/server.ts"]
@@ -61,6 +62,9 @@ COPY --from=prod-deps /app/node_modules ./node_modules
 COPY --from=prod-deps /app/backend/node_modules ./backend/node_modules
 COPY --from=build /app/backend/dist ./backend/dist
 COPY backend/package.json ./backend/package.json
+# Upload directory for the local ObjectStorage adapter (API-027). Created here, owned by the
+# runtime user, so a named volume mounted on it starts with the right ownership.
+RUN mkdir -p /app/backend/uploads && chown 1000:1000 /app/backend/uploads
 WORKDIR /app/backend
 # Numeric UID of the image's `node` user, so Kubernetes runAsNonRoot can verify it.
 USER 1000:1000

@@ -15,6 +15,7 @@ scripts
 **/reports
 **/*.tsbuildinfo
 **/*.log
+backend/uploads
 .env
 .env.*
 !.env.example

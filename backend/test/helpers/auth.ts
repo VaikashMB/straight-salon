@@ -30,10 +30,16 @@ export async function createUser(
 export async function loginAs(
   role: Role,
   overrides: Partial<UserDoc> = {},
+  claims: { staffId?: string } = {},
 ): Promise<{ user: UserDoc; token: string; header: string }> {
   const user = await createUser({ role, ...overrides });
-  const token = await accessTokens.sign({ userId: user._id.toHexString(), role });
+  const token = await accessTokens.sign({ userId: user._id.toHexString(), role, ...claims });
   return { user, token, header: `Bearer ${token}` };
+}
+
+// A bearer header for an existing user (e.g. a stylist whose profile was created first).
+export async function bearerFor(user: UserDoc, claims: { staffId?: string } = {}): Promise<string> {
+  return `Bearer ${await accessTokens.sign({ userId: user._id.toHexString(), role: user.role, ...claims })}`;
 }
 
 export const CSRF = { 'X-Requested-With': 'straight-salon-web' } as const;

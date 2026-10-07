@@ -7,7 +7,8 @@
 - Auth header: `Authorization: Bearer <accessToken>`. Refresh token travels only in the `ss_rt` httpOnly cookie.
 - Every response includes `X-Request-Id`.
 - Errors: RFC 7807 (see 03-backend §4).
-- Auth column legend: `Public`, `Auth` (any logged-in user), or role list.
+- Auth column legend: `Public`, `Auth` (any logged-in user), or role list. Some public reads also accept an optional bearer token that unlocks an ADMIN view (`includeInactive=true`, inactive entries, admin fields); a token that is sent must be valid (401 otherwise), and `includeInactive=true` without ADMIN is 401/403. These admin views are never cached.
+- Unpaginated lists (categories, holidays, staff, time-off) return a bare JSON array; paginated lists use the envelope in 03 §8.
 
 ## 2. OpenAPI generation rules
 - OpenAPI **3.1** document generated at runtime from Zod schemas using `zod-to-openapi`. Each module registers its paths in `*.routes.ts` via the shared `registry`.
@@ -46,7 +47,7 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 ### Settings & holidays (`tags: Settings`)
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
-| API-016 | `GET /settings/public` | Public | Name, address, contact, hours, timezone, currency. |
+| API-016 | `GET /settings/public` | Public | Name, address, contact, hours, timezone, currency, plus the public booking policy the wizard needs: `slotGranularityMin`, `minLeadTimeMin`, `maxAdvanceDays`, `cancellationCutoffMin` (decision 2026-10-06). |
 | API-017 | `GET /settings` | ADMIN | Full settings. |
 | API-018 | `PUT /settings` | ADMIN | Update settings (validates BR-013 against existing services). 422 if `timezone` changes while future active bookings exist (FR-080). |
 | API-019 | `GET /holidays?from&to` | Public | |
@@ -55,7 +56,7 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 ### Catalog (`tags: Catalog`)
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
-| API-021 | `GET /categories` | Public | Active categories, sorted. |
+| API-021 | `GET /categories` | Public | Active categories, sorted by `sortOrder`, then name (ADMIN can pass `includeInactive=true`). |
 | API-022 | `POST/PATCH/DELETE /categories[/{id}]` | ADMIN | Delete = deactivate. |
 | API-023 | `GET /services?categoryId&q&page` | Public | Active services (admins can pass `includeInactive=true`). |
 | API-024 | `GET /services/{idOrSlug}` | Public | Includes stylists who perform it and rating. |
@@ -66,8 +67,8 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 ### Staff (`tags: Staff`)
 | ID | Method & path | Auth | Description |
 |---|---|---|---|
-| API-030 | `GET /staff?serviceId` | Public | Active stylists (public fields only). |
-| API-031 | `GET /staff/{id}` | Public | Profile + services + rating. |
+| API-030 | `GET /staff?serviceId` | Public | Active stylists (public fields only). ADMIN can pass `includeInactive=true` for everyone, with `userId` and `isActive`. |
+| API-031 | `GET /staff/{id}` | Public | Profile + services + rating. Deactivated stylists are 404, except for ADMIN (admin fields included). |
 | API-032 | `POST /staff` / `PATCH /staff/{id}` | ADMIN | Create staff profile (linked to STAFF user), update, deactivate (BR-014). |
 | API-033 | `GET /staff/{id}/schedule` | ADMIN, RECEPTIONIST, own STAFF | Weekly schedule. |
 | API-034 | `PUT /staff/{id}/schedule` | ADMIN | Replace weekly schedule. |
@@ -141,7 +142,8 @@ Every `POST /auth/*` requires the header `X-Requested-With: straight-salon-web` 
 
 ### Ops (`tags: Ops`, outside `/api/v1`)
 `GET /health/live`, `GET /health/ready`, `GET /metrics`, `GET /api/docs`, `GET /api/docs/openapi.json`.
+`GET /uploads/{key}` serves images stored by the local ObjectStorage adapter (API-027): read-only, `Cross-Origin-Resource-Policy: cross-origin` so the frontend origin can embed them, long-cached (random names never change). Misses are 404 problems. Not in OpenAPI (static files); an S3 adapter replaces it with bucket/CDN URLs.
 
 ## 4. Standard error codes
-`VALIDATION_FAILED`, `UNAUTHENTICATED`, `TOKEN_EXPIRED`, `FORBIDDEN`, `NOT_FOUND`, `DUPLICATE`, `STALE_VERSION`, `SLOT_UNAVAILABLE`, `OUTSIDE_BUSINESS_HOURS`, `LEAD_TIME_VIOLATION`, `ADVANCE_WINDOW_VIOLATION`, `CUTOFF_PASSED`, `STAFF_CANNOT_PERFORM_SERVICE`, `BOOKING_LIMIT_REACHED`, `INVALID_STATUS_TRANSITION`, `PAYMENT_MISMATCH`, `REVIEW_NOT_ALLOWED`, `RATE_LIMITED`, `IDEMPOTENCY_KEY_REUSED`, `INVALID_RESET_TOKEN` (400, API-007), `PHONE_ALREADY_REGISTERED` (409, FR-001), `ACTIVE_BOOKINGS_EXIST` (422; holiday, time-off, stylist deactivation (BR-014) and timezone change without `force`), `INVALID_FILE` (400/413, API-027), `PAYLOAD_TOO_LARGE` (413, JSON body over 100 kb), `TEMPORARILY_UNAVAILABLE` (503), `INTERNAL_ERROR`.
+`VALIDATION_FAILED`, `UNAUTHENTICATED`, `TOKEN_EXPIRED`, `FORBIDDEN`, `NOT_FOUND`, `DUPLICATE`, `STALE_VERSION`, `SLOT_UNAVAILABLE`, `OUTSIDE_BUSINESS_HOURS`, `LEAD_TIME_VIOLATION`, `ADVANCE_WINDOW_VIOLATION`, `CUTOFF_PASSED`, `STAFF_CANNOT_PERFORM_SERVICE`, `BOOKING_LIMIT_REACHED`, `INVALID_STATUS_TRANSITION`, `PAYMENT_MISMATCH`, `REVIEW_NOT_ALLOWED`, `RATE_LIMITED`, `IDEMPOTENCY_KEY_REUSED`, `INVALID_RESET_TOKEN` (400, API-007), `PHONE_ALREADY_REGISTERED` (409, FR-001), `ACTIVE_BOOKINGS_EXIST` (422; holiday, time-off, stylist deactivation (BR-014) and timezone change without `force`), `INVALID_FILE` (400/413, API-027), `INVALID_DURATION` (422; service duration not a multiple of `slotGranularityMin`, BR-013, on API-025 and on API-018 granularity changes), `PAYLOAD_TOO_LARGE` (413, JSON body over 100 kb), `TEMPORARILY_UNAVAILABLE` (503), `INTERNAL_ERROR`.
 The frontend maps codes (not messages) to user-facing text.

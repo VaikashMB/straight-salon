@@ -8,6 +8,7 @@ import { closeRedis, createRedisClient, pingRedis } from './shared/cache/redis.j
 import { outboxRepository } from './shared/events/outbox.repository.js';
 import { createProcessLogger, loadEnvOrExit, registerShutdown } from './shared/lifecycle/index.js';
 import { createMetrics } from './shared/metrics/index.js';
+import { createLocalStorage } from './shared/storage/objectStorage.js';
 import { systemClock } from './shared/time/clock.js';
 
 const env = loadEnvOrExit('api');
@@ -25,6 +26,7 @@ logger.info(
     metricsEnabled: env.METRICS_ENABLED,
     migrateOnStart: env.MIGRATE_ON_START,
     cookieSecure: env.COOKIE_SECURE,
+    uploadsDir: env.UPLOADS_DIR,
   },
   'Starting API',
 );
@@ -64,12 +66,15 @@ const app = createApp({
     corsOrigins: env.CORS_ORIGINS,
     swaggerEnabled: env.SWAGGER_ENABLED,
     metricsEnabled: env.METRICS_ENABLED,
+    uploadsDir: env.UPLOADS_DIR,
   },
   apiRouter: buildApiRouter({
     connection: mongoConnection,
     redis,
     clock: systemClock,
     logger,
+    metrics,
+    storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
     config: {
       accessToken: {
         secret: env.JWT_ACCESS_SECRET,
@@ -82,6 +87,7 @@ const app = createApp({
       cookies: { secure: env.COOKIE_SECURE, domain: env.COOKIE_DOMAIN },
       outboxEncryptionKey: env.OUTBOX_ENCRYPTION_KEY,
       rateLimit: { windowMs: env.RATE_LIMIT_WINDOW_MS, max: env.RATE_LIMIT_MAX },
+      cacheEnabled: env.CACHE_ENABLED,
     },
   }),
 });

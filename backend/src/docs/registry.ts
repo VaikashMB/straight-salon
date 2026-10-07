@@ -43,12 +43,19 @@ export const ProblemSchema = registry.register(
 export const MoneySchema = registry.register(
   'Money',
   z.object({
-    amountMinor: z.number().int().openapi({ example: 50000, description: 'Smallest currency unit' }),
+    amountMinor: z
+      .number()
+      .int()
+      .openapi({ example: 50000, description: 'Smallest currency unit' }),
     currency: z.string().length(3).openapi({ example: 'INR', description: 'ISO 4217' }),
   }),
 );
 
 registry.register('PaginationMeta', PaginationMetaSchema);
+
+// Public endpoints where a bearer token unlocks an admin view (e.g. includeInactive=true):
+// an empty requirement means "no auth" is also acceptable.
+export const OPTIONAL_BEARER: Record<string, string[]>[] = [{}, { bearerAuth: [] }];
 
 // Standard error response entry for registerPath({ responses }).
 export function problemResponse(description: string) {

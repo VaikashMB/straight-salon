@@ -6,7 +6,7 @@
 - ODM: Mongoose `[Mongo][Node]`. Every schema has `timestamps: true` (`createdAt`, `updatedAt`, stored UTC).
 - Collection names: `snake_case`, plural. Field names: `camelCase`.
 - IDs: MongoDB `ObjectId`. API exposes them as `id` (string).
-- Soft delete via `isActive` / `deletedAt` for business entities; hard deletes only for tokens and transient data.
+- Soft delete via `isActive` / `deletedAt` for business entities; hard deletes only for tokens and transient data. Exception (decision 2026-10-06): calendar entries that nothing references, `holidays` and `time_off`, are hard-deleted by their DELETE endpoints; the audit row keeps the full `before` snapshot. (A soft-deleted holiday would also block the unique `date` index.)
 - Money: integer minor units (`priceMinor: 50000` = ₹500.00 / $500.00 depending on currency setting).
 - Optimistic concurrency: enable Mongoose `optimisticConcurrency: true` on `bookings`, `services`, `staff`, `settings`.
 - Every query used by an endpoint must be backed by an index listed here. Add new indexes to this file when adding queries.
@@ -65,7 +65,8 @@ Indexes: `{ tokenHash: 1 } unique`, `{ userId: 1 }`, `{ family: 1 }`, TTL `{ exp
 | `isActive` | bool | |
 | `ratingAvg`, `ratingCount` | number | denormalised, updated by event consumer |
 
-Indexes: `{ slug: 1 } unique`, `{ categoryId: 1, isActive: 1 }`, text index on `name, description`.
+Indexes: `{ slug: 1 } unique`, `{ categoryId: 1, isActive: 1 }`, text index on `name, description`, `{ name: 1 } unique partial (isActive: true)` (enforces "unique among active" and serves the active list sorted by name).
+Slugs are generated from the name on create (`hair-colour-global`, then `-2`, `-3` on collision) and stay fixed on rename, so URLs remain stable.
 
 ### 2.6 `staff`
 | Field | Type | Rules |
@@ -78,7 +79,7 @@ Indexes: `{ slug: 1 } unique`, `{ categoryId: 1, isActive: 1 }`, text index on `
 | `isActive` | bool | |
 | `ratingAvg`, `ratingCount` | number | denormalised |
 
-Indexes: `{ userId: 1 } unique`, `{ serviceIds: 1, isActive: 1 }`.
+Indexes: `{ userId: 1 } unique`, `{ serviceIds: 1, isActive: 1 }`, `{ isActive: 1, displayName: 1 }` (public list, sorted).
 
 ### 2.7 `staff_schedules`
 One document per staff member.

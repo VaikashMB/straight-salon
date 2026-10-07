@@ -27,6 +27,29 @@ export function authenticate(tokens: AccessTokenService): RequestHandler {
   };
 }
 
+// For public endpoints that also serve an admin view (e.g. includeInactive=true): no header is
+// fine, but a header that is present must be valid, so a stale token is not silently ignored.
+export function optionalAuthenticate(tokens: AccessTokenService): RequestHandler {
+  const required = authenticate(tokens);
+  return (req, res, next) => {
+    if (req.get('authorization') === undefined) {
+      next();
+      return;
+    }
+    return required(req, res, next);
+  };
+}
+
+// Admin-only switches on public endpoints: 401 when anonymous, 403 for other roles.
+export function assertPermission(auth: AuthContext | undefined, permission: Permission): void {
+  if (!auth) throw new UnauthorizedError();
+  if (!hasPermission(auth.role, permission)) throw new ForbiddenError();
+}
+
+export function canDo(auth: AuthContext | undefined, permission: Permission): boolean {
+  return auth !== undefined && hasPermission(auth.role, permission);
+}
+
 // authorize: the role must hold at least one of the listed permissions (06 §3).
 export function authorize(...permissions: Permission[]): RequestHandler {
   return (req, _res, next) => {

@@ -4,11 +4,14 @@ import RedisMock from 'ioredis-mock';
 import mongoose from 'mongoose';
 import { createApp, type AppConfig } from '../../src/app.js';
 import { buildApiRouter, type ModulesConfig } from '../../src/modules/index.js';
+import type { ActiveBookingsGate } from '../../src/modules/bookings/bookings.gate.js';
 import type { ReadinessReport, ReadinessService } from '../../src/modules/health/health.service.js';
-import { createMetrics } from '../../src/shared/metrics/index.js';
+import { createMetrics, type Metrics } from '../../src/shared/metrics/index.js';
+import type { ObjectStorage } from '../../src/shared/storage/objectStorage.js';
 import { systemClock, type Clock } from '../../src/shared/time/clock.js';
 import { encryptionKey } from '../factories/index.js';
 import { captureLogger } from '../helpers/logger.js';
+import { createMemoryStorage } from '../helpers/storage.js';
 
 // Builds the real app with test dependencies (10-testing §3).
 
@@ -27,15 +30,21 @@ export function testModulesConfig(overrides: Partial<ModulesConfig> = {}): Modul
     cookies: { secure: false },
     outboxEncryptionKey: encryptionKey(),
     rateLimit: { windowMs: 60_000, max: 10_000 },
+    cacheEnabled: true,
     ...overrides,
   };
 }
 
 export function buildTestApp(
-  overrides: { config?: Partial<AppConfig>; readiness?: ReadinessService; apiRouter?: Router } = {},
+  overrides: {
+    config?: Partial<AppConfig>;
+    readiness?: ReadinessService;
+    apiRouter?: Router;
+    metrics?: Metrics;
+  } = {},
 ) {
   const { logger, lines } = captureLogger();
-  const metrics = createMetrics({ defaultMetrics: false });
+  const metrics = overrides.metrics ?? createMetrics({ defaultMetrics: false });
   const readiness: ReadinessService = overrides.readiness ?? {
     check: () =>
       Promise.resolve<ReadinessReport>({
@@ -66,18 +75,30 @@ export function buildApiTestApp(
     clock?: Clock;
     modules?: Partial<ModulesConfig>;
     redis?: InstanceType<typeof RedisMock>;
+    storage?: ObjectStorage;
+    bookingsGate?: ActiveBookingsGate;
+    config?: Partial<AppConfig>;
   } = {},
 ) {
   // ioredis-mock instances share data per host; a unique host isolates each test app.
   const redis = options.redis ?? new RedisMock({ host: `test-${randomUUID()}` });
   const { logger, lines } = captureLogger();
+  const metrics = createMetrics({ defaultMetrics: false });
+  const storage = options.storage ?? createMemoryStorage();
   const apiRouter = buildApiRouter({
     connection: mongoose.connection,
     redis,
     clock: options.clock ?? systemClock,
     logger,
+    metrics,
+    storage,
     config: testModulesConfig(options.modules),
+    ...(options.bookingsGate ? { bookingsGate: options.bookingsGate } : {}),
   });
-  const built = buildTestApp({ apiRouter });
-  return { ...built, redis, moduleLogs: lines };
+  const built = buildTestApp({
+    apiRouter,
+    metrics,
+    ...(options.config ? { config: options.config } : {}),
+  });
+  return { ...built, redis, storage, moduleLogs: lines };
 }
