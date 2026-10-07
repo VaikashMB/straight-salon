@@ -53,9 +53,9 @@ backend/src/
 │   ├── staff/                 # staff profiles, schedules, time-off
 │   ├── holidays/
 │   ├── availability/
-│   ├── bookings/              # Phase 4 ships only bookings.gate.ts: the ActiveBookingsGate port settings/holidays/staff
-│   │                          #   use for ACTIVE_BOOKINGS_EXIST / force (no-op until Phase 5 implements it)
-│   ├── payments/              # recording payments on bookings
+│   ├── bookings/              # also bookings.gate.ts: the ActiveBookingsGate port settings/holidays/staff use for
+│   │                          #   ACTIVE_BOOKINGS_EXIST / force, implemented by the bookings service
+│   ├── payments/              # recording payments on bookings (through the bookings service, no own collection)
 │   ├── reviews/
 │   ├── notifications/         # templates, providers (email/sms/mock), sender
 │   ├── reports/               # daily_stats read model + queries + CSV
@@ -225,4 +225,4 @@ Implemented by `registerShutdown(logger, steps)` in `shared/lifecycle`, shared b
 - Single-resource responses return the object directly (no envelope).
 
 ## 9. Idempotency
-`POST /bookings` and `POST /bookings/{id}/payment` accept an optional `Idempotency-Key` header. The first response is cached in Redis for 24h under `ss:v1:idem:{userId}:{key}` (key builder in `shared/cache/keys.ts`, 08 §2); repeats return the stored response with header `Idempotent-Replayed: true`. Same key with a different body → 422.
+`POST /bookings` and `POST /bookings/{id}/payment` accept an optional `Idempotency-Key` header. The first response is cached in Redis for 24h under `ss:v1:idem:{userId}:{key}` (key builder in `shared/cache/keys.ts`, 08 §2); repeats return the stored response with header `Idempotent-Replayed: true`. Same key with a different body → 422 `IDEMPOTENCY_KEY_REUSED`. Details (decision 2026-10-07, `shared/http/idempotency.ts`): the key is reserved (`SET NX`, 60 s) before the request runs, so a repeat while the first is still running gets 409 `IDEMPOTENCY_KEY_REUSED` (a double-clicked confirm cannot book two stylists via "any"); only 2xx responses are stored, an error releases the key so the client can retry with it; keys are 8–100 characters of `[A-Za-z0-9_-]` (400 otherwise); if Redis is unreachable the request runs without idempotency (warn, at most once a minute).

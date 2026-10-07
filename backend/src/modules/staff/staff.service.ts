@@ -4,7 +4,7 @@ import type { AuthContext } from '../../shared/auth/accessToken.js';
 import { assertPermission, canDo } from '../../shared/auth/middleware.js';
 import { hasPermission, type Permission } from '../../shared/auth/permissions.js';
 import type { Cache } from '../../shared/cache/cache.js';
-import { cacheKeys, cacheTags } from '../../shared/cache/keys.js';
+import { availabilityTagsFor, cacheKeys, cacheTags } from '../../shared/cache/keys.js';
 import { bumpStaffDayGuards } from '../../shared/db/staffDayGuard.js';
 import { withTransaction } from '../../shared/db/withTransaction.js';
 import {
@@ -33,7 +33,7 @@ import {
   toStylistSummary,
   toTimeOffDto,
 } from './staff.mapper.js';
-import type { StaffDoc } from './staff.model.js';
+import type { ScheduleDay, StaffDoc } from './staff.model.js';
 import type { StaffChanges, StaffRepository } from './staff.repository.js';
 import type {
   CreateStaffBody,
@@ -63,7 +63,26 @@ export interface StaffService {
   // For other modules
   stylistsForService(serviceId: string): Promise<StylistSummaryDto[]>;
   findIdByUserId(userId: string): Promise<string | undefined>; // staffId access-token claim
+  // For availability and bookings (03 §5)
+  bookable(serviceIds: string[]): Promise<StaffBrief[]>; // active, can perform all, by name
+  briefs(ids: string[]): Promise<StaffBrief[]>; // any status
+  weeklySchedule(id: string): Promise<ScheduleDay[]>; // stored, or the salon-hours default
+  timeOffBetween(id: string, from: Date, to: Date): Promise<{ start: number; end: number }[]>;
 }
+
+export interface StaffBrief {
+  id: string;
+  displayName: string;
+  isActive: boolean;
+  serviceIds: string[];
+}
+
+const toBrief = (s: StaffDoc): StaffBrief => ({
+  id: s._id.toHexString(),
+  displayName: s.displayName,
+  isActive: s.isActive,
+  serviceIds: s.serviceIds.map((id) => id.toHexString()),
+});
 
 export interface StaffServiceDeps {
   repository: StaffRepository;
@@ -141,7 +160,12 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
     });
   }
 
-  const invalidateStaff = () => cache.invalidateTag(cacheTags.staff);
+  const invalidateTags = async (tags: string[]) => {
+    for (const tag of tags) await cache.invalidateTag(tag);
+  };
+  // Profile changes alter public reads and who can be booked (08 §4).
+  const invalidateStaff = (staffId: string) =>
+    invalidateTags([cacheTags.staff, ...availabilityTagsFor(staffId)]);
 
   async function loadProfile(staff: StaffDoc, admin: boolean): Promise<StaffProfileDto> {
     const services = await catalog.findServices(staff.serviceIds.map((id) => id.toHexString()));
@@ -250,7 +274,7 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
         await staffEvent(session, 'staff.updated', staff._id.toHexString());
         return staff;
       });
-      await invalidateStaff();
+      await invalidateStaff(created._id.toHexString());
       return toStaffDto(created, { admin: true });
     },
 
@@ -298,7 +322,7 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
         await staffEvent(session, 'staff.updated', id);
         return next;
       });
-      await invalidateStaff();
+      await invalidateStaff(id);
       return toStaffDto(updated, { admin: true });
     },
 
@@ -331,6 +355,7 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
         await staffEvent(session, 'staff.schedule_changed', id);
         return schedule;
       });
+      await invalidateTags(availabilityTagsFor(id));
       return toScheduleDto(id, saved);
     },
 
@@ -395,6 +420,7 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
         await staffEvent(session, 'staff.timeoff_changed', id, dates);
         return timeOff;
       });
+      await invalidateTags(availabilityTagsFor(id, dates));
       return toTimeOffDto(created);
     },
 
@@ -403,6 +429,7 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
       const timeOff = await repository.findTimeOff(timeOffId);
       if (timeOff?.staffId.toHexString() !== id) throw new NotFoundError('Time-off not found.');
       const { timezone } = await settings.get();
+      const dates = zonedDatesBetween(timeOff.startAt, timeOff.endAt, timezone);
 
       await withTransaction(connection, async (session) => {
         if (!(await repository.deleteTimeOff(timeOff._id, session))) {
@@ -419,13 +446,9 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
           },
           session,
         );
-        await staffEvent(
-          session,
-          'staff.timeoff_changed',
-          id,
-          zonedDatesBetween(timeOff.startAt, timeOff.endAt, timezone),
-        );
+        await staffEvent(session, 'staff.timeoff_changed', id, dates);
       });
+      await invalidateTags(availabilityTagsFor(id, dates));
     },
 
     async stylistsForService(serviceId) {
@@ -436,6 +459,29 @@ export function createStaffService(deps: StaffServiceDeps): StaffService {
     async findIdByUserId(userId) {
       const staff = Types.ObjectId.isValid(userId) ? await repository.findByUserId(userId) : null;
       return staff?._id.toHexString();
+    },
+
+    async bookable(serviceIds) {
+      if (!serviceIds.every((id) => Types.ObjectId.isValid(id))) return [];
+      return (await repository.listQualified(serviceIds)).map(toBrief);
+    },
+
+    async briefs(ids) {
+      const valid = ids.filter((id) => Types.ObjectId.isValid(id));
+      return valid.length === 0 ? [] : (await repository.findByIds(valid)).map(toBrief);
+    },
+
+    async weeklySchedule(id) {
+      const schedule = Types.ObjectId.isValid(id)
+        ? await repository.findSchedule(new Types.ObjectId(id))
+        : null;
+      return normaliseWeekly(schedule?.weekly ?? defaultWeekly(await settings.get()));
+    },
+
+    async timeOffBetween(id, from, to) {
+      if (!Types.ObjectId.isValid(id)) return [];
+      const blocks = await repository.listTimeOff(new Types.ObjectId(id), { from, to });
+      return blocks.map((t) => ({ start: t.startAt.getTime(), end: t.endAt.getTime() }));
     },
   };
 }

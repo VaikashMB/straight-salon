@@ -149,6 +149,8 @@ export function createCatalogService(deps: CatalogServiceDeps): CatalogService {
   async function invalidate(): Promise<void> {
     await cache.invalidateTag(cacheTags.catalog);
     await cache.invalidateTag(cacheTags.staff);
+    // Durations and which stylists qualify feed availability.
+    await cache.invalidateTag(cacheTags.availabilityAll);
   }
 
   async function applyCategoryChange(

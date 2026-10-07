@@ -1,4 +1,4 @@
-import mongoose, { type ClientSession, type QueryFilter, type Types } from 'mongoose';
+import mongoose, { Types, type ClientSession, type QueryFilter } from 'mongoose';
 import type { Role } from '../../config/constants.js';
 import { UserModel, type UserDoc, type UserPreferences } from './users.model.js';
 
@@ -39,6 +39,7 @@ export interface UsersRepository {
   findByIdWithPassword(id: string | Types.ObjectId): Promise<UserDoc | null>;
   findByEmail(email: string): Promise<UserDoc | null>;
   findByPhone(phone: string): Promise<UserDoc | null>;
+  findByIds(ids: string[]): Promise<UserDoc[]>;
   update(
     id: Types.ObjectId,
     changes: UserChanges,
@@ -91,6 +92,10 @@ export const usersRepository: UsersRepository = {
   findByIdWithPassword: (id) => UserModel.findById(id).select('+passwordHash').lean<UserDoc>(),
   findByEmail: (email) => UserModel.findOne({ email }).lean<UserDoc>(),
   findByPhone: (phone) => UserModel.findOne({ phone }).lean<UserDoc>(),
+  findByIds: (ids) =>
+    UserModel.find({
+      _id: mongoose.trusted({ $in: ids.map((id) => new Types.ObjectId(id)) }),
+    }).lean<UserDoc[]>(),
 
   update: (id, changes, session) =>
     UserModel.findByIdAndUpdate(

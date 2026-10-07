@@ -7,6 +7,7 @@ import { buildApiRouter, type ModulesConfig } from '../../src/modules/index.js';
 import type { ActiveBookingsGate } from '../../src/modules/bookings/bookings.gate.js';
 import type { ReadinessReport, ReadinessService } from '../../src/modules/health/health.service.js';
 import { createMetrics, type Metrics } from '../../src/shared/metrics/index.js';
+import type { RedisLock } from '../../src/shared/locks/redisLock.js';
 import type { ObjectStorage } from '../../src/shared/storage/objectStorage.js';
 import { systemClock, type Clock } from '../../src/shared/time/clock.js';
 import { encryptionKey } from '../factories/index.js';
@@ -77,6 +78,7 @@ export function buildApiTestApp(
     redis?: InstanceType<typeof RedisMock>;
     storage?: ObjectStorage;
     bookingsGate?: ActiveBookingsGate;
+    lock?: RedisLock;
     config?: Partial<AppConfig>;
   } = {},
 ) {
@@ -94,6 +96,7 @@ export function buildApiTestApp(
     storage,
     config: testModulesConfig(options.modules),
     ...(options.bookingsGate ? { bookingsGate: options.bookingsGate } : {}),
+    ...(options.lock ? { lock: options.lock } : {}),
   });
   const built = buildTestApp({
     apiRouter,

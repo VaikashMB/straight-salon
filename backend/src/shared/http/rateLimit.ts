@@ -78,3 +78,6 @@ export function rateLimit(options: RateLimitOptions): RequestHandler {
 }
 
 export const byIp = (req: Request): string | undefined => req.ip;
+
+// Per-user limits (e.g. POST /bookings 20/hour/user, 06 §4); place after authenticate.
+export const byUser = (req: Request): string | undefined => req.auth?.userId;

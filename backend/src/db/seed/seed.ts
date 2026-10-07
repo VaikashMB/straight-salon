@@ -1,5 +1,8 @@
 import { Types } from 'mongoose';
-import type { Role } from '../../config/constants.js';
+import type { BookingSource, BookingStatus, PaymentMethod, Role } from '../../config/constants.js';
+import { makeBookingRef } from '../../modules/bookings/bookings.mapper.js';
+import type { StatusChange } from '../../modules/bookings/bookings.model.js';
+import { bookingsRepository } from '../../modules/bookings/bookings.repository.js';
 import { catalogRepository } from '../../modules/catalog/catalog.repository.js';
 import { holidaysRepository } from '../../modules/holidays/holidays.repository.js';
 import { DEFAULT_SETTINGS, type SettingsFields } from '../../modules/settings/settings.model.js';
@@ -10,6 +13,7 @@ import { usersRepository } from '../../modules/users/users.repository.js';
 import { createPasswordHasher } from '../../shared/auth/password.js';
 import type { Logger } from '../../shared/logger/index.js';
 import { systemClock, type Clock } from '../../shared/time/clock.js';
+import { overlaps, weekdayOf } from '../../shared/time/slots.js';
 import { addDays, toZonedDate, zonedDateTime } from '../../shared/time/tz.js';
 
 // Seed data for local dev and e2e (02 §3). Grows with the build plan: Phase 3 seeded the admin;
@@ -379,6 +383,138 @@ export async function seedDatabase({
       createdBy: admin,
     });
     count('timeOff');
+  }
+
+  // Bookings over the past 14 days and the next 7, across all statuses, with payments on
+  // completed ones (02 §3, Phase 5). One booking per stylist per day, so none overlap.
+  if ((await bookingsRepository.search({ skip: 0, limit: 1, sort: { startAt: 1 } })).total === 0) {
+    const holidays = new Set(
+      (await holidaysRepository.list({ from: addDays(today, -14), to: addDays(today, 7) })).map(
+        (h) => h.date,
+      ),
+    );
+    const services = new Map(SERVICES.map((svc) => [svc.slug, svc]));
+    const customers = USERS.filter((u) => u.role === 'CUSTOMER').map((u) => userIds.get(u.key)!);
+    const reception = userIds.get('reception')!;
+    const futureBooked = new Map<string, number>();
+    const times = ['10:00', '11:30', '14:30', '16:00', '17:30'];
+    const methods: PaymentMethod[] = ['CASH', 'UPI', 'CARD', 'UPI', 'CASH', 'OTHER'];
+    const now = clock.now();
+    let n = 0;
+
+    for (let offset = -14; offset <= 7; offset++) {
+      const date = addDays(today, offset);
+      if (holidays.has(date)) continue;
+      for (const [index, member] of STAFF.entries()) {
+        if ((offset + index + 20) % 4 === 0) continue; // about three bookings a day
+        if (member.offOnMonday && weekdayOf(date) === MONDAY) continue;
+        const staffId = staffIds.get(member.user)!;
+        const slug = member.services[(offset + 20 + index) % member.services.length]!;
+        const svc = services.get(slug)!;
+        const startAt = zonedDateTime(date, times[(offset + 20 + index * 2) % times.length]!, tz);
+        const endAt = new Date(startAt.getTime() + svc.durationMin * 60_000);
+        const blocks = await staffRepository.listTimeOff(staffId, { from: startAt, to: endAt });
+        if (
+          blocks.some((b) =>
+            overlaps(
+              { start: b.startAt.getTime(), end: b.endAt.getTime() },
+              { start: startAt.getTime(), end: endAt.getTime() },
+            ),
+          )
+        )
+          continue;
+        n++;
+
+        const future = endAt.getTime() > now.getTime();
+        let status: BookingStatus = 'COMPLETED';
+        if (future) status = n % 8 === 0 ? 'CANCELLED' : 'BOOKED';
+        else if (n % 9 === 0) status = 'NO_SHOW';
+        else if (n % 7 === 0) status = 'CANCELLED';
+
+        // BR-009: at most 3 upcoming BOOKED per customer.
+        let customer = customers[n % customers.length]!;
+        if (status === 'BOOKED') {
+          for (
+            let k = 0;
+            (futureBooked.get(customer.toHexString()) ?? 0) >= 3 && k < customers.length;
+            k++
+          ) {
+            customer = customers[(n + k + 1) % customers.length]!;
+          }
+          futureBooked.set(
+            customer.toHexString(),
+            (futureBooked.get(customer.toHexString()) ?? 0) + 1,
+          );
+        }
+        const source: BookingSource = n % 5 === 0 ? 'WALK_IN' : n % 3 === 0 ? 'PHONE' : 'ONLINE';
+        const createdBy = source === 'ONLINE' ? customer : reception;
+        const createdAt = new Date(startAt.getTime() - 2 * 86_400_000);
+        const history: StatusChange[] = [
+          { status: 'BOOKED', at: createdAt, by: createdBy.toHexString() },
+        ];
+        const step = (st: BookingStatus, minutes: number) =>
+          history.push({
+            status: st,
+            at: new Date(startAt.getTime() + minutes * 60_000),
+            by: reception.toHexString(),
+          });
+        if (status === 'COMPLETED') {
+          step('CHECKED_IN', -5);
+          step('IN_SERVICE', 0);
+          step('COMPLETED', svc.durationMin);
+        }
+        if (status === 'NO_SHOW') step('NO_SHOW', 30);
+        if (status === 'CANCELLED') step('CANCELLED', -24 * 60);
+        const discountMinor = status === 'COMPLETED' && n % 6 === 0 ? 5_000 : 0;
+
+        await bookingsRepository.create({
+          bookingRef: makeBookingRef(date),
+          customerId: customer,
+          staffId,
+          services: [
+            {
+              serviceId: serviceIds.get(slug)!,
+              name: svc.name,
+              durationMin: svc.durationMin,
+              priceMinor: svc.priceMinor,
+            },
+          ],
+          startAt,
+          endAt,
+          blockedUntil: endAt, // bufferMin is 0 in the seeded settings
+          totalDurationMin: svc.durationMin,
+          totalPriceMinor: svc.priceMinor,
+          status,
+          statusHistory: history,
+          source,
+          payment:
+            status === 'COMPLETED'
+              ? {
+                  status: 'PAID',
+                  method: methods[n % methods.length]!,
+                  amountPaidMinor: svc.priceMinor - discountMinor,
+                  discountMinor,
+                  ...(discountMinor > 0 ? { discountReason: 'Loyalty discount' } : {}),
+                  recordedBy: reception,
+                  recordedAt: endAt,
+                }
+              : { status: 'UNPAID' },
+          reminders: {},
+          createdBy,
+          ...(status === 'CANCELLED'
+            ? {
+                cancellation: {
+                  at: history.at(-1)!.at,
+                  by: customer.toHexString(),
+                  reason: 'Plans changed',
+                  overridden: false,
+                },
+              }
+            : {}),
+        });
+        count('bookings');
+      }
+    }
   }
 
   log.info(

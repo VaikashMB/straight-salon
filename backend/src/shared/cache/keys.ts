@@ -48,9 +48,22 @@ export const cacheTags = {
   catalog: 'catalog',
   staff: 'staff',
   reports: 'reports',
+  // Availability (08 §3). Every availability entry carries `avail` (cleared by holiday,
+  // settings and catalog changes); per-stylist entries also `avail:{staffId}` (schedule and
+  // profile changes) and per-day `avail:{staffId}:{date}` (bookings, time-off).
+  availabilityAll: 'avail',
+  availabilityStaff: (staffId: string) => `avail:${staffId}`,
   availability: (staffId: string, date: string) => `avail:${staffId}:${date}`,
-  availableDays: (staffId: string) => `availdays:${staffId}`,
+  availableDays: (staffId: string /* or 'any' */) => `availdays:${staffId}`,
 };
+
+// Tags to clear when a stylist's free time changes: on `dates` only, or every date.
+export function availabilityTagsFor(staffId: string, dates?: string[]): string[] {
+  const days = dates
+    ? dates.map((date) => cacheTags.availability(staffId, date))
+    : [cacheTags.availabilityStaff(staffId)];
+  return [...days, cacheTags.availableDays(staffId), cacheTags.availableDays('any')];
+}
 
 // Metric/log label: the segment after the version ("catalog", "avail", ...), never the full key.
 export function keyPrefix(key: string): string {

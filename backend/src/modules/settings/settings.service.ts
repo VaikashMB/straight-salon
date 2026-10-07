@@ -139,6 +139,7 @@ export function createSettingsService(deps: SettingsServiceDeps): SettingsServic
       // 08 §4: invalidate after commit. Catalog prices carry the currency, so those go too.
       await cache.invalidateTag(cacheTags.settings);
       await cache.invalidateTag(cacheTags.catalog);
+      await cache.invalidateTag(cacheTags.availabilityAll); // hours, granularity, buffer, tz
       return toSettingsDto(saved);
     },
   };

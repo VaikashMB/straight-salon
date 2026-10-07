@@ -1,5 +1,7 @@
 import { Types, type Connection } from 'mongoose';
 import type { AuditService } from '../../shared/audit/audit.service.js';
+import type { Cache } from '../../shared/cache/cache.js';
+import { cacheTags } from '../../shared/cache/keys.js';
 import { withTransaction } from '../../shared/db/withTransaction.js';
 import { BusinessRuleError, ConflictError, NotFoundError } from '../../shared/errors/index.js';
 import type { Outbox } from '../../shared/events/outbox.js';
@@ -14,6 +16,9 @@ export interface HolidaysService {
   list(query: ListHolidaysQuery): Promise<HolidayDto[]>;
   create(body: CreateHolidayBody): Promise<HolidayDto>;
   delete(id: string): Promise<void>;
+  // For availability and bookings (BR-005)
+  isHoliday(date: string): Promise<boolean>;
+  datesBetween(from: string, to: string): Promise<Set<string>>;
 }
 
 export interface HolidaysServiceDeps {
@@ -21,12 +26,13 @@ export interface HolidaysServiceDeps {
   audit: AuditService;
   outbox: Outbox;
   connection: Connection;
+  cache: Pick<Cache, 'invalidateTag'>;
   settings: Pick<SettingsService, 'get'>;
   bookings: ActiveBookingsGate;
 }
 
 export function createHolidaysService(deps: HolidaysServiceDeps): HolidaysService {
-  const { repository, audit, outbox, connection, settings, bookings } = deps;
+  const { repository, audit, outbox, connection, cache, settings, bookings } = deps;
 
   return {
     async list(query) {
@@ -75,6 +81,8 @@ export function createHolidaysService(deps: HolidaysServiceDeps): HolidaysServic
         });
         return holiday;
       });
+      // A closure changes availability for every stylist (08 §2).
+      await cache.invalidateTag(cacheTags.availabilityAll);
       return toHolidayDto(created);
     },
 
@@ -102,6 +110,15 @@ export function createHolidaysService(deps: HolidaysServiceDeps): HolidaysServic
           payload: { date: holiday.date },
         });
       });
+      await cache.invalidateTag(cacheTags.availabilityAll);
+    },
+
+    async isHoliday(date) {
+      return (await repository.findByDate(date)) !== null;
+    },
+
+    async datesBetween(from, to) {
+      return new Set((await repository.list({ from, to })).map((h) => h.date));
     },
   };
 }

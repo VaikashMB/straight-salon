@@ -1,9 +1,9 @@
 import type { ClientSession } from 'mongoose';
 
 // Port through which settings, holidays and staff ask about active bookings (API-018 timezone
-// change, API-020 holiday, API-032 deactivation / BR-014, API-036 time-off). The bookings
-// module implements it in Phase 5; until then no bookings exist, so the no-op gate is wired.
-// Modules depend on this interface only, never on the bookings repository (01 §3).
+// change, API-020 holiday, API-032 deactivation / BR-014, API-036 time-off). Implemented by the
+// bookings service (`bookingsService.gate`). Modules depend on this interface only, never on
+// the bookings repository (01 §3).
 
 // Active bookings (BOOKED, CHECKED_IN, IN_SERVICE) whose [startAt, blockedUntil) overlaps
 // [from, to). No `to` means "from `from` onwards".
@@ -19,8 +19,3 @@ export interface ActiveBookingsGate {
   // booking.cancelled events so customers are notified (BR-014). Returns how many.
   cancelActive(scope: ActiveBookingScope, reason: string, session: ClientSession): Promise<number>;
 }
-
-export const noActiveBookingsGate: ActiveBookingsGate = {
-  countActive: () => Promise.resolve(0),
-  cancelActive: () => Promise.resolve(0),
-};

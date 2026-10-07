@@ -49,6 +49,9 @@ export interface UsersService {
   findOrCreateWalkIn(body: WalkInBody): Promise<{ user: UserDto; created: boolean }>;
   getForStaff(id: string, viewer: AuthContext): Promise<UserDto>;
   adminUpdate(id: string, body: AdminUpdateBody, actor: AuthContext): Promise<UserDto>;
+  // For bookings
+  findByIds(ids: string[]): Promise<UserDoc[]>;
+  idsByPhonePrefix(prefix: string): Promise<string[]>;
 }
 
 export interface UsersServiceDeps {
@@ -298,6 +301,21 @@ export function createUsersService(deps: UsersServiceDeps): UsersService {
         return next;
       });
       return toUserDto(updated);
+    },
+
+    async findByIds(ids) {
+      const valid = ids.filter((id) => Types.ObjectId.isValid(id));
+      return valid.length === 0 ? [] : repository.findByIds(valid);
+    },
+
+    async idsByPhonePrefix(prefix) {
+      const { data } = await repository.search({
+        q: prefix,
+        skip: 0,
+        limit: 50,
+        sort: { createdAt: -1 },
+      });
+      return data.map((u) => u._id.toHexString());
     },
   };
 }

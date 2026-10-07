@@ -31,7 +31,8 @@ Cached slot lists are **independent of the caller and the clock**: they do not a
 Since Redis has no native tags, maintain a Redis SET per tag listing keys:
 - `cacheAside(key, ttl, loader, { tags: ['catalog'] })` also does `SADD ss:v1:tag:catalog key` (with the tag set TTL ≥ longest member TTL).
 - `invalidateTag('catalog')` → `SMEMBERS` → `UNLINK` keys + tag set (pipeline).
-- Tag names: `settings`, `catalog`, `staff`, `avail:{staffId}:{date}`, `availdays:{staffId}`, `reports`.
+- Tag names: `settings`, `catalog`, `staff`, `avail` (every availability entry; cleared by holiday, settings and catalog changes), `avail:{staffId}` (all of a stylist's day entries; schedule and profile changes), `avail:{staffId}:{date}` (bookings, time-off), `availdays:{staffId|any}`, `reports`. A booking or time-off change for stylist X on date D clears `avail:X:D`, `availdays:X` and `availdays:any` (`availabilityTagsFor` in `keys.ts`).
+- The available-days entry stores, per date, the latest bookable start across the candidates; the caller's cut-off (now or now + lead time) is compared after the read, so the entry stays caller- and clock-independent (like 08 §2 for slots).
 
 ## 4. Where invalidation happens
 - **Synchronously after commit** in the service for the instance that made the change (so the user who made the change sees fresh data immediately).

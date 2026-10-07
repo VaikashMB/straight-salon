@@ -8,7 +8,10 @@ import { TEST_ACCESS_TOKEN } from '../setup/testApp.js';
 // 10-testing §3 helpers/auth.ts: create a user straight in the DB and get a bearer token for it.
 
 export const TEST_PASSWORD = 'Fade-and-Trim7';
-const accessTokens = createAccessTokenService(TEST_ACCESS_TOKEN);
+// Signed on the real clock but valid for a year, so apps running on a frozen test clock
+// (e.g. booking scenarios dated after today) still accept them. Expiry itself is tested with
+// tokens the app issues.
+const accessTokens = createAccessTokenService({ ...TEST_ACCESS_TOKEN, ttl: '365d' });
 let counter = 0;
 
 export async function createUser(

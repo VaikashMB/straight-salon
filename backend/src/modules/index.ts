@@ -7,9 +7,11 @@ import { createAccessTokenService, type AccessTokenConfig } from '../shared/auth
 import type { CookieConfig } from '../shared/auth/cookies.js';
 import { createPasswordHasher } from '../shared/auth/password.js';
 import { createCache } from '../shared/cache/cache.js';
+import { idempotency } from '../shared/http/idempotency.js';
+import { createRedisLock, type RedisLock } from '../shared/locks/redisLock.js';
 import { createOutbox } from '../shared/events/outbox.js';
 import { outboxRepository } from '../shared/events/outbox.repository.js';
-import { byIp, rateLimit } from '../shared/http/rateLimit.js';
+import { byIp, byUser, rateLimit } from '../shared/http/rateLimit.js';
 import type { Logger } from '../shared/logger/index.js';
 import type { Metrics } from '../shared/metrics/index.js';
 import type { ObjectStorage } from '../shared/storage/objectStorage.js';
@@ -19,7 +21,17 @@ import { authRouter } from './auth/auth.routes.js';
 import { createAuthService } from './auth/auth.service.js';
 import { createLoginThrottle } from './auth/loginThrottle.js';
 import { tokensRepository } from './auth/tokens.repository.js';
-import { noActiveBookingsGate, type ActiveBookingsGate } from './bookings/bookings.gate.js';
+import { createAvailabilityController } from './availability/availability.controller.js';
+import { availabilityRouter } from './availability/availability.routes.js';
+import { createAvailabilityService } from './availability/availability.service.js';
+import type { ActiveBookingsGate } from './bookings/bookings.gate.js';
+import { createBookingsController } from './bookings/bookings.controller.js';
+import { bookingsRepository } from './bookings/bookings.repository.js';
+import { bookingsRouter } from './bookings/bookings.routes.js';
+import { createBookingsService } from './bookings/bookings.service.js';
+import { createPaymentsController } from './payments/payments.controller.js';
+import { paymentsRouter } from './payments/payments.routes.js';
+import { createPaymentsService } from './payments/payments.service.js';
 import { createCatalogController } from './catalog/catalog.controller.js';
 import { catalogRepository } from './catalog/catalog.repository.js';
 import { catalogRouter } from './catalog/catalog.routes.js';
@@ -52,27 +64,29 @@ export interface ModulesConfig {
   outboxEncryptionKey: string;
   rateLimit: { windowMs: number; max: number };
   cacheEnabled: boolean;
+  bookingRateLimit?: { windowMs: number; max: number }; // default 20/hour/user (06 §4)
 }
 
 export interface ModulesDeps {
   connection: Connection;
-  redis: Pick<Redis, 'eval' | 'get' | 'del' | 'smembers' | 'multi'>;
+  redis: Pick<Redis, 'eval' | 'get' | 'del' | 'set' | 'smembers' | 'multi'>;
   clock: Clock;
   logger: Logger;
   metrics: Pick<Metrics, 'cacheHits' | 'cacheMisses' | 'cacheErrors'>;
   storage: ObjectStorage;
   config: ModulesConfig;
-  // Active-booking checks for settings/holidays/staff. The bookings module provides the real
-  // gate in Phase 5; until then no bookings exist. Tests inject fakes.
+  // Test seams: replace the active-booking checks (settings/holidays/staff) or the booking lock.
   bookingsGate?: ActiveBookingsGate;
+  lock?: RedisLock;
 }
+
+export const BOOKING_RATE_LIMIT = { windowMs: 60 * 60_000, max: 20 };
 
 // 06 §4: login, register and forgot-password: 10 requests / 15 min / IP, fail closed.
 export const AUTH_RATE_LIMIT = { windowMs: 15 * 60_000, max: 10 };
 
 export function buildApiRouter(deps: ModulesDeps): Router {
   const { connection, redis, clock, logger, config } = deps;
-  const bookings = deps.bookingsGate ?? noActiveBookingsGate;
   const cache = createCache({
     redis,
     enabled: config.cacheEnabled,
@@ -96,8 +110,14 @@ export function buildApiRouter(deps: ModulesDeps): Router {
     hasher,
     connection,
   });
-  // settings <-> catalog and catalog <-> staff need each other; the ports below resolve the
-  // other service at call time (requests only arrive after every service exists).
+  // Some services need each other (settings <-> catalog, catalog <-> staff, availability <->
+  // bookings, and the active-booking gate). The ports below resolve the other service at call
+  // time; requests only arrive after every service exists.
+  const bookings: ActiveBookingsGate = deps.bookingsGate ?? {
+    countActive: (scope, session) => bookingsService.gate.countActive(scope, session),
+    cancelActive: (scope, reason, session) =>
+      bookingsService.gate.cancelActive(scope, reason, session),
+  };
   const settings = createSettingsService({
     repository: settingsRepository,
     audit,
@@ -123,6 +143,7 @@ export function buildApiRouter(deps: ModulesDeps): Router {
     audit,
     outbox,
     connection,
+    cache,
     settings,
     bookings,
   });
@@ -137,6 +158,38 @@ export function buildApiRouter(deps: ModulesDeps): Router {
     catalog,
     users,
     bookings,
+  });
+  const availability = createAvailabilityService({
+    cache,
+    clock,
+    settings,
+    holidays,
+    staff,
+    catalog,
+    bookings: {
+      activeIntervals: (staffId, from, to) => bookingsService.activeIntervals(staffId, from, to),
+    },
+  });
+  const bookingsService = createBookingsService({
+    repository: bookingsRepository,
+    auditLog: auditRepository,
+    audit,
+    outbox,
+    cache,
+    lock: deps.lock ?? createRedisLock({ redis }),
+    connection,
+    clock,
+    settings,
+    availability,
+    staff,
+    users,
+  });
+  const payments = createPaymentsService({
+    bookings: bookingsService,
+    audit,
+    outbox,
+    connection,
+    clock,
   });
   const auth = createAuthService({
     users,
@@ -177,5 +230,32 @@ export function buildApiRouter(deps: ModulesDeps): Router {
   router.use(holidaysRouter({ controller: createHolidaysController(holidays), accessTokens }));
   router.use(catalogRouter({ controller: createCatalogController(catalog), accessTokens }));
   router.use(staffRouter({ controller: createStaffController(staff), accessTokens }));
+  router.use(
+    availabilityRouter({ controller: createAvailabilityController(availability), accessTokens }),
+  );
+  const idempotent = idempotency({ redis, logger });
+  router.use(
+    bookingsRouter({
+      controller: createBookingsController(bookingsService),
+      accessTokens,
+      idempotency: idempotent,
+      // Fails open like the global limit; booking creation fails closed on the lock (08 §5).
+      createLimiter: rateLimit({
+        scope: 'bookings',
+        ...(config.bookingRateLimit ?? BOOKING_RATE_LIMIT),
+        key: byUser,
+        failOpen: true,
+        redis,
+        logger,
+      }),
+    }),
+  );
+  router.use(
+    paymentsRouter({
+      controller: createPaymentsController(payments),
+      accessTokens,
+      idempotency: idempotent,
+    }),
+  );
   return router;
 }

@@ -41,6 +41,9 @@ export interface StaffRepository {
   list(filter: { serviceId?: string; includeInactive: boolean }): Promise<StaffDoc[]>;
   findById(id: string | Types.ObjectId): Promise<StaffDoc | null>;
   findByUserId(userId: string | Types.ObjectId): Promise<StaffDoc | null>;
+  findByIds(ids: string[]): Promise<StaffDoc[]>;
+  // Active stylists who perform every one of serviceIds, by name ({ serviceIds, isActive } index).
+  listQualified(serviceIds: string[]): Promise<StaffDoc[]>;
   create(staff: NewStaff, session?: ClientSession): Promise<StaffDoc>;
   // Optimistic concurrency (02 §1): 409 STALE_VERSION if the profile changed since it was read.
   update(
@@ -87,6 +90,17 @@ export const staffRepository: StaffRepository = {
   findById: (id) => StaffModel.findById(id).lean<StaffDoc>(),
   findByUserId: (userId) =>
     StaffModel.findOne({ userId: new Types.ObjectId(userId) }).lean<StaffDoc>(),
+  findByIds: (ids) =>
+    StaffModel.find({
+      _id: mongoose.trusted({ $in: ids.map((id) => new Types.ObjectId(id)) }),
+    }).lean<StaffDoc[]>(),
+  listQualified: (serviceIds) =>
+    StaffModel.find({
+      isActive: true,
+      serviceIds: mongoose.trusted({ $all: serviceIds.map((id) => new Types.ObjectId(id)) }),
+    })
+      .sort({ displayName: 1 })
+      .lean<StaffDoc[]>(),
   async create(staff, session) {
     const [created] = await StaffModel.create([staff], { session });
     return created!.toObject();

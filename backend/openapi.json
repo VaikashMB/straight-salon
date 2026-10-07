@@ -303,6 +303,486 @@
           "accessToken"
         ]
       },
+      "Availability": {
+        "type": "object",
+        "properties": {
+          "date": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "startAt": {
+                  "type": "string"
+                },
+                "staffIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "pattern": "^[a-f\\d]{24}$/i",
+                    "example": "6712c0f9a1b2c3d4e5f60789"
+                  }
+                }
+              },
+              "required": [
+                "startAt",
+                "staffIds"
+              ]
+            }
+          }
+        },
+        "required": [
+          "date",
+          "timezone",
+          "slots"
+        ],
+        "example": {
+          "date": "2026-10-12",
+          "timezone": "Asia/Kolkata",
+          "slots": [
+            {
+              "startAt": "2026-10-12T05:30:00.000Z",
+              "staffIds": [
+                "6712c0f9a1b2c3d4e5f60601"
+              ]
+            },
+            {
+              "startAt": "2026-10-12T05:45:00.000Z",
+              "staffIds": [
+                "6712c0f9a1b2c3d4e5f60601",
+                "6712c0f9a1b2c3d4e5f60602"
+              ]
+            }
+          ]
+        }
+      },
+      "AvailableDays": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "availableDates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Dates with at least one slot"
+          }
+        },
+        "required": [
+          "from",
+          "to",
+          "timezone",
+          "availableDates"
+        ],
+        "example": {
+          "from": "2026-10-12",
+          "to": "2026-10-18",
+          "timezone": "Asia/Kolkata",
+          "availableDates": [
+            "2026-10-12",
+            "2026-10-13",
+            "2026-10-15"
+          ]
+        }
+      },
+      "BookingStatus": {
+        "type": "string",
+        "enum": [
+          "BOOKED",
+          "CHECKED_IN",
+          "IN_SERVICE",
+          "COMPLETED",
+          "CANCELLED",
+          "NO_SHOW"
+        ],
+        "example": "BOOKED"
+      },
+      "Booking": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "pattern": "^[a-f\\d]{24}$/i",
+            "example": "6712c0f9a1b2c3d4e5f60789"
+          },
+          "bookingRef": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BookingStatus"
+          },
+          "startAt": {
+            "type": "string"
+          },
+          "endAt": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f\\d]{24}$/i",
+                "example": "6712c0f9a1b2c3d4e5f60789"
+              },
+              "name": {
+                "type": "string",
+                "description": "First name only for STAFF viewers"
+              },
+              "phone": {
+                "type": "string",
+                "description": "Masked for STAFF viewers"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "phone"
+            ]
+          },
+          "staff": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-f\\d]{24}$/i",
+                "example": "6712c0f9a1b2c3d4e5f60789"
+              },
+              "displayName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "displayName"
+            ]
+          },
+          "services": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "serviceId": {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "durationMin": {
+                  "type": "integer"
+                },
+                "price": {
+                  "$ref": "#/components/schemas/Money"
+                }
+              },
+              "required": [
+                "serviceId",
+                "name",
+                "durationMin",
+                "price"
+              ]
+            }
+          },
+          "total": {
+            "$ref": "#/components/schemas/Money"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "ONLINE",
+              "WALK_IN",
+              "PHONE"
+            ],
+            "example": "ONLINE"
+          },
+          "notes": {
+            "type": "string"
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "UNPAID",
+                  "PAID"
+                ]
+              },
+              "method": {
+                "type": "string",
+                "enum": [
+                  "CASH",
+                  "CARD",
+                  "UPI",
+                  "OTHER"
+                ],
+                "example": "UPI"
+              },
+              "amountPaid": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "discount": {
+                "$ref": "#/components/schemas/Money"
+              },
+              "discountReason": {
+                "type": "string"
+              },
+              "recordedAt": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "status"
+            ]
+          },
+          "cancellation": {
+            "type": "object",
+            "properties": {
+              "at": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              },
+              "overridden": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "at",
+              "overridden"
+            ]
+          },
+          "canCancel": {
+            "type": "boolean",
+            "description": "For the current user (BR-006), server-computed"
+          },
+          "canReschedule": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "bookingRef",
+          "status",
+          "startAt",
+          "endAt",
+          "customer",
+          "staff",
+          "services",
+          "total",
+          "source",
+          "payment",
+          "canCancel",
+          "canReschedule",
+          "createdAt"
+        ],
+        "example": {
+          "id": "6712c0f9a1b2c3d4e5f60789",
+          "bookingRef": "SS-261012-7KQ2",
+          "status": "BOOKED",
+          "startAt": "2026-10-12T05:30:00.000Z",
+          "endAt": "2026-10-12T06:30:00.000Z",
+          "customer": {
+            "id": "6712c0f9a1b2c3d4e5f60111",
+            "name": "Ananya R",
+            "phone": "+919876543212"
+          },
+          "staff": {
+            "id": "6712c0f9a1b2c3d4e5f60601",
+            "displayName": "Ravi"
+          },
+          "services": [
+            {
+              "serviceId": "6712c0f9a1b2c3d4e5f60501",
+              "name": "Haircut",
+              "durationMin": 45,
+              "price": {
+                "amountMinor": 40000,
+                "currency": "INR"
+              }
+            },
+            {
+              "serviceId": "6712c0f9a1b2c3d4e5f60502",
+              "name": "Beard Trim",
+              "durationMin": 15,
+              "price": {
+                "amountMinor": 15000,
+                "currency": "INR"
+              }
+            }
+          ],
+          "total": {
+            "amountMinor": 55000,
+            "currency": "INR"
+          },
+          "source": "ONLINE",
+          "payment": {
+            "status": "UNPAID"
+          },
+          "canCancel": true,
+          "canReschedule": true,
+          "createdAt": "2026-10-06T09:12:44.000Z"
+        }
+      },
+      "BookingList": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Booking"
+            }
+          },
+          "meta": {
+            "type": "object",
+            "properties": {
+              "page": {
+                "type": "integer"
+              },
+              "pageSize": {
+                "type": "integer"
+              },
+              "total": {
+                "type": "integer"
+              },
+              "totalPages": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "page",
+              "pageSize",
+              "total",
+              "totalPages"
+            ],
+            "example": {
+              "page": 1,
+              "pageSize": 20,
+              "total": 134,
+              "totalPages": 7
+            }
+          }
+        },
+        "required": [
+          "data",
+          "meta"
+        ]
+      },
+      "BookingHistory": {
+        "type": "object",
+        "properties": {
+          "statusHistory": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "status": {
+                  "$ref": "#/components/schemas/BookingStatus"
+                },
+                "at": {
+                  "type": "string"
+                },
+                "by": {
+                  "type": "string"
+                },
+                "note": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "status",
+                "at",
+                "by"
+              ]
+            }
+          },
+          "audit": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "at": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string",
+                  "example": "booking.reschedule"
+                },
+                "actor": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "role": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "role"
+                  ]
+                },
+                "diff": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "before": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": {}
+                },
+                "after": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "additionalProperties": {}
+                },
+                "metadata": {
+                  "type": "object",
+                  "additionalProperties": {}
+                }
+              },
+              "required": [
+                "at",
+                "action",
+                "actor",
+                "diff",
+                "before",
+                "after"
+              ]
+            }
+          }
+        },
+        "required": [
+          "statusHistory",
+          "audit"
+        ]
+      },
       "Category": {
         "type": "object",
         "properties": {
@@ -2040,6 +2520,1378 @@
           },
           "401": {
             "description": "Not authenticated",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/availability": {
+      "get": {
+        "tags": [
+          "Availability"
+        ],
+        "summary": "Bookable start times for a day (API-040)",
+        "description": "Start times where the stylist (or, for \"any\", at least one qualified stylist) is free for the total duration plus buffer. Respects salon and stylist hours, breaks, time-off, holidays and bookings (03 §5.2). Customers and the public do not see starts within the lead time; staff roles (send a token) do. Dates outside today..today+maxAdvanceDays return no slots. Cached 60 s per stylist.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated service ids (1-5)",
+              "example": "6712c0f9a1b2c3d4e5f60501,6712c0f9a1b2c3d4e5f60502"
+            },
+            "required": true,
+            "description": "Comma-separated service ids (1-5)",
+            "name": "serviceIds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "any"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                }
+              ],
+              "default": "any",
+              "description": "A stylist id or \"any\"",
+              "example": "any"
+            },
+            "required": false,
+            "description": "A stylist id or \"any\"",
+            "name": "staffId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12"
+            },
+            "required": true,
+            "name": "date",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Slots",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Availability"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, or an unknown/inactive service (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A bearer token was sent but is invalid (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The stylist does not perform every service (STAFF_CANNOT_PERFORM_SERVICE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/availability/days": {
+      "get": {
+        "tags": [
+          "Availability"
+        ],
+        "summary": "Dates with at least one slot (API-041)",
+        "description": "For greying out the calendar. At most 31 days. Cached 2 min.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Comma-separated service ids (1-5)",
+              "example": "6712c0f9a1b2c3d4e5f60501,6712c0f9a1b2c3d4e5f60502"
+            },
+            "required": true,
+            "description": "Comma-separated service ids (1-5)",
+            "name": "serviceIds",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "any"
+                  ]
+                },
+                {
+                  "type": "string",
+                  "pattern": "^[a-f\\d]{24}$/i",
+                  "example": "6712c0f9a1b2c3d4e5f60789"
+                }
+              ],
+              "default": "any",
+              "description": "A stylist id or \"any\"",
+              "example": "any"
+            },
+            "required": false,
+            "description": "A stylist id or \"any\"",
+            "name": "staffId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12"
+            },
+            "required": true,
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-11-10"
+            },
+            "required": true,
+            "name": "to",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Available dates",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailableDays"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed, or an unknown/inactive service (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "A bearer token was sent but is invalid (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The stylist does not perform every service (STAFF_CANNOT_PERFORM_SERVICE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings": {
+      "post": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Create a booking (API-050)",
+        "description": "CUSTOMER for themselves; RECEPTIONIST/ADMIN for a customer (customerId, source, checkInNow). startAt must be aligned to the slot granularity (BR-001), respect the lead time for customers (BR-002), the advance window (BR-003), working hours/breaks/time-off/holidays (BR-005), the stylist's services (BR-007) and the 3-upcoming-bookings limit for customers (BR-009). \"any\" assigns the qualified stylist with the fewest bookings that day (FR-033). checkInNow creates a CHECKED_IN walk-in at the current slot boundary or the next free slot today. 20 requests/hour/user.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "description": "Optional; replays the first successful response for 24 h (03 §9)",
+              "example": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+            },
+            "required": false,
+            "description": "Optional; replays the first successful response for 24 h (03 §9)",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "serviceIds": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[a-f\\d]{24}$/i",
+                      "example": "6712c0f9a1b2c3d4e5f60789"
+                    },
+                    "minItems": 1,
+                    "maxItems": 5,
+                    "description": "1 to 5 different services (BR-008)"
+                  },
+                  "staffId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "any"
+                        ]
+                      },
+                      {
+                        "type": "string",
+                        "pattern": "^[a-f\\d]{24}$/i",
+                        "example": "6712c0f9a1b2c3d4e5f60789"
+                      }
+                    ],
+                    "description": "A stylist id, or \"any\" (FR-033)",
+                    "example": "any"
+                  },
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-12T05:30:00.000Z",
+                    "description": "Required unless checkInNow"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "customerId": {
+                    "type": "string",
+                    "pattern": "^[a-f\\d]{24}$/i",
+                    "example": "6712c0f9a1b2c3d4e5f60789",
+                    "description": "RECEPTIONIST/ADMIN only (required for them)"
+                  },
+                  "source": {
+                    "type": "string",
+                    "enum": [
+                      "ONLINE",
+                      "WALK_IN",
+                      "PHONE"
+                    ],
+                    "example": "ONLINE",
+                    "description": "RECEPTIONIST/ADMIN only. Default PHONE, or WALK_IN with checkInNow; customers always ONLINE"
+                  },
+                  "checkInNow": {
+                    "type": "boolean",
+                    "description": "RECEPTIONIST/ADMIN only: walk-in starting at the current slot boundary or the next free aligned slot today, created CHECKED_IN (00 US-03)"
+                  }
+                },
+                "required": [
+                  "serviceIds",
+                  "staffId"
+                ],
+                "additionalProperties": false,
+                "example": {
+                  "serviceIds": [
+                    "6712c0f9a1b2c3d4e5f60501"
+                  ],
+                  "staffId": "any",
+                  "startAt": "2026-10-12T05:30:00.000Z"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Booking created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slot just taken (SLOT_UNAVAILABLE) or same Idempotency-Key in progress (IDEMPOTENCY_KEY_REUSED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A rule failed: VALIDATION_FAILED (alignment), LEAD_TIME_VIOLATION, ADVANCE_WINDOW_VIOLATION, OUTSIDE_BUSINESS_HOURS, STAFF_CANNOT_PERFORM_SERVICE, BOOKING_LIMIT_REACHED, IDEMPOTENCY_KEY_REUSED (different body)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many booking attempts (RATE_LIMITED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Lock store unavailable (TEMPORARILY_UNAVAILABLE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Search bookings (API-052)",
+        "description": "ADMIN, RECEPTIONIST, STAFF (always only their own). Sorted by startAt by default.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "example": "-startAt"
+            },
+            "required": false,
+            "name": "sort",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "Salon-local appointment date"
+            },
+            "required": false,
+            "description": "Salon-local appointment date",
+            "name": "date",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-12",
+              "description": "First salon-local date, inclusive"
+            },
+            "required": false,
+            "description": "First salon-local date, inclusive",
+            "name": "from",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "example": "2026-10-19",
+              "description": "Last salon-local date, inclusive"
+            },
+            "required": false,
+            "description": "Last salon-local date, inclusive",
+            "name": "to",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789",
+              "description": "Ignored for STAFF (always their own)"
+            },
+            "required": false,
+            "description": "Ignored for STAFF (always their own)",
+            "name": "staffId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "$ref": "#/components/schemas/BookingStatus"
+            },
+            "required": false,
+            "name": "status",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": false,
+            "name": "customerId",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 3,
+              "maxLength": 30,
+              "description": "Booking reference prefix (SS-...) or customer phone prefix",
+              "example": "SS-2610"
+            },
+            "required": false,
+            "description": "Booking reference prefix (SS-...) or customer phone prefix",
+            "name": "q",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of bookings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/me": {
+      "get": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "My bookings (API-051)",
+        "description": "CUSTOMER. upcoming: active bookings not yet over, soonest first. past: everything else, latest first.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 1,
+              "example": 1
+            },
+            "required": false,
+            "name": "page",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 20,
+              "example": 20
+            },
+            "required": false,
+            "name": "pageSize",
+            "in": "query"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "upcoming",
+                "past"
+              ],
+              "default": "upcoming"
+            },
+            "required": false,
+            "name": "scope",
+            "in": "query"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of bookings",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingList"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}": {
+      "get": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Get a booking (API-053)",
+        "description": "Owner customer, assigned stylist, RECEPTIONIST, ADMIN. Others get 404 (06 §3).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Booking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, including bookings you may not see (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/reschedule": {
+      "post": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Reschedule (API-054)",
+        "description": "Owner customer, RECEPTIONIST, ADMIN. Same booking and reference, new time and/or stylist (BR-015), re-validating BR-001..007. Only BOOKED bookings, up to the cut-off (BR-006) unless reception/admin override with a reason (audited).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "startAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "example": "2026-10-12T05:30:00.000Z"
+                  },
+                  "staffId": {
+                    "type": "string",
+                    "pattern": "^[a-f\\d]{24}$/i",
+                    "example": "6712c0f9a1b2c3d4e5f60789",
+                    "description": "Move to another stylist; default the same one"
+                  },
+                  "override": {
+                    "type": "boolean",
+                    "description": "RECEPTIONIST/ADMIN: bypass the cancellation cut-off (BR-006); needs a reason; audited"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "startAt"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Rescheduled booking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, including bookings you may not see (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Slot taken (SLOT_UNAVAILABLE) or changed concurrently (STALE_VERSION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CUTOFF_PASSED, INVALID_STATUS_TRANSITION, LEAD_TIME_VIOLATION, ADVANCE_WINDOW_VIOLATION, OUTSIDE_BUSINESS_HOURS, STAFF_CANNOT_PERFORM_SERVICE, VALIDATION_FAILED",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Lock store unavailable (TEMPORARILY_UNAVAILABLE)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/cancel": {
+      "post": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Cancel (API-055)",
+        "description": "Owner customer, RECEPTIONIST, ADMIN. Only BOOKED bookings, up to the cut-off (BR-006) unless reception/admin override with a reason (audited). The slot frees immediately.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "override": {
+                    "type": "boolean",
+                    "description": "RECEPTIONIST/ADMIN: bypass the cancellation cut-off (BR-006); needs a reason; audited"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Cancelled booking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, including bookings you may not see (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Changed concurrently (STALE_VERSION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "CUTOFF_PASSED or INVALID_STATUS_TRANSITION",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/status": {
+      "post": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Move a booking along its lifecycle (API-056)",
+        "description": "Assigned stylist, RECEPTIONIST, ADMIN. BOOKED -> CHECKED_IN -> IN_SERVICE -> COMPLETED, or BOOKED -> NO_SHOW once the start time has passed (BR-010).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "CHECKED_IN",
+                      "IN_SERVICE",
+                      "COMPLETED",
+                      "NO_SHOW"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "status"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Updated booking",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, including bookings you may not see (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Changed concurrently (STALE_VERSION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not allowed from the current status (INVALID_STATUS_TRANSITION)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/history": {
+      "get": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Status history and audit trail (API-058)",
+        "description": "RECEPTIONIST, ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "History",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingHistory"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found, including bookings you may not see (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/bookings/{id}/payment": {
+      "post": {
+        "tags": [
+          "Bookings"
+        ],
+        "summary": "Record a payment (API-057)",
+        "description": "RECEPTIONIST, ADMIN. Only for COMPLETED bookings; amountPaidMinor + discountMinor must equal the total; a discount needs a reason (BR-011). One payment per booking. Supports Idempotency-Key.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[a-f\\d]{24}$/i",
+              "example": "6712c0f9a1b2c3d4e5f60789"
+            },
+            "required": true,
+            "name": "id",
+            "in": "path"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "description": "Optional; replays the first successful response for 24 h (03 §9)",
+              "example": "7c9e6679-7425-40de-944b-e07fc1f90ae7"
+            },
+            "required": false,
+            "description": "Optional; replays the first successful response for 24 h (03 §9)",
+            "name": "Idempotency-Key",
+            "in": "header"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "CASH",
+                      "CARD",
+                      "UPI",
+                      "OTHER"
+                    ],
+                    "example": "UPI"
+                  },
+                  "amountPaidMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000,
+                    "example": 50000
+                  },
+                  "discountMinor": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000000,
+                    "example": 5000
+                  },
+                  "discountReason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200,
+                    "example": "Loyalty"
+                  }
+                },
+                "required": [
+                  "method",
+                  "amountPaidMinor"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Booking with the recorded payment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Booking"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Validation failed (VALIDATION_FAILED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Role not allowed (FORBIDDEN)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found (NOT_FOUND)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Already paid (PAYMENT_ALREADY_RECORDED), changed concurrently (STALE_VERSION) or key in progress (IDEMPOTENCY_KEY_REUSED)",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Problem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not completed (PAYMENT_NOT_ALLOWED), amounts do not add up (PAYMENT_MISMATCH), key reused with another body (IDEMPOTENCY_KEY_REUSED)",
             "content": {
               "application/problem+json": {
                 "schema": {
