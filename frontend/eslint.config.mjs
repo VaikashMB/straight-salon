@@ -7,7 +7,8 @@ import tseslint from 'typescript-eslint';
 // 10-testing-and-quality §6: Next rules, type-checked TS rules, jsx-a11y recommended,
 // no import cycles, no console, no floating promises, no explicit any.
 export default defineConfig([
-  globalIgnores(['.next/', 'out/', 'coverage/', 'next-env.d.ts']),
+  // schema.d.ts is generated from backend/openapi.json (npm run api:client).
+  globalIgnores(['.next/', 'out/', 'coverage/', 'next-env.d.ts', 'src/lib/api/schema.d.ts']),
   ...nextVitals,
   ...nextTs,
   {

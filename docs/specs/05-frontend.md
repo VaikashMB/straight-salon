@@ -7,7 +7,7 @@
 | Styling | Tailwind CSS + shadcn/ui components (Radix primitives) |
 | Server state | TanStack Query |
 | Forms | React Hook Form + Zod resolvers |
-| API client | Typed client generated from `backend/openapi.json` with `openapi-typescript` + `openapi-fetch` |
+| API client | Typed client generated from `backend/openapi.json` with `openapi-typescript` + `openapi-fetch`. The generator runs pinned through `npx` (`npx -y openapi-typescript@7.13.0`, `npm run api:client`) instead of being a dev dependency: 7.x declares a TypeScript 5 peer and the repo is on TypeScript 6 (03 §1 version note), which npm will not install alongside. Revisit when a release accepts TypeScript 6 |
 | Dates | `date-fns` v4 + `@date-fns/tz`; always render in salon timezone from `/settings/public` |
 | Charts | Recharts (admin reports) |
 | Icons | lucide-react |
@@ -116,7 +116,8 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
 - Access token kept **in memory only** (React context), never in localStorage.
 - Refresh token is an httpOnly, `SameSite=Lax`, `Secure` (prod) cookie set by the API. To keep cookies first-party, the browser only talks to the Next.js origin, and `proxy.ts` rewrites `/api/*` to `${API_INTERNAL_URL}/api/*` **at request time**. This is not done with `next.config` `rewrites`, which are fixed at build time in standalone output and would bake the backend URL into the image (11 §5). The backend sets `trust proxy` to one hop so rate limits see the client IP from `X-Forwarded-For`.
 - On app load, `AuthProvider` calls `POST /auth/refresh`; success → user is logged in.
-- `openapi-fetch` middleware: attach bearer token; on 401 `TOKEN_EXPIRED`, call refresh once (single-flight shared promise so parallel requests don't stampede), retry original request; if refresh fails → clear state, redirect to `/login?next=...`.
+- `openapi-fetch` middleware: attach bearer token; on 401 `TOKEN_EXPIRED`, call refresh once (single-flight shared promise so parallel requests don't stampede), retry original request; if refresh fails → clear state, redirect to `/login?next=...`. Implemented as the client's `fetch` wrapper (`lib/api/client.ts`) around a session object outside React (`lib/auth/session.ts`). `?next` is honoured only for same-site paths the role may open, never for auth pages (no open redirect).
+- Until their pages arrive (Phases 9 and 10), `/account`, `/staff` and `/admin` show a short welcome page inside the real area layout, and navigation items for later pages are shown as "soon" in the signed-in areas and hidden on the public site (decision 2026-10-07).
 - `proxy.ts` provides coarse protection: routes under `/account`, `/staff`, `/admin` require the presence of the **`ss_session` indicator cookie** (06 §1), else redirect to login. It cannot check the refresh cookie itself, because that cookie is scoped to `Path=/api/v1/auth` and the browser does not send it on page navigations. Fine-grained role checks happen in layouts after `/auth/me` resolves (and the API always enforces authoritatively).
 - Role-based landing after login: CUSTOMER → `/account`, STAFF → `/staff`, RECEPTIONIST/ADMIN → `/admin`.
 
@@ -137,7 +138,9 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
 |---|---|
 | `NEXT_PUBLIC_APP_NAME` | `Straight Salon` |
 | `API_INTERNAL_URL` | `http://backend:4000` (server-side fetches and the `proxy.ts` rewrite; read at runtime, never at build) |
-| `NEXT_PUBLIC_API_BASE_PATH` | `/api/v1` |
+| `NEXT_PUBLIC_DEFAULT_COUNTRY_CODE` | `91` (default). Calling code the register form adds to phone numbers typed without one (decision 2026-10-07): spaces, dashes, dots and brackets are removed; a leading `+` or `00` means the number already has one; otherwise one leading `0` is dropped and `+<code>` added. The result must be E.164 (02 §2.1). Baked in at build time: it is salon configuration, not deployment-specific |
+
+`NEXT_PUBLIC_API_BASE_PATH` was retired in Phase 8: the generated client's paths come from `openapi.json` and already include `/api/v1`. In host mode (`npm run dev`) `next.config.ts` reads `NEXT_PUBLIC_*` and `API_INTERNAL_URL`, and nothing else, from the repo-root `.env`; in Docker, Compose passes `API_INTERNAL_URL` at runtime.
 
 ## 9. Frontend testing (details in 10-testing)
 - Unit/component tests for: booking wizard steps, slot grouping, money/time formatting, auth refresh logic, error mapping, role-based nav.

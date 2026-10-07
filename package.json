@@ -32,7 +32,7 @@
     "test:coverage": "npm run test:coverage --workspaces",
     "test:e2e": "node scripts/not-yet.mjs test:e2e 11",
     "openapi:export": "npm run openapi:export -w backend",
-    "api:client": "node scripts/not-yet.mjs api:client 8",
+    "api:client": "npm run api:client -w frontend",
     "contract:check": "node scripts/contract-check.mjs",
     "sonar": "node scripts/not-yet.mjs sonar 11",
     "db:seed": "npm run db:seed -w backend",
@@ -47,7 +47,8 @@
     "concurrently": "^10.0.5",
     "husky": "^9.1.7",
     "lint-staged": "^17.6.0",
-    "prettier": "^3.9.9"
+    "prettier": "^3.9.9",
+    "prettier-plugin-tailwindcss": "^0.8.1"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
@@ -55,6 +56,7 @@
     "mongodb-memory-server": false,
     "@scarf/scarf": false,
     "msgpackr-extract": false,
-    "bcrypt": false
+    "bcrypt": false,
+    "msw": false
   }
 }

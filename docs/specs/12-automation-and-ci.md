@@ -4,7 +4,7 @@
 
 ## 1. Repository tooling
 - **npm workspaces** at root: `"workspaces": ["backend", "frontend"]`. Node **24** pinned in `.nvmrc` and `engines` (`>=24 <25`, npm `>=10`); `.npmrc` sets `engine-strict=true` so installs fail fast on the wrong Node.
-- npm 11 blocks dependency install scripts until approved. Approved packages are listed under `allowScripts` in the root `package.json` (`npm install-scripts approve <pkg>`). Approve only well-known packages whose script selects or builds a native binary (currently `esbuild`, `unrs-resolver`), and re-approve when Dependabot bumps them. Denied: `mongodb-memory-server` (see below), `@scarf/scarf` (install telemetry), `msgpackr-extract` (optional native speed-up), `bcrypt` (its script only recompiles from source; the package ships glibc and musl prebuilds). `mongodb-memory-server` is explicitly **denied**: its postinstall downloads a ~120 MB `mongod`, which tests fetch lazily instead (10 §3). Docker builds use `npm ci --ignore-scripts`.
+- npm 11 blocks dependency install scripts until approved. Approved packages are listed under `allowScripts` in the root `package.json` (`npm install-scripts approve <pkg>`). Approve only well-known packages whose script selects or builds a native binary (currently `esbuild`, `unrs-resolver`), and re-approve when Dependabot bumps them. Denied: `mongodb-memory-server` (see below), `@scarf/scarf` (install telemetry), `msgpackr-extract` (optional native speed-up), `bcrypt` (its script only recompiles from source; the package ships glibc and musl prebuilds), `msw` (its script copies the browser service worker into `public/`; tests use `msw/node` only). `mongodb-memory-server` is explicitly **denied**: its postinstall downloads a ~120 MB `mongod`, which tests fetch lazily instead (10 §3). Docker builds use `npm ci --ignore-scripts`.
 - **EditorConfig**, **Prettier** (shared config at root; `docs/` is excluded so hand-formatted spec tables stay readable), **ESLint** per app. Shared strict compiler options in `tsconfig.base.json`.
 - **Husky** git hooks:
   - `pre-commit` → `lint-staged` (ESLint --fix + Prettier on staged files, `tsc --noEmit` on affected workspace).
@@ -29,14 +29,14 @@
 | `test:e2e` | Playwright against running stack |
 | `env:init` | create `.env` from `.env.example` and generate placeholder secrets (`JWT_ACCESS_SECRET`, `OUTBOX_ENCRYPTION_KEY`); never overwrites real values |
 | `openapi:export` | regenerate `backend/openapi.json` |
-| `api:client` | regenerate `frontend/src/lib/api/schema.d.ts` from openapi.json |
-| `contract:check` | export (+ client gen from Phase 8); fail if `backend/openapi.json` is untracked or differs from the git index |
+| `api:client` | regenerate `frontend/src/lib/api/schema.d.ts` from openapi.json (Phase 8; pinned `openapi-typescript` via `npx`, 05 §1) |
+| `contract:check` | export + client gen; fail if `backend/openapi.json` or `frontend/src/lib/api/schema.d.ts` is untracked or differs from the git index |
 | `sonar` | run sonar-scanner via Docker |
 | `db:seed` / `db:migrate` / `stats:rebuild` | backend data tasks. `db:migrate`/`db:seed` exist from Phase 3 (seed: admin only, grows per phase; `npm run seed` runs it inside the dev container). In the image: `node dist/db/runMigrations.js` (seed refuses `NODE_ENV=production`). `stats:rebuild` (Phase 7) recomputes `daily_stats` for every booking date, or a range with `npm run stats:rebuild -- --from=2026-10-01 --to=2026-10-31`; in the image `node dist/db/runStatsRebuild.js [--from=… --to=…]` |
 | `queues:retry-failed` | re-queue DLQ jobs: `npm run queues:retry-failed -- --queue=notifications` (any consumer queue or `scheduled-jobs`); in the image `node dist/workers/runRetryFailed.js --queue=…` |
 | `validate` | lint + format:check + typecheck + test:coverage + contract:check (what CI runs; developers run before pushing) |
 
-Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `queues:retry-failed` (6, done), `stats:rebuild` (7, done), `api:client` (8), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
+Scripts whose implementation belongs to a later phase exist from Phase 0 as stubs (`scripts/not-yet.mjs`) that print which phase delivers them and exit 0: `queues:retry-failed` (6, done), `stats:rebuild` (7, done), `api:client` (8, done), `test:e2e`, `sonar` (11). `dev` runs backend, worker (`dev:worker`, a skeleton until Phase 6) and frontend. The Docker scripts from 11 §7 (`up`, `down`, `reset`, `logs`, `seed`, `tools`, `sonar:up`) exist from Phase 1; `seed` is a stub until Phase 3.
 
 ## 3. CI pipeline (GitHub Actions)
 

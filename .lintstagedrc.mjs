@@ -1,9 +1,11 @@
 // Staged-file checks run by the Husky pre-commit hook (12-automation-and-ci §1).
 // lint-staged passes absolute paths, so ESLint can run inside each workspace.
+// --no-warn-ignored: staged files that ESLint ignores on purpose (the generated API client,
+// frontend/src/lib/api/schema.d.ts) would otherwise warn and fail --max-warnings=0.
 const quote = (files) => files.map((f) => JSON.stringify(f)).join(' ');
 
 const workspace = (name) => (files) => [
-  `npm exec -w ${name} -- eslint --fix --max-warnings=0 ${quote(files)}`,
+  `npm exec -w ${name} -- eslint --fix --no-warn-ignored --max-warnings=0 ${quote(files)}`,
   `prettier --write ${quote(files)}`,
   `npm run typecheck -w ${name}`,
 ];
