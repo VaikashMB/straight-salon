@@ -27,6 +27,8 @@
   --border: #e2dbcf;
   --input: #d9d1c3;
   --ring: #b08d57;
+  /* Chart series (single hue, validated with the dataviz checks against --card). */
+  --chart-1: #a06a1c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -51,6 +53,7 @@
     --border: #34312b;
     --input: #3d3932;
     --ring: #c4a272;
+    --chart-1: #b8802a;
   }
 }
 
@@ -77,6 +80,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);

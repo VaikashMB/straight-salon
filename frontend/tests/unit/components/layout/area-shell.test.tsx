@@ -9,7 +9,7 @@ import AccountLayout from '@/app/(customer)/account/layout';
 import AccountPage from '@/app/(customer)/account/page';
 import StaffLayout from '@/app/(staff)/staff/layout';
 import StaffPage from '@/app/(staff)/staff/page';
-import { api, makeUser, server, signedInAs } from '../../helpers/api';
+import { api, makeUser, problem, server, signedInAs } from '../../helpers/api';
 import { router, setLocation } from '../../helpers/next-navigation';
 import { renderWithProviders } from '../../helpers/render';
 
@@ -29,10 +29,10 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
 
   it('reception: dashboard landing with the shared items; ADMIN-only items hidden', async () => {
     signedInAs(makeUser({ name: 'Front Desk', role: 'RECEPTIONIST' }));
+    server.use(http.get(api('/reports/dashboard'), () => problem(500, 'INTERNAL_ERROR')));
     setLocation('/admin');
     renderWithProviders(admin);
-    expect(await screen.findByRole('heading', { name: 'Welcome back, Front' })).toBeInTheDocument();
-    const nav = screen.getByRole('navigation', { name: 'Section' });
+    const nav = await screen.findByRole('navigation', { name: 'Section' });
     expect(within(nav).getByRole('link', { name: 'Dashboard' })).toHaveAttribute(
       'aria-current',
       'page',
@@ -42,14 +42,20 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
     expect(screen.getByText('Front Desk · Reception')).toBeInTheDocument();
   });
 
-  it('admin sees the ADMIN-only items (later phases shown as "soon", not links)', async () => {
+  it('admin sees the ADMIN-only items as links', async () => {
     signedInAs(makeUser({ name: 'Salon Admin', role: 'ADMIN' }));
-    setLocation('/admin');
+    server.use(http.get(api('/reports/dashboard'), () => problem(500, 'INTERNAL_ERROR')));
+    setLocation('/admin/reports');
     renderWithProviders(admin);
     const nav = await screen.findByRole('navigation', { name: 'Section' });
-    const reports = within(nav).getByText('Reports').closest('[aria-disabled]');
-    expect(reports).toHaveAttribute('aria-disabled', 'true');
-    expect(within(nav).queryByRole('link', { name: /Reports/ })).not.toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: 'Reports' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(nav).getByRole('link', { name: 'Audit log' })).toHaveAttribute(
+      'href',
+      '/admin/audit',
+    );
   });
 
   it('the wrong role is told and pointed to its own area', async () => {
@@ -85,21 +91,25 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
 
   it('stylists see their day page', async () => {
     signedInAs(makeUser({ name: 'Ravi Kumar', role: 'STAFF' }));
+    server.use(
+      http.get(api('/bookings'), () =>
+        HttpResponse.json({ data: [], meta: { page: 1, pageSize: 100, total: 0, totalPages: 0 } }),
+      ),
+    );
     setLocation('/staff');
     renderWithProviders(
       <StaffLayout>
         <StaffPage />
       </StaffLayout>,
     );
-    expect(
-      await screen.findByRole('heading', { name: 'Good to see you, Ravi' }),
-    ).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'My day' })).toBeInTheDocument();
   });
 
   it('sign out ends the session and returns home (API-004)', async () => {
     let loggedOut = false;
     signedInAs(makeUser({ role: 'ADMIN' }));
     server.use(
+      http.get(api('/reports/dashboard'), () => problem(500, 'INTERNAL_ERROR')),
       http.post(api('/auth/logout'), () => {
         loggedOut = true;
         return new HttpResponse(null, { status: 204 });

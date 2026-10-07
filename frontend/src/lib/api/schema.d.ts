@@ -4,6118 +4,6142 @@
  */
 
 export interface paths {
-    "/health/live": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Liveness probe
-         * @description The process is up. No dependency checks (03-backend §6).
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Process is alive */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Liveness"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+  '/health/live': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/health/ready": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
+    /**
+     * Liveness probe
+     * @description The process is up. No dependency checks (03-backend §6).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Process is alive */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Liveness'];
+          };
         };
-        /**
-         * Readiness probe
-         * @description Pings MongoDB (critical) and Redis (non-critical). Returns 503 if MongoDB is down or the process is shutting down; Redis down only degrades the status (03-backend §6).
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Ready (status ok or degraded) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Readiness"];
-                    };
-                };
-                /** @description Not ready (MongoDB down or shutting down) */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        /**
-                         * @example {
-                         *       "status": "error",
-                         *       "checks": {
-                         *         "mongo": {
-                         *           "status": "down"
-                         *         },
-                         *         "redis": {
-                         *           "status": "up"
-                         *         }
-                         *       }
-                         *     }
-                         */
-                        "application/json": components["schemas"]["Readiness"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+      };
     };
-    "/metrics": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Prometheus metrics
-         * @description Exposed when METRICS_ENABLED=true (03-backend §6).
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Prometheus text exposition format */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/plain": string;
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/health/ready': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
     };
-    "/api/v1/audit-logs": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search the audit log (API-073)
-         * @description ADMIN. Newest first, filtered by entity, actor, action and salon-local date range (FR-073). User PII in before/after is masked (07 §2.2).
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    entityType?: string;
-                    entityId?: string;
-                    /** @description A user id, or "system" */
-                    actorId?: string | "system";
-                    action?: string;
-                    /** @description Salon-local date, inclusive */
-                    from?: string;
-                    /** @description Salon-local date, inclusive */
-                    to?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of audit entries */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AuditLogList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/register": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Register a customer account (API-001) */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example Ananya R */
-                        name: string;
-                        /**
-                         * Format: email
-                         * @example ananya@example.com
-                         */
-                        email: string;
-                        /** @example +919876543212 */
-                        phone: string;
-                        /**
-                         * Format: password
-                         * @example Fade-and-Trim7
-                         */
-                        password: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Registered and signed in */
-                201: {
-                    headers: {
-                        /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Session"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Email or phone already registered (DUPLICATE, PHONE_ALREADY_REGISTERED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Rate limited (RATE_LIMITED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/login": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Log in (API-002)
-         * @description 5 failed attempts for one email lock it for 15 minutes (429).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: email
-                         * @example ananya@example.com
-                         */
-                        email: string;
-                        /**
-                         * Format: password
-                         * @example Fade-and-Trim7
-                         */
-                        password: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Signed in */
-                200: {
-                    headers: {
-                        /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Session"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Invalid email or password (UNAUTHENTICATED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Rate limited (RATE_LIMITED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/refresh": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Rotate the refresh token (API-003)
-         * @description Reusing a rotated token revokes every session of that login (06 §2).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description New access token; new refresh cookie */
-                200: {
-                    headers: {
-                        /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AccessToken"];
-                    };
-                };
-                /** @description Missing, expired, revoked or reused refresh token (UNAUTHENTICATED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/logout": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Log out of this device (API-004) */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Session ended; cookies cleared */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/logout-all": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /** Log out of all devices (API-005) */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description All sessions ended */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/forgot-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Request a password reset email (API-006)
-         * @description Always 202, whether or not the email has an account (no user enumeration).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: email
-                         * @example ananya@example.com
-                         */
-                        email: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Accepted */
-                202: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Rate limited (RATE_LIMITED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/reset-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Set a new password with a reset token (API-007)
-         * @description Ends every session of the account.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description From the emailed reset link */
-                        token: string;
-                        /**
-                         * Format: password
-                         * @example Fade-and-Trim7
-                         */
-                        newPassword: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Password changed */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Invalid input, or invalid/expired/used token (VALIDATION_FAILED, INVALID_RESET_TOKEN) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/change-password": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Change password (API-008)
-         * @description Ends every other session; this device receives a fresh refresh cookie.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header: {
-                    /** @description CSRF guard for auth endpoints (06 §4) */
-                    "x-requested-with": "straight-salon-web";
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** Format: password */
-                        currentPassword: string;
-                        /**
-                         * Format: password
-                         * @example Fade-and-Trim7
-                         */
-                        newPassword: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Password changed */
-                204: {
-                    headers: {
-                        /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
-                        "Set-Cookie"?: string;
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Validation failed or current password incorrect (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Missing X-Requested-With header (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/auth/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Current user profile (API-009) */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Profile */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Not authenticated */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/availability": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Bookable start times for a day (API-040)
-         * @description Start times where the stylist (or, for "any", at least one qualified stylist) is free for the total duration plus buffer. Respects salon and stylist hours, breaks, time-off, holidays and bookings (03 §5.2). Customers and the public do not see starts within the lead time; staff roles (send a token) do. Dates outside today..today+maxAdvanceDays return no slots. Cached 60 s per stylist.
-         */
-        get: {
-            parameters: {
-                query: {
-                    /** @description Comma-separated service ids (1-5) */
-                    serviceIds: string;
-                    /** @description A stylist id or "any" */
-                    staffId?: "any" | string;
-                    date: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Slots */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Availability"];
-                    };
-                };
-                /** @description Validation failed, or an unknown/inactive service (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description A bearer token was sent but is invalid (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description The stylist does not perform every service (STAFF_CANNOT_PERFORM_SERVICE) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/availability/days": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Dates with at least one slot (API-041)
-         * @description For greying out the calendar. At most 31 days. Cached 2 min.
-         */
-        get: {
-            parameters: {
-                query: {
-                    /** @description Comma-separated service ids (1-5) */
-                    serviceIds: string;
-                    /** @description A stylist id or "any" */
-                    staffId?: "any" | string;
-                    from: string;
-                    to: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Available dates */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["AvailableDays"];
-                    };
-                };
-                /** @description Validation failed, or an unknown/inactive service (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description A bearer token was sent but is invalid (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description The stylist does not perform every service (STAFF_CANNOT_PERFORM_SERVICE) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Search bookings (API-052)
-         * @description ADMIN, RECEPTIONIST, STAFF (always only their own). Sorted by startAt by default.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    sort?: string;
-                    /** @description Salon-local appointment date */
-                    date?: string;
-                    /** @description First salon-local date, inclusive */
-                    from?: string;
-                    /** @description Last salon-local date, inclusive */
-                    to?: string;
-                    /** @description Ignored for STAFF (always their own) */
-                    staffId?: string;
-                    status?: components["schemas"]["BookingStatus"];
-                    customerId?: string;
-                    /** @description Booking reference prefix (SS-...) or customer phone prefix */
-                    q?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of bookings */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BookingList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a booking (API-050)
-         * @description CUSTOMER for themselves; RECEPTIONIST/ADMIN for a customer (customerId, source, checkInNow). startAt must be aligned to the slot granularity (BR-001), respect the lead time for customers (BR-002), the advance window (BR-003), working hours/breaks/time-off/holidays (BR-005), the stylist's services (BR-007) and the 3-upcoming-bookings limit for customers (BR-009). "any" assigns the qualified stylist with the fewest bookings that day (FR-033). checkInNow creates a CHECKED_IN walk-in at the current slot boundary or the next free slot today. 20 requests/hour/user.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    /** @description Optional; replays the first successful response for 24 h (03 §9) */
-                    "Idempotency-Key"?: string;
-                };
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description 1 to 5 different services (BR-008) */
-                        serviceIds: string[];
-                        /**
-                         * @description A stylist id, or "any" (FR-033)
-                         * @example any
-                         */
-                        staffId: "any" | string;
-                        /**
-                         * Format: date-time
-                         * @description Required unless checkInNow
-                         * @example 2026-10-12T05:30:00.000Z
-                         */
-                        startAt?: string;
-                        notes?: string;
-                        /**
-                         * @description RECEPTIONIST/ADMIN only (required for them)
-                         * @example 6712c0f9a1b2c3d4e5f60789
-                         */
-                        customerId?: string;
-                        /**
-                         * @description RECEPTIONIST/ADMIN only. Default PHONE, or WALK_IN with checkInNow; customers always ONLINE
-                         * @example ONLINE
-                         * @enum {string}
-                         */
-                        source?: "ONLINE" | "WALK_IN" | "PHONE";
-                        /** @description RECEPTIONIST/ADMIN only: walk-in starting at the current slot boundary or the next free aligned slot today, created CHECKED_IN (00 US-03) */
-                        checkInNow?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Booking created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Booking"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Slot just taken (SLOT_UNAVAILABLE) or same Idempotency-Key in progress (IDEMPOTENCY_KEY_REUSED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description A rule failed: VALIDATION_FAILED (alignment), LEAD_TIME_VIOLATION, ADVANCE_WINDOW_VIOLATION, OUTSIDE_BUSINESS_HOURS, STAFF_CANNOT_PERFORM_SERVICE, BOOKING_LIMIT_REACHED, IDEMPOTENCY_KEY_REUSED (different body) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Too many booking attempts (RATE_LIMITED) */
-                429: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Lock store unavailable (TEMPORARILY_UNAVAILABLE) */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * My bookings (API-051)
-         * @description CUSTOMER. upcoming: active bookings not yet over, soonest first. past: everything else, latest first.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    scope?: "upcoming" | "past";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of bookings */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BookingList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a booking (API-053)
-         * @description Owner customer, assigned stylist, RECEPTIONIST, ADMIN. Others get 404 (06 §3).
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Booking */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Booking"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found, including bookings you may not see (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}/reschedule": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Reschedule (API-054)
-         * @description Owner customer, RECEPTIONIST, ADMIN. Same booking and reference, new time and/or stylist (BR-015), re-validating BR-001..007. Only BOOKED bookings, up to the cut-off (BR-006) unless reception/admin override with a reason (audited).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @example 2026-10-12T05:30:00.000Z
-                         */
-                        startAt: string;
-                        /**
-                         * @description Move to another stylist; default the same one
-                         * @example 6712c0f9a1b2c3d4e5f60789
-                         */
-                        staffId?: string;
-                        /** @description RECEPTIONIST/ADMIN: bypass the cancellation cut-off (BR-006); needs a reason; audited */
-                        override?: boolean;
-                        reason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Rescheduled booking */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Booking"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found, including bookings you may not see (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Slot taken (SLOT_UNAVAILABLE) or changed concurrently (STALE_VERSION) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description CUTOFF_PASSED, INVALID_STATUS_TRANSITION, LEAD_TIME_VIOLATION, ADVANCE_WINDOW_VIOLATION, OUTSIDE_BUSINESS_HOURS, STAFF_CANNOT_PERFORM_SERVICE, VALIDATION_FAILED */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Lock store unavailable (TEMPORARILY_UNAVAILABLE) */
-                503: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}/cancel": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Cancel (API-055)
-         * @description Owner customer, RECEPTIONIST, ADMIN. Only BOOKED bookings, up to the cut-off (BR-006) unless reception/admin override with a reason (audited). The slot frees immediately.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @description RECEPTIONIST/ADMIN: bypass the cancellation cut-off (BR-006); needs a reason; audited */
-                        override?: boolean;
-                        reason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Cancelled booking */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Booking"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found, including bookings you may not see (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Changed concurrently (STALE_VERSION) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description CUTOFF_PASSED or INVALID_STATUS_TRANSITION */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}/status": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Move a booking along its lifecycle (API-056)
-         * @description Assigned stylist, RECEPTIONIST, ADMIN. BOOKED -> CHECKED_IN -> IN_SERVICE -> COMPLETED, or BOOKED -> NO_SHOW once the start time has passed (BR-010).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @enum {string} */
-                        status: "CHECKED_IN" | "IN_SERVICE" | "COMPLETED" | "NO_SHOW";
-                        note?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated booking */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Booking"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found, including bookings you may not see (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Changed concurrently (STALE_VERSION) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not allowed from the current status (INVALID_STATUS_TRANSITION) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}/history": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Status history and audit trail (API-058)
-         * @description RECEPTIONIST, ADMIN.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description History */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["BookingHistory"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found, including bookings you may not see (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}/payment": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Record a payment (API-057)
-         * @description RECEPTIONIST, ADMIN. Only for COMPLETED bookings; amountPaidMinor + discountMinor must equal the total; a discount needs a reason (BR-011). One payment per booking. Supports Idempotency-Key.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: {
-                    /** @description Optional; replays the first successful response for 24 h (03 §9) */
-                    "Idempotency-Key"?: string;
-                };
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @example UPI
-                         * @enum {string}
-                         */
-                        method: "CASH" | "CARD" | "UPI" | "OTHER";
-                        /** @example 50000 */
-                        amountPaidMinor: number;
-                        /** @example 5000 */
-                        discountMinor?: number;
-                        /** @example Loyalty */
-                        discountReason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Booking with the recorded payment */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Booking"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Already paid (PAYMENT_ALREADY_RECORDED), changed concurrently (STALE_VERSION) or key in progress (IDEMPOTENCY_KEY_REUSED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not completed (PAYMENT_NOT_ALLOWED), amounts do not add up (PAYMENT_MISMATCH), key reused with another body (IDEMPOTENCY_KEY_REUSED) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/categories": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List categories (API-021)
-         * @description Active categories by sortOrder, then name. Cached 30 min. ADMIN may pass includeInactive=true.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description ADMIN only: also return deactivated entries (401/403 for anyone else) */
-                    includeInactive?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Categories */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["CategoryList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a category (API-022)
-         * @description ADMIN. The slug is generated from the name.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example Hair */
-                        name: string;
-                        description?: string;
-                        /** @example 1 */
-                        sortOrder?: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Category created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Category"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Name already used (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/categories/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Deactivate a category (API-022)
-         * @description ADMIN. Soft delete: the category is hidden from the public list.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deactivated */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /**
-         * Update a category (API-022)
-         * @description ADMIN. isActive: true reactivates a deactivated category.
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name?: string;
-                        description?: string | null;
-                        sortOrder?: number;
-                        isActive?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated category */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Category"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Name already used (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/services": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List services (API-023)
-         * @description Active services, paginated, sorted by name by default. Filter by category, search words with q. Cached 10 min. ADMIN may pass includeInactive=true.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    sort?: string;
-                    categoryId?: string;
-                    /** @description Words in the name or description */
-                    q?: string;
-                    /** @description ADMIN only: also return deactivated entries (401/403 for anyone else) */
-                    includeInactive?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of services */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ServiceList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a service (API-025)
-         * @description ADMIN. durationMin must be a multiple of the slot granularity (BR-013).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example Haircut */
-                        name: string;
-                        /** @example 6712c0f9a1b2c3d4e5f60789 */
-                        categoryId: string;
-                        description?: string;
-                        /**
-                         * @description Multiple of the slot granularity (BR-013)
-                         * @example 45
-                         */
-                        durationMin: number;
-                        /** @example 40000 */
-                        priceMinor: number;
-                        /**
-                         * Format: uri
-                         * @example http://localhost:4000/uploads/images/9f1c2a8e.webp
-                         */
-                        imageUrl?: string;
-                        /** @description Default true */
-                        isActive?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Service created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Service"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description An active service has this name (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Duration is not a multiple of the slot granularity (INVALID_DURATION) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/services/{idOrSlug}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Service detail (API-024)
-         * @description By id or slug, with the active stylists who perform it and its rating. Deactivated services are not found, except for ADMIN.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    idOrSlug: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Service */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ServiceDetail"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/services/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Deactivate a service (API-026)
-         * @description ADMIN. Hidden from the catalogue; historical bookings keep their snapshot (FR-013).
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Deactivated */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        /**
-         * Update a service (API-025)
-         * @description ADMIN. null clears description or imageUrl. isActive: true reactivates (BR-013 re-checked).
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name?: string;
-                        /** @example 6712c0f9a1b2c3d4e5f60789 */
-                        categoryId?: string;
-                        description?: string | null;
-                        durationMin?: number;
-                        priceMinor?: number;
-                        /**
-                         * Format: uri
-                         * @example http://localhost:4000/uploads/images/9f1c2a8e.webp
-                         */
-                        imageUrl?: string | null;
-                        isActive?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated service */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Service"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Name used by an active service (DUPLICATE) or changed concurrently (STALE_VERSION) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Duration is not a multiple of the slot granularity (INVALID_DURATION) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/uploads/images": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Upload an image (API-027)
-         * @description ADMIN. One `file` field: PNG, JPEG or WebP up to 2 MB. The type is detected from the content, the image is re-encoded without metadata and stored under a random name. Set the returned url as services.imageUrl or staff.photoUrl.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "multipart/form-data": {
-                        /**
-                         * Format: binary
-                         * @description PNG, JPEG or WebP, max 2 MB
-                         */
-                        file: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Stored image */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UploadedImage"];
-                    };
-                };
-                /** @description Missing, unreadable or unsupported file (INVALID_FILE) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description File larger than 2 MB (INVALID_FILE) */
-                413: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notifications/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * My notification history (API-065)
-         * @description Any logged-in user. Emails and SMS sent to me, newest first.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of notifications */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotificationList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/notifications": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * All notifications (API-066)
-         * @description ADMIN. Every message with its delivery state, newest first; used to inspect messages from the mock providers in development. Secrets such as reset links are redacted.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    userId?: string;
-                    channel?: "EMAIL" | "SMS";
-                    status?: "QUEUED" | "SENT" | "FAILED";
-                    template?: "welcome" | "password_reset" | "booking_confirmed" | "booking_rescheduled" | "booking_cancelled" | "booking_reminder_24h" | "booking_reminder_2h" | "booking_no_show" | "booking_thank_you" | "staff_booking_assigned" | "staff_booking_changed" | "staff_booking_cancelled";
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of notifications */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["NotificationList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/holidays": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List holidays (API-019)
-         * @description Full-day closures, by date ascending. Both bounds are optional and inclusive.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description First date, inclusive */
-                    from?: string;
-                    /** @description Last date, inclusive */
-                    to?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Holidays */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["HolidayList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Add a holiday (API-020)
-         * @description ADMIN. Fails with ACTIVE_BOOKINGS_EXIST when active bookings exist that day, unless force: true cancels them and notifies the customers.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date
-                         * @example 2026-10-12
-                         */
-                        date: string;
-                        /** @example Diwali */
-                        name: string;
-                        /** @description Cancel the active bookings on that date and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST */
-                        force?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Holiday created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Holiday"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Date is already a holiday (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Active bookings exist that day (ACTIVE_BOOKINGS_EXIST) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/holidays/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Remove a holiday (API-020)
-         * @description ADMIN. No booking check.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Removed */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reports/dashboard": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Day dashboard (API-070)
-         * @description ADMIN, RECEPTIONIST. Live counts by status, revenue recorded so far and a per-stylist timeline for one salon-local date (default today, FR-070). Cached 30 s.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Salon-local date; default today */
-                    date?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Dashboard */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Dashboard"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reports/summary": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Report for a date range (API-071)
-         * @description ADMIN. Revenue, bookings, cancellations, no-show rate, revenue by service and stylist, utilisation (FR-071), for appointment dates from..to inclusive, at most 366 days. Built from daily_stats; cached 5 min.
-         */
-        get: {
-            parameters: {
-                query: {
-                    from: string;
-                    to: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Summary */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReportSummary"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reports/summary.csv": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Report as CSV (API-072)
-         * @description ADMIN. The API-071 summary as a CSV download (FR-072).
-         */
-        get: {
-            parameters: {
-                query: {
-                    from: string;
-                    to: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description CSV file (Content-Disposition: attachment) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "text/csv": string;
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/bookings/{id}/review": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Review a completed booking (API-060)
-         * @description The booking's CUSTOMER, once it is COMPLETED and within reviewWindowDays of completion; one review per booking (BR-012). Other customers' bookings are not found.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example 5 */
-                        rating: number;
-                        /** @example Great fade, very relaxed atmosphere. */
-                        comment?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Review created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Review"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found, including other customers' bookings (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Already reviewed (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not completed or the review window has passed (REVIEW_NOT_ALLOWED) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reviews": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List reviews (API-061)
-         * @description Public: visible reviews, newest first, optionally for one stylist or service. ADMIN may pass includeHidden=true to moderate (adds bookingId, isHidden, hiddenReason and the full customer name).
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    staffId?: string;
-                    serviceId?: string;
-                    /** @description ADMIN only: also list hidden reviews */
-                    includeHidden?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of reviews */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["ReviewList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/reviews/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Hide or unhide a review (API-062)
-         * @description ADMIN. Hiding needs a reason (FR-062, audited); hidden reviews leave the stylist and service ratings.
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        isHidden: boolean;
-                        /** @example Abusive language */
-                        hiddenReason?: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Review (admin view) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Review"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/settings/public": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Public salon information (API-016)
-         * @description Name, address, contact, business hours, timezone, currency and the booking policy the booking wizard needs. Cached 10 min.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Public settings */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["PublicSettings"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/settings": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Full settings (API-017)
-         * @description ADMIN. Defaults are returned until settings are first saved.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Settings */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Settings"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        /**
-         * Replace settings (API-018)
-         * @description ADMIN. Full replacement of every FR-080 field. A new slot granularity must fit every active service duration (BR-013). The timezone cannot change while future active bookings exist.
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        name: string;
-                        address?: string;
-                        /** @example +919876543212 */
-                        phone?: string;
-                        /**
-                         * Format: email
-                         * @example ananya@example.com
-                         */
-                        email?: string;
-                        /** @example Asia/Kolkata */
-                        timezone: string;
-                        /** @example INR */
-                        currency: string;
-                        businessHours: {
-                            /**
-                             * @description 0 = Sunday … 6 = Saturday
-                             * @example 1
-                             */
-                            dayOfWeek: number;
-                            isOpen: boolean;
-                            /** @example 09:30 */
-                            open: string;
-                            /** @example 20:30 */
-                            close: string;
-                        }[];
-                        /** @example 15 */
-                        slotGranularityMin: number;
-                        /** @example 0 */
-                        bufferMin: number;
-                        /** @example 60 */
-                        minLeadTimeMin: number;
-                        /** @example 30 */
-                        maxAdvanceDays: number;
-                        /** @example 120 */
-                        cancellationCutoffMin: number;
-                        /** @example 30 */
-                        noShowGraceMin: number;
-                        /** @example 14 */
-                        reviewWindowDays: number;
-                    };
-                };
-            };
-            responses: {
-                /** @description Saved settings */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Settings"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Changed concurrently (STALE_VERSION) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Granularity does not fit a service (INVALID_DURATION) or timezone change with future bookings (ACTIVE_BOOKINGS_EXIST) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/staff": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List stylists (API-030)
-         * @description Active stylists, public fields only, by name. Filter by a service they perform. Cached 10 min. ADMIN may pass includeInactive=true for every stylist with admin fields.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description Only stylists who perform this service */
-                    serviceId?: string;
-                    /** @description ADMIN only: include deactivated stylists and admin fields (401/403 for anyone else) */
-                    includeInactive?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Stylists */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["StaffList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a stylist profile (API-032)
-         * @description ADMIN. Links an active STAFF user (create it with POST /users first). The weekly schedule starts as the salon hours (FR-023). The user gets staffId in their token at the next login or refresh.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * @description An active user with role STAFF and no profile yet
-                         * @example 6712c0f9a1b2c3d4e5f60789
-                         */
-                        userId: string;
-                        /** @example Ravi */
-                        displayName: string;
-                        bio?: string;
-                        /**
-                         * Format: uri
-                         * @example http://localhost:4000/uploads/images/1c2d3e4f.webp
-                         */
-                        photoUrl?: string;
-                        /** @description Services this stylist can perform */
-                        serviceIds: string[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Stylist created (admin view) */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Staff"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description The user already has a profile (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/staff/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Stylist profile (API-031)
-         * @description Profile, services and rating. Deactivated stylists are not found, except for ADMIN, who also gets admin fields.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Profile */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["StaffProfile"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Update or deactivate a stylist (API-032)
-         * @description ADMIN. isActive: false is blocked by future active bookings unless force: true cancels them and notifies the customers (BR-014).
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        displayName?: string;
-                        bio?: string | null;
-                        /**
-                         * Format: uri
-                         * @example http://localhost:4000/uploads/images/1c2d3e4f.webp
-                         */
-                        photoUrl?: string | null;
-                        /** @description Services this stylist can perform */
-                        serviceIds?: string[];
-                        isActive?: boolean;
-                        /** @description With isActive: false, cancel the stylist's future active bookings and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST (BR-014) */
-                        force?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated stylist (admin view) */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["Staff"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Changed concurrently (STALE_VERSION) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Active bookings are affected (ACTIVE_BOOKINGS_EXIST) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/staff/{id}/schedule": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Weekly schedule (API-033)
-         * @description ADMIN, RECEPTIONIST, or the stylist themself. Times are salon-local HH:mm.
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Schedule */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["StaffSchedule"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        /**
-         * Replace the weekly schedule (API-034)
-         * @description ADMIN. Exactly 7 days; breaks must lie within working hours and not overlap.
-         */
-        put: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        weekly: {
-                            /**
-                             * @description 0 = Sunday … 6 = Saturday
-                             * @example 1
-                             */
-                            dayOfWeek: number;
-                            isWorking: boolean;
-                            /** @example 10:00 */
-                            start: string;
-                            /** @example 19:00 */
-                            end: string;
-                            /** @default [] */
-                            breaks?: {
-                                /** @example 09:30 */
-                                start: string;
-                                /** @example 19:00 */
-                                end: string;
-                            }[];
-                        }[];
-                    };
-                };
-            };
-            responses: {
-                /** @description Saved schedule */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["StaffSchedule"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/staff/{id}/time-off": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List time-off (API-035)
-         * @description ADMIN, RECEPTIONIST, or the stylist themself. Blocks overlapping the optional salon-local date range.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    /** @description First salon-local date, inclusive */
-                    from?: string;
-                    /** @description Last salon-local date, inclusive */
-                    to?: string;
-                };
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Time-off */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TimeOffList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Block time off (API-036)
-         * @description ADMIN, or the stylist themself. Overlapping active bookings fail with ACTIVE_BOOKINGS_EXIST; ADMIN may pass force: true to cancel them and notify the customers (FR-024).
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /**
-                         * Format: date-time
-                         * @example 2026-10-12T05:30:00.000Z
-                         */
-                        startAt: string;
-                        /**
-                         * Format: date-time
-                         * @example 2026-10-12T07:30:00.000Z
-                         */
-                        endAt: string;
-                        /** @example Doctor appointment */
-                        reason?: string;
-                        /** @description ADMIN only: cancel overlapping active bookings and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST (FR-024) */
-                        force?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Time-off created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["TimeOff"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Active bookings are affected (ACTIVE_BOOKINGS_EXIST) */
-                422: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/staff/{id}/time-off/{timeOffId}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        /**
-         * Remove time-off (API-037)
-         * @description ADMIN, or the stylist themself.
-         */
-        delete: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                    timeOffId: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Removed */
-                204: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content?: never;
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/users/me": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /** Update my profile (API-010) */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example Ananya R */
-                        name?: string;
-                        /** @example +919876543212 */
-                        phone?: string;
-                        preferences?: {
-                            /** @example 6712c0f9a1b2c3d4e5f60789 */
-                            preferredStaffId?: string | null;
-                            smsOptIn?: boolean;
-                            emailOptIn?: boolean;
-                        };
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated profile */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Phone already used (DUPLICATE, PHONE_ALREADY_REGISTERED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-    "/api/v1/users": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * List and search users (API-011)
-         * @description ADMIN, RECEPTIONIST. Receptionists only ever see customers.
-         */
-        get: {
-            parameters: {
-                query?: {
-                    page?: number;
-                    pageSize?: number;
-                    sort?: string;
-                    /** @description Phone prefix, email prefix, or name words */
-                    q?: string;
-                    role?: components["schemas"]["Role"];
-                    isActive?: string;
-                };
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description Page of users */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["UserList"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        /**
-         * Create a staff, receptionist or admin account (API-012)
-         * @description ADMIN. Sets a temporary password that the person changes via API-008.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example Ananya R */
-                        name: string;
-                        /**
-                         * Format: email
-                         * @example ananya@example.com
-                         */
-                        email: string;
-                        /** @example +919876543212 */
-                        phone: string;
-                        /** @enum {string} */
-                        role: "STAFF" | "RECEPTIONIST" | "ADMIN";
-                        /**
-                         * Format: password
-                         * @description Temporary password; the user changes it via API-008
-                         * @example Fade-and-Trim7
-                         */
-                        password: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Account created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Email or phone already used (DUPLICATE, PHONE_ALREADY_REGISTERED) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/users/walk-in": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        put?: never;
-        /**
-         * Find or create a walk-in customer by phone (API-013)
-         * @description ADMIN, RECEPTIONIST. 201 when created, 200 when a customer with that phone exists.
-         */
-        post: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path?: never;
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        /** @example Ananya R */
-                        name: string;
-                        /** @example +919876543212 */
-                        phone: string;
-                    };
-                };
-            };
-            responses: {
-                /** @description Existing customer */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Walk-in customer created */
-                201: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Phone belongs to a staff account (DUPLICATE) */
-                409: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/v1/users/{id}": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /**
-         * Get a user (API-014)
-         * @description ADMIN, RECEPTIONIST (customers only; others look not found).
-         */
-        get: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody?: never;
-            responses: {
-                /** @description User */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        /**
-         * Change role or activate/deactivate (API-015)
-         * @description ADMIN. Not on your own account. A deactivated user is signed out at their next token refresh.
-         */
-        patch: {
-            parameters: {
-                query?: never;
-                header?: never;
-                path: {
-                    id: string;
-                };
-                cookie?: never;
-            };
-            requestBody: {
-                content: {
-                    "application/json": {
-                        role?: components["schemas"]["Role"];
-                        isActive?: boolean;
-                    };
-                };
-            };
-            responses: {
-                /** @description Updated user */
-                200: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/json": components["schemas"]["User"];
-                    };
-                };
-                /** @description Validation failed (VALIDATION_FAILED) */
-                400: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
-                401: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Role not allowed (FORBIDDEN) */
-                403: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-                /** @description Not found (NOT_FOUND) */
-                404: {
-                    headers: {
-                        [name: string]: unknown;
-                    };
-                    content: {
-                        "application/problem+json": components["schemas"]["Problem"];
-                    };
-                };
-            };
-        };
-        trace?: never;
-    };
-}
-export type webhooks = Record<string, never>;
-export interface components {
-    schemas: {
-        /** @description RFC 7807 problem details (03-backend §4) */
-        Problem: {
-            /** @example https://straightsalon.dev/errors/slot-unavailable */
-            type: string;
-            /** @example Conflict */
-            title: string;
-            /** @example 409 */
-            status: number;
-            /** @example SLOT_UNAVAILABLE */
-            code: string;
-            /** @example The selected stylist is no longer free at 11:00. */
-            detail: string;
-            /** @example /api/v1/bookings */
-            instance: string;
-            /** @example 6f1c2a8e-4d1b-4c0e-9a57-2b8f0e1d3c4a */
-            requestId?: string;
-            errors?: {
-                /** @example startAt */
-                path: string;
-                /** @example Invalid ISO datetime */
-                message: string;
-            }[];
-        };
-        Money: {
+    /**
+     * Readiness probe
+     * @description Pings MongoDB (critical) and Redis (non-critical). Returns 503 if MongoDB is down or the process is shutting down; Redis down only degrades the status (03-backend §6).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Ready (status ok or degraded) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Readiness'];
+          };
+        };
+        /** @description Not ready (MongoDB down or shutting down) */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
             /**
-             * @description Smallest currency unit
-             * @example 50000
+             * @example {
+             *       "status": "error",
+             *       "checks": {
+             *         "mongo": {
+             *           "status": "down"
+             *         },
+             *         "redis": {
+             *           "status": "up"
+             *         }
+             *       }
+             *     }
              */
-            amountMinor: number;
+            'application/json': components['schemas']['Readiness'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/metrics': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Prometheus metrics
+     * @description Exposed when METRICS_ENABLED=true (03-backend §6).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Prometheus text exposition format */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'text/plain': string;
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/audit-logs': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search the audit log (API-073)
+     * @description ADMIN. Newest first, filtered by entity, actor, action and salon-local date range (FR-073). User PII in before/after is masked (07 §2.2).
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          entityType?: string;
+          entityId?: string;
+          /** @description A user id, or "system" */
+          actorId?: string | 'system';
+          action?: string;
+          /** @description Salon-local date, inclusive */
+          from?: string;
+          /** @description Salon-local date, inclusive */
+          to?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of audit entries */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['AuditLogList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/register': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Register a customer account (API-001) */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example Ananya R */
+            name: string;
             /**
-             * @description ISO 4217
-             * @example INR
+             * Format: email
+             * @example ananya@example.com
              */
-            currency: string;
+            email: string;
+            /** @example +919876543212 */
+            phone: string;
+            /**
+             * Format: password
+             * @example Fade-and-Trim7
+             */
+            password: string;
+          };
         };
-        /**
-         * @example {
-         *       "page": 1,
-         *       "pageSize": 20,
-         *       "total": 134,
-         *       "totalPages": 7
-         *     }
-         */
-        PaginationMeta: {
-            page: number;
-            pageSize: number;
-            total: number;
-            totalPages: number;
+      };
+      responses: {
+        /** @description Registered and signed in */
+        201: {
+          headers: {
+            /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
+            'Set-Cookie'?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Session'];
+          };
         };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60d01",
-         *       "at": "2026-10-06T09:12:44.123Z",
-         *       "actor": {
-         *         "id": "6712c0f9a1b2c3d4e5f60222",
-         *         "role": "RECEPTIONIST",
-         *         "ip": "10.0.0.5"
-         *       },
-         *       "action": "booking.cancel",
-         *       "entityType": "booking",
-         *       "entityId": "6712c0f9a1b2c3d4e5f60789",
-         *       "before": {
-         *         "status": "BOOKED"
-         *       },
-         *       "after": {
-         *         "status": "CANCELLED",
-         *         "cancellation": {
-         *           "reason": "Customer called",
-         *           "overridden": true
-         *         }
-         *       },
-         *       "diff": [
-         *         "status",
-         *         "cancellation"
-         *       ],
-         *       "requestId": "6f1c2a8e-4d1b-4c0e-9a57-2b8f0e1d3c4a",
-         *       "metadata": {
-         *         "override": true
-         *       }
-         *     }
-         */
-        AuditLog: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Email or phone already registered (DUPLICATE, PHONE_ALREADY_REGISTERED) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Rate limited (RATE_LIMITED) */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/login': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Log in (API-002)
+     * @description 5 failed attempts for one email lock it for 15 minutes (429).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /**
+             * Format: email
+             * @example ananya@example.com
+             */
+            email: string;
+            /**
+             * Format: password
+             * @example Fade-and-Trim7
+             */
+            password: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Signed in */
+        200: {
+          headers: {
+            /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
+            'Set-Cookie'?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Session'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Invalid email or password (UNAUTHENTICATED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Rate limited (RATE_LIMITED) */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/refresh': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Rotate the refresh token (API-003)
+     * @description Reusing a rotated token revokes every session of that login (06 §2).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description New access token; new refresh cookie */
+        200: {
+          headers: {
+            /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
+            'Set-Cookie'?: string;
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['AccessToken'];
+          };
+        };
+        /** @description Missing, expired, revoked or reused refresh token (UNAUTHENTICATED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/logout': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Log out of this device (API-004) */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Session ended; cookies cleared */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/logout-all': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Log out of all devices (API-005) */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description All sessions ended */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/forgot-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Request a password reset email (API-006)
+     * @description Always 202, whether or not the email has an account (no user enumeration).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /**
+             * Format: email
+             * @example ananya@example.com
+             */
+            email: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Accepted */
+        202: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Rate limited (RATE_LIMITED) */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/reset-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Set a new password with a reset token (API-007)
+     * @description Ends every session of the account.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @description From the emailed reset link */
+            token: string;
+            /**
+             * Format: password
+             * @example Fade-and-Trim7
+             */
+            newPassword: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Password changed */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Invalid input, or invalid/expired/used token (VALIDATION_FAILED, INVALID_RESET_TOKEN) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/change-password': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change password (API-008)
+     * @description Ends every other session; this device receives a fresh refresh cookie.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header: {
+          /** @description CSRF guard for auth endpoints (06 §4) */
+          'x-requested-with': 'straight-salon-web';
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** Format: password */
+            currentPassword: string;
+            /**
+             * Format: password
+             * @example Fade-and-Trim7
+             */
+            newPassword: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Password changed */
+        204: {
+          headers: {
+            /** @description ss_rt (httpOnly, Path=/api/v1/auth) and ss_session */
+            'Set-Cookie'?: string;
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Validation failed or current password incorrect (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Missing X-Requested-With header (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/auth/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** Current user profile (API-009) */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Profile */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Not authenticated */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/availability': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Bookable start times for a day (API-040)
+     * @description Start times where the stylist (or, for "any", at least one qualified stylist) is free for the total duration plus buffer. Respects salon and stylist hours, breaks, time-off, holidays and bookings (03 §5.2). Customers and the public do not see starts within the lead time; staff roles (send a token) do. Dates outside today..today+maxAdvanceDays return no slots. Cached 60 s per stylist.
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description Comma-separated service ids (1-5) */
+          serviceIds: string;
+          /** @description A stylist id or "any" */
+          staffId?: 'any' | string;
+          date: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Slots */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Availability'];
+          };
+        };
+        /** @description Validation failed, or an unknown/inactive service (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description A bearer token was sent but is invalid (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description The stylist does not perform every service (STAFF_CANNOT_PERFORM_SERVICE) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/availability/days': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Dates with at least one slot (API-041)
+     * @description For greying out the calendar. At most 31 days. Cached 2 min.
+     */
+    get: {
+      parameters: {
+        query: {
+          /** @description Comma-separated service ids (1-5) */
+          serviceIds: string;
+          /** @description A stylist id or "any" */
+          staffId?: 'any' | string;
+          from: string;
+          to: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Available dates */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['AvailableDays'];
+          };
+        };
+        /** @description Validation failed, or an unknown/inactive service (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description A bearer token was sent but is invalid (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description The stylist does not perform every service (STAFF_CANNOT_PERFORM_SERVICE) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search bookings (API-052)
+     * @description ADMIN, RECEPTIONIST, STAFF (always only their own). Sorted by startAt by default.
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          sort?: string;
+          /** @description Salon-local appointment date */
+          date?: string;
+          /** @description First salon-local date, inclusive */
+          from?: string;
+          /** @description Last salon-local date, inclusive */
+          to?: string;
+          /** @description Ignored for STAFF (always their own) */
+          staffId?: string;
+          status?: components['schemas']['BookingStatus'];
+          customerId?: string;
+          /** @description Booking reference prefix (SS-...) or customer phone prefix */
+          q?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of bookings */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BookingList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Create a booking (API-050)
+     * @description CUSTOMER for themselves; RECEPTIONIST/ADMIN for a customer (customerId, source, checkInNow). startAt must be aligned to the slot granularity (BR-001), respect the lead time for customers (BR-002), the advance window (BR-003), working hours/breaks/time-off/holidays (BR-005), the stylist's services (BR-007) and the 3-upcoming-bookings limit for customers (BR-009). "any" assigns the qualified stylist with the fewest bookings that day (FR-033). checkInNow creates a CHECKED_IN walk-in at the current slot boundary or the next free slot today. 20 requests/hour/user.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: {
+          /** @description Optional; replays the first successful response for 24 h (03 §9) */
+          'Idempotency-Key'?: string;
+        };
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @description 1 to 5 different services (BR-008) */
+            serviceIds: string[];
+            /**
+             * @description A stylist id, or "any" (FR-033)
+             * @example any
+             */
+            staffId: 'any' | string;
             /**
              * Format: date-time
+             * @description Required unless checkInNow
              * @example 2026-10-12T05:30:00.000Z
              */
-            at: string;
-            actor: {
-                /** @description A user id, or "system" for jobs */
-                id: string;
-                role: string;
-                ip?: string;
-                userAgent?: string;
-            };
-            action: string;
-            entityType: string;
-            entityId: string;
-            before: {
-                [key: string]: unknown;
-            } | null;
-            after: {
-                [key: string]: unknown;
-            } | null;
-            diff: string[];
-            requestId?: string;
-            metadata?: {
-                [key: string]: unknown;
-            };
-        };
-        AuditLogList: {
-            data: components["schemas"]["AuditLog"][];
+            startAt?: string;
+            notes?: string;
             /**
-             * @example {
-             *       "page": 1,
-             *       "pageSize": 20,
-             *       "total": 134,
-             *       "totalPages": 7
-             *     }
+             * @description RECEPTIONIST/ADMIN only (required for them)
+             * @example 6712c0f9a1b2c3d4e5f60789
              */
-            meta: {
-                page: number;
-                pageSize: number;
-                total: number;
-                totalPages: number;
-            };
-        };
-        /**
-         * @example CUSTOMER
-         * @enum {string}
-         */
-        Role: "CUSTOMER" | "STAFF" | "RECEPTIONIST" | "ADMIN";
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60111",
-         *       "name": "Ananya R",
-         *       "email": "ananya@example.com",
-         *       "phone": "+919876543212",
-         *       "role": "CUSTOMER",
-         *       "isActive": true,
-         *       "isWalkIn": false,
-         *       "preferences": {
-         *         "smsOptIn": true,
-         *         "emailOptIn": true
-         *       },
-         *       "createdAt": "2026-10-06T09:12:44.000Z",
-         *       "updatedAt": "2026-10-06T09:12:44.000Z"
-         *     }
-         */
-        User: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            name: string;
-            email?: string;
-            phone: string;
-            role: components["schemas"]["Role"];
-            isActive: boolean;
-            isWalkIn: boolean;
-            preferences: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                preferredStaffId?: string;
-                smsOptIn: boolean;
-                emailOptIn: boolean;
-            };
-            /** Format: date-time */
-            lastLoginAt?: string;
-            /** Format: date-time */
-            createdAt: string;
-            /** Format: date-time */
-            updatedAt: string;
-        };
-        UserList: {
-            data: components["schemas"]["User"][];
+            customerId?: string;
             /**
-             * @example {
-             *       "page": 1,
-             *       "pageSize": 20,
-             *       "total": 134,
-             *       "totalPages": 7
-             *     }
-             */
-            meta: {
-                page: number;
-                pageSize: number;
-                total: number;
-                totalPages: number;
-            };
-        };
-        Session: {
-            user: components["schemas"]["User"];
-            /** @description JWT, 15 minutes. Keep in memory only (05 §5). */
-            accessToken: string;
-        };
-        AccessToken: {
-            accessToken: string;
-        };
-        /**
-         * @example {
-         *       "date": "2026-10-12",
-         *       "timezone": "Asia/Kolkata",
-         *       "slots": [
-         *         {
-         *           "startAt": "2026-10-12T05:30:00.000Z",
-         *           "staffIds": [
-         *             "6712c0f9a1b2c3d4e5f60601"
-         *           ]
-         *         },
-         *         {
-         *           "startAt": "2026-10-12T05:45:00.000Z",
-         *           "staffIds": [
-         *             "6712c0f9a1b2c3d4e5f60601",
-         *             "6712c0f9a1b2c3d4e5f60602"
-         *           ]
-         *         }
-         *       ]
-         *     }
-         */
-        Availability: {
-            date: string;
-            timezone: string;
-            slots: {
-                startAt: string;
-                staffIds: string[];
-            }[];
-        };
-        /**
-         * @example {
-         *       "from": "2026-10-12",
-         *       "to": "2026-10-18",
-         *       "timezone": "Asia/Kolkata",
-         *       "availableDates": [
-         *         "2026-10-12",
-         *         "2026-10-13",
-         *         "2026-10-15"
-         *       ]
-         *     }
-         */
-        AvailableDays: {
-            from: string;
-            to: string;
-            timezone: string;
-            /** @description Dates with at least one slot */
-            availableDates: string[];
-        };
-        /**
-         * @example BOOKED
-         * @enum {string}
-         */
-        BookingStatus: "BOOKED" | "CHECKED_IN" | "IN_SERVICE" | "COMPLETED" | "CANCELLED" | "NO_SHOW";
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60789",
-         *       "bookingRef": "SS-261012-7KQ2",
-         *       "status": "BOOKED",
-         *       "startAt": "2026-10-12T05:30:00.000Z",
-         *       "endAt": "2026-10-12T06:30:00.000Z",
-         *       "customer": {
-         *         "id": "6712c0f9a1b2c3d4e5f60111",
-         *         "name": "Ananya R",
-         *         "phone": "+919876543212"
-         *       },
-         *       "staff": {
-         *         "id": "6712c0f9a1b2c3d4e5f60601",
-         *         "displayName": "Ravi"
-         *       },
-         *       "services": [
-         *         {
-         *           "serviceId": "6712c0f9a1b2c3d4e5f60501",
-         *           "name": "Haircut",
-         *           "durationMin": 45,
-         *           "price": {
-         *             "amountMinor": 40000,
-         *             "currency": "INR"
-         *           }
-         *         },
-         *         {
-         *           "serviceId": "6712c0f9a1b2c3d4e5f60502",
-         *           "name": "Beard Trim",
-         *           "durationMin": 15,
-         *           "price": {
-         *             "amountMinor": 15000,
-         *             "currency": "INR"
-         *           }
-         *         }
-         *       ],
-         *       "total": {
-         *         "amountMinor": 55000,
-         *         "currency": "INR"
-         *       },
-         *       "source": "ONLINE",
-         *       "payment": {
-         *         "status": "UNPAID"
-         *       },
-         *       "canCancel": true,
-         *       "canReschedule": true,
-         *       "canReview": false,
-         *       "createdAt": "2026-10-06T09:12:44.000Z"
-         *     }
-         */
-        Booking: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            bookingRef: string;
-            status: components["schemas"]["BookingStatus"];
-            startAt: string;
-            endAt: string;
-            customer: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                id: string;
-                /** @description First name only for STAFF viewers */
-                name: string;
-                /** @description Masked for STAFF viewers */
-                phone: string;
-            };
-            staff: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                id: string;
-                displayName: string;
-            };
-            services: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                serviceId: string;
-                name: string;
-                durationMin: number;
-                price: components["schemas"]["Money"];
-            }[];
-            total: components["schemas"]["Money"];
-            /**
+             * @description RECEPTIONIST/ADMIN only. Default PHONE, or WALK_IN with checkInNow; customers always ONLINE
              * @example ONLINE
              * @enum {string}
              */
-            source: "ONLINE" | "WALK_IN" | "PHONE";
-            notes?: string;
-            payment: {
-                /** @enum {string} */
-                status: "UNPAID" | "PAID";
-                /**
-                 * @example UPI
-                 * @enum {string}
-                 */
-                method?: "CASH" | "CARD" | "UPI" | "OTHER";
-                amountPaid?: components["schemas"]["Money"];
-                discount?: components["schemas"]["Money"];
-                discountReason?: string;
-                recordedAt?: string;
-            };
-            cancellation?: {
-                at: string;
-                reason?: string;
-                overridden: boolean;
-            };
-            /** @description For the current user (BR-006), server-computed */
-            canCancel: boolean;
-            canReschedule: boolean;
-            /** @description For the current user (BR-012): own COMPLETED booking, inside the review window, not yet reviewed */
-            canReview: boolean;
-            createdAt: string;
+            source?: 'ONLINE' | 'WALK_IN' | 'PHONE';
+            /** @description RECEPTIONIST/ADMIN only: walk-in starting at the current slot boundary or the next free aligned slot today, created CHECKED_IN (00 US-03) */
+            checkInNow?: boolean;
+          };
         };
-        BookingList: {
-            data: components["schemas"]["Booking"][];
+      };
+      responses: {
+        /** @description Booking created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Booking'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Slot just taken (SLOT_UNAVAILABLE) or same Idempotency-Key in progress (IDEMPOTENCY_KEY_REUSED) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description A rule failed: VALIDATION_FAILED (alignment), LEAD_TIME_VIOLATION, ADVANCE_WINDOW_VIOLATION, OUTSIDE_BUSINESS_HOURS, STAFF_CANNOT_PERFORM_SERVICE, BOOKING_LIMIT_REACHED, IDEMPOTENCY_KEY_REUSED (different body) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Too many booking attempts (RATE_LIMITED) */
+        429: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Lock store unavailable (TEMPORARILY_UNAVAILABLE) */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * My bookings (API-051)
+     * @description CUSTOMER. upcoming: active bookings not yet over, soonest first. past: everything else, latest first.
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          scope?: 'upcoming' | 'past';
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of bookings */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BookingList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a booking (API-053)
+     * @description Owner customer, assigned stylist, RECEPTIONIST, ADMIN. Others get 404 (06 §3).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Booking */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Booking'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found, including bookings you may not see (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}/reschedule': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Reschedule (API-054)
+     * @description Owner customer, RECEPTIONIST, ADMIN. Same booking and reference, new time and/or stylist (BR-015), re-validating BR-001..007. Only BOOKED bookings, up to the cut-off (BR-006) unless reception/admin override with a reason (audited).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
             /**
-             * @example {
-             *       "page": 1,
-             *       "pageSize": 20,
-             *       "total": 134,
-             *       "totalPages": 7
-             *     }
+             * Format: date-time
+             * @example 2026-10-12T05:30:00.000Z
              */
-            meta: {
-                page: number;
-                pageSize: number;
-                total: number;
-                totalPages: number;
-            };
+            startAt: string;
+            /**
+             * @description Move to another stylist; default the same one
+             * @example 6712c0f9a1b2c3d4e5f60789
+             */
+            staffId?: string;
+            /** @description RECEPTIONIST/ADMIN: bypass the cancellation cut-off (BR-006); needs a reason; audited */
+            override?: boolean;
+            reason?: string;
+          };
         };
-        BookingHistory: {
-            statusHistory: {
-                status: components["schemas"]["BookingStatus"];
-                at: string;
-                by: string;
-                note?: string;
-            }[];
-            audit: {
-                at: string;
-                /** @example booking.reschedule */
-                action: string;
-                actor: {
-                    id: string;
-                    role: string;
-                };
-                diff: string[];
-                before: {
-                    [key: string]: unknown;
-                } | null;
-                after: {
-                    [key: string]: unknown;
-                } | null;
-                metadata?: {
-                    [key: string]: unknown;
-                };
-            }[];
+      };
+      responses: {
+        /** @description Rescheduled booking */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Booking'];
+          };
         };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60401",
-         *       "name": "Hair",
-         *       "slug": "hair",
-         *       "description": "Cuts, colour and treatments",
-         *       "sortOrder": 1,
-         *       "isActive": true
-         *     }
-         */
-        Category: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found, including bookings you may not see (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Slot taken (SLOT_UNAVAILABLE) or changed concurrently (STALE_VERSION) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description CUTOFF_PASSED, INVALID_STATUS_TRANSITION, LEAD_TIME_VIOLATION, ADVANCE_WINDOW_VIOLATION, OUTSIDE_BUSINESS_HOURS, STAFF_CANNOT_PERFORM_SERVICE, VALIDATION_FAILED */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Lock store unavailable (TEMPORARILY_UNAVAILABLE) */
+        503: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}/cancel': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Cancel (API-055)
+     * @description Owner customer, RECEPTIONIST, ADMIN. Only BOOKED bookings, up to the cut-off (BR-006) unless reception/admin override with a reason (audited). The slot frees immediately.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @description RECEPTIONIST/ADMIN: bypass the cancellation cut-off (BR-006); needs a reason; audited */
+            override?: boolean;
+            reason?: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Cancelled booking */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Booking'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found, including bookings you may not see (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Changed concurrently (STALE_VERSION) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description CUTOFF_PASSED or INVALID_STATUS_TRANSITION */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}/status': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a booking along its lifecycle (API-056)
+     * @description Assigned stylist, RECEPTIONIST, ADMIN. BOOKED -> CHECKED_IN -> IN_SERVICE -> COMPLETED, or BOOKED -> NO_SHOW once the start time has passed (BR-010).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @enum {string} */
+            status: 'CHECKED_IN' | 'IN_SERVICE' | 'COMPLETED' | 'NO_SHOW';
+            note?: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Updated booking */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Booking'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found, including bookings you may not see (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Changed concurrently (STALE_VERSION) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not allowed from the current status (INVALID_STATUS_TRANSITION) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}/history': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Status history and audit trail (API-058)
+     * @description RECEPTIONIST, ADMIN.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description History */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['BookingHistory'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found, including bookings you may not see (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}/payment': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Record a payment (API-057)
+     * @description RECEPTIONIST, ADMIN. Only for COMPLETED bookings; amountPaidMinor + discountMinor must equal the total; a discount needs a reason (BR-011). One payment per booking. Supports Idempotency-Key.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: {
+          /** @description Optional; replays the first successful response for 24 h (03 §9) */
+          'Idempotency-Key'?: string;
+        };
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /**
+             * @example UPI
+             * @enum {string}
+             */
+            method: 'CASH' | 'CARD' | 'UPI' | 'OTHER';
+            /** @example 50000 */
+            amountPaidMinor: number;
+            /** @example 5000 */
+            discountMinor?: number;
+            /** @example Loyalty */
+            discountReason?: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Booking with the recorded payment */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Booking'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Already paid (PAYMENT_ALREADY_RECORDED), changed concurrently (STALE_VERSION) or key in progress (IDEMPOTENCY_KEY_REUSED) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not completed (PAYMENT_NOT_ALLOWED), amounts do not add up (PAYMENT_MISMATCH), key reused with another body (IDEMPOTENCY_KEY_REUSED) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/categories': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List categories (API-021)
+     * @description Active categories by sortOrder, then name. Cached 30 min. ADMIN may pass includeInactive=true.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description ADMIN only: also return deactivated entries (401/403 for anyone else) */
+          includeInactive?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Categories */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['CategoryList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Create a category (API-022)
+     * @description ADMIN. The slug is generated from the name.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example Hair */
             name: string;
-            slug: string;
             description?: string;
-            sortOrder: number;
-            isActive: boolean;
+            /** @example 1 */
+            sortOrder?: number;
+          };
         };
-        CategoryList: components["schemas"]["Category"][];
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60501",
-         *       "slug": "haircut",
-         *       "name": "Haircut",
-         *       "description": "Consultation, wash, cut and style",
-         *       "categoryId": "6712c0f9a1b2c3d4e5f60401",
-         *       "durationMin": 45,
-         *       "price": {
-         *         "amountMinor": 40000,
-         *         "currency": "INR"
-         *       },
-         *       "isActive": true,
-         *       "ratingAvg": 4.6,
-         *       "ratingCount": 18
-         *     }
-         */
-        Service: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            slug: string;
+      };
+      responses: {
+        /** @description Category created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Category'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Name already used (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/categories/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Deactivate a category (API-022)
+     * @description ADMIN. Soft delete: the category is hidden from the public list.
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Deactivated */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    /**
+     * Update a category (API-022)
+     * @description ADMIN. isActive: true reactivates a deactivated category.
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            name?: string;
+            description?: string | null;
+            sortOrder?: number;
+            isActive?: boolean;
+          };
+        };
+      };
+      responses: {
+        /** @description Updated category */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Category'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Name already used (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/services': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List services (API-023)
+     * @description Active services, paginated, sorted by name by default. Filter by category, search words with q. Cached 10 min. ADMIN may pass includeInactive=true.
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          sort?: string;
+          categoryId?: string;
+          /** @description Words in the name or description */
+          q?: string;
+          /** @description ADMIN only: also return deactivated entries (401/403 for anyone else) */
+          includeInactive?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of services */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ServiceList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Create a service (API-025)
+     * @description ADMIN. durationMin must be a multiple of the slot granularity (BR-013).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example Haircut */
             name: string;
-            description?: string;
             /** @example 6712c0f9a1b2c3d4e5f60789 */
             categoryId: string;
-            durationMin: number;
-            price: components["schemas"]["Money"];
-            imageUrl?: string;
-            isActive: boolean;
-            ratingAvg: number;
-            ratingCount: number;
-        };
-        ServiceList: {
-            data: components["schemas"]["Service"][];
-            /**
-             * @example {
-             *       "page": 1,
-             *       "pageSize": 20,
-             *       "total": 134,
-             *       "totalPages": 7
-             *     }
-             */
-            meta: {
-                page: number;
-                pageSize: number;
-                total: number;
-                totalPages: number;
-            };
-        };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60601",
-         *       "displayName": "Ravi",
-         *       "ratingAvg": 4.8,
-         *       "ratingCount": 31
-         *     }
-         */
-        StylistSummary: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            displayName: string;
-            photoUrl?: string;
-            ratingAvg: number;
-            ratingCount: number;
-        };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60501",
-         *       "slug": "haircut",
-         *       "name": "Haircut",
-         *       "description": "Consultation, wash, cut and style",
-         *       "categoryId": "6712c0f9a1b2c3d4e5f60401",
-         *       "durationMin": 45,
-         *       "price": {
-         *         "amountMinor": 40000,
-         *         "currency": "INR"
-         *       },
-         *       "isActive": true,
-         *       "ratingAvg": 4.6,
-         *       "ratingCount": 18,
-         *       "stylists": [
-         *         {
-         *           "id": "6712c0f9a1b2c3d4e5f60601",
-         *           "displayName": "Ravi",
-         *           "ratingAvg": 4.8,
-         *           "ratingCount": 31
-         *         }
-         *       ]
-         *     }
-         */
-        ServiceDetail: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            slug: string;
-            name: string;
             description?: string;
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            categoryId: string;
+            /**
+             * @description Multiple of the slot granularity (BR-013)
+             * @example 45
+             */
             durationMin: number;
-            price: components["schemas"]["Money"];
+            /** @example 40000 */
+            priceMinor: number;
+            /**
+             * Format: uri
+             * @example http://localhost:4000/uploads/images/9f1c2a8e.webp
+             */
             imageUrl?: string;
-            isActive: boolean;
-            ratingAvg: number;
-            ratingCount: number;
-            stylists: components["schemas"]["StylistSummary"][];
+            /** @description Default true */
+            isActive?: boolean;
+          };
         };
-        /**
-         * @example {
-         *       "url": "http://localhost:4000/uploads/images/9f1c2a8e.webp"
-         *     }
-         */
-        UploadedImage: {
-            url: string;
+      };
+      responses: {
+        /** @description Service created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Service'];
+          };
         };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60a01",
-         *       "userId": "6712c0f9a1b2c3d4e5f60111",
-         *       "channel": "EMAIL",
-         *       "template": "booking_confirmed",
-         *       "to": "ananya@example.com",
-         *       "status": "SENT",
-         *       "attempts": 1,
-         *       "sentAt": "2026-10-06T09:12:46.000Z",
-         *       "createdAt": "2026-10-06T09:12:45.000Z",
-         *       "content": {
-         *         "subject": "Booking confirmed: Mon 12 Oct 2026, 11:00",
-         *         "text": "Hi Ananya,\n\nYour appointment with Ravi is confirmed.\n..."
-         *       }
-         *     }
-         */
-        Notification: {
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description An active service has this name (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Duration is not a multiple of the slot granularity (INVALID_DURATION) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/services/{idOrSlug}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Service detail (API-024)
+     * @description By id or slug, with the active stylists who perform it and its rating. Deactivated services are not found, except for ADMIN.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          idOrSlug: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Service */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ServiceDetail'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/services/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Deactivate a service (API-026)
+     * @description ADMIN. Hidden from the catalogue; historical bookings keep their snapshot (FR-013).
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Deactivated */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    /**
+     * Update a service (API-025)
+     * @description ADMIN. null clears description or imageUrl. isActive: true reactivates (BR-013 re-checked).
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            name?: string;
             /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            userId: string;
-            /** @enum {string} */
-            channel: "EMAIL" | "SMS";
-            /** @enum {string} */
-            template: "welcome" | "password_reset" | "booking_confirmed" | "booking_rescheduled" | "booking_cancelled" | "booking_reminder_24h" | "booking_reminder_2h" | "booking_no_show" | "booking_thank_you" | "staff_booking_assigned" | "staff_booking_changed" | "staff_booking_cancelled";
-            to: string;
-            /** @enum {string} */
-            status: "QUEUED" | "SENT" | "FAILED";
-            attempts: number;
+            categoryId?: string;
+            description?: string | null;
+            durationMin?: number;
+            priceMinor?: number;
             /**
-             * Format: date-time
-             * @example 2026-10-12T05:30:00.000Z
+             * Format: uri
+             * @example http://localhost:4000/uploads/images/9f1c2a8e.webp
              */
-            sentAt?: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-12T05:30:00.000Z
-             */
-            createdAt: string;
-            /** @description The message as sent; secrets such as reset links are redacted */
-            content: {
-                subject?: string;
-                text: string;
-                html?: string;
-            };
-            /** @example smtp */
-            provider?: string;
-            providerMessageId?: string;
-            /** @description Last delivery error, if any */
-            error?: string;
+            imageUrl?: string | null;
+            isActive?: boolean;
+          };
         };
-        NotificationList: {
-            data: components["schemas"]["Notification"][];
-            /**
-             * @example {
-             *       "page": 1,
-             *       "pageSize": 20,
-             *       "total": 134,
-             *       "totalPages": 7
-             *     }
-             */
-            meta: {
-                page: number;
-                pageSize: number;
-                total: number;
-                totalPages: number;
-            };
+      };
+      responses: {
+        /** @description Updated service */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Service'];
+          };
         };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60301",
-         *       "date": "2026-11-01",
-         *       "name": "Kannada Rajyotsava"
-         *     }
-         */
-        Holiday: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Name used by an active service (DUPLICATE) or changed concurrently (STALE_VERSION) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Duration is not a multiple of the slot granularity (INVALID_DURATION) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/uploads/images': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Upload an image (API-027)
+     * @description ADMIN. One `file` field: PNG, JPEG or WebP up to 2 MB. The type is detected from the content, the image is re-encoded without metadata and stored under a random name. Set the returned url as services.imageUrl or staff.photoUrl.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'multipart/form-data': {
+            /**
+             * Format: binary
+             * @description PNG, JPEG or WebP, max 2 MB
+             */
+            file: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Stored image */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['UploadedImage'];
+          };
+        };
+        /** @description Missing, unreadable or unsupported file (INVALID_FILE) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description File larger than 2 MB (INVALID_FILE) */
+        413: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/notifications/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * My notification history (API-065)
+     * @description Any logged-in user. Emails and SMS sent to me, newest first.
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of notifications */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['NotificationList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/notifications': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * All notifications (API-066)
+     * @description ADMIN. Every message with its delivery state, newest first; used to inspect messages from the mock providers in development. Secrets such as reset links are redacted.
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          userId?: string;
+          channel?: 'EMAIL' | 'SMS';
+          status?: 'QUEUED' | 'SENT' | 'FAILED';
+          template?:
+            | 'welcome'
+            | 'password_reset'
+            | 'booking_confirmed'
+            | 'booking_rescheduled'
+            | 'booking_cancelled'
+            | 'booking_reminder_24h'
+            | 'booking_reminder_2h'
+            | 'booking_no_show'
+            | 'booking_thank_you'
+            | 'staff_booking_assigned'
+            | 'staff_booking_changed'
+            | 'staff_booking_cancelled';
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of notifications */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['NotificationList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/holidays': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List holidays (API-019)
+     * @description Full-day closures, by date ascending. Both bounds are optional and inclusive.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description First date, inclusive */
+          from?: string;
+          /** @description Last date, inclusive */
+          to?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Holidays */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['HolidayList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Add a holiday (API-020)
+     * @description ADMIN. Fails with ACTIVE_BOOKINGS_EXIST when active bookings exist that day, unless force: true cancels them and notifies the customers.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /**
+             * Format: date
+             * @example 2026-10-12
+             */
             date: string;
+            /** @example Diwali */
             name: string;
+            /** @description Cancel the active bookings on that date and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST */
+            force?: boolean;
+          };
         };
-        HolidayList: components["schemas"]["Holiday"][];
-        /**
-         * @example {
-         *       "date": "2026-10-12",
-         *       "timezone": "Asia/Kolkata",
-         *       "generatedAt": "2026-10-12T06:00:00.000Z",
-         *       "counts": {
-         *         "BOOKED": 6,
-         *         "CHECKED_IN": 1,
-         *         "IN_SERVICE": 1,
-         *         "COMPLETED": 3,
-         *         "CANCELLED": 1,
-         *         "NO_SHOW": 0
-         *       },
-         *       "totals": {
-         *         "bookings": 12,
-         *         "revenue": {
-         *           "amountMinor": 135000,
-         *           "currency": "INR"
-         *         }
-         *       },
-         *       "staff": [
-         *         {
-         *           "staffId": "6712c0f9a1b2c3d4e5f60601",
-         *           "displayName": "Ravi",
-         *           "bookings": [
-         *             {
-         *               "id": "6712c0f9a1b2c3d4e5f60789",
-         *               "bookingRef": "SS-261012-7KQ2",
-         *               "status": "COMPLETED",
-         *               "startAt": "2026-10-12T05:30:00.000Z",
-         *               "endAt": "2026-10-12T06:30:00.000Z",
-         *               "customerName": "Ananya Rao",
-         *               "services": [
-         *                 "Haircut",
-         *                 "Beard Trim"
-         *               ]
-         *             }
-         *           ]
-         *         }
-         *       ]
-         *     }
-         */
-        Dashboard: {
-            /**
-             * Format: date
-             * @example 2026-10-12
-             */
-            date: string;
-            timezone: string;
-            /**
-             * Format: date-time
-             * @example 2026-10-12T05:30:00.000Z
-             */
-            generatedAt: string;
-            /** @description Bookings that day by status */
-            counts: {
-                BOOKED: number;
-                CHECKED_IN: number;
-                IN_SERVICE: number;
-                COMPLETED: number;
-                CANCELLED: number;
-                NO_SHOW: number;
-            };
-            totals: {
-                bookings: number;
-                revenue: components["schemas"]["Money"] & unknown;
-            };
-            /** @description Per-stylist timeline: active stylists and anyone with bookings that day, by name; cancelled bookings are left out */
-            staff: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                staffId: string;
-                displayName: string;
-                bookings: {
-                    /** @example 6712c0f9a1b2c3d4e5f60789 */
-                    id: string;
-                    bookingRef: string;
-                    status: components["schemas"]["BookingStatus"];
-                    /**
-                     * Format: date-time
-                     * @example 2026-10-12T05:30:00.000Z
-                     */
-                    startAt: string;
-                    /**
-                     * Format: date-time
-                     * @example 2026-10-12T05:30:00.000Z
-                     */
-                    endAt: string;
-                    customerName: string;
-                    services: string[];
-                }[];
-            }[];
+      };
+      responses: {
+        /** @description Holiday created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Holiday'];
+          };
         };
-        /**
-         * @description Totals and breakdowns for bookings whose appointment date (salon timezone) is in the range (FR-071). Built from daily_stats.
-         * @example {
-         *       "from": "2026-10-01",
-         *       "to": "2026-10-31",
-         *       "timezone": "Asia/Kolkata",
-         *       "totals": {
-         *         "bookings": 120,
-         *         "completed": 98,
-         *         "cancelled": 12,
-         *         "noShows": 4,
-         *         "noShowRate": 0.037,
-         *         "revenue": {
-         *           "amountMinor": 6540000,
-         *           "currency": "INR"
-         *         },
-         *         "bookedMinutes": 5400,
-         *         "availableMinutes": 9600,
-         *         "utilisation": 0.5625
-         *       },
-         *       "byDay": [],
-         *       "byService": [
-         *         {
-         *           "serviceId": "6712c0f9a1b2c3d4e5f60501",
-         *           "name": "Haircut",
-         *           "count": 40,
-         *           "revenue": {
-         *             "amountMinor": 1600000,
-         *             "currency": "INR"
-         *           }
-         *         }
-         *       ],
-         *       "byStaff": []
-         *     }
-         */
-        ReportSummary: {
-            /**
-             * Format: date
-             * @example 2026-10-12
-             */
-            from: string;
-            /**
-             * Format: date
-             * @example 2026-10-12
-             */
-            to: string;
-            timezone: string;
-            totals: {
-                /** @description All bookings, any status */
-                bookings: number;
-                completed: number;
-                cancelled: number;
-                noShows: number;
-                /** @description noShows / (bookings - cancelled), 0..1 */
-                noShowRate: number;
-                revenue: components["schemas"]["Money"];
-                /** @description Completed and still-active bookings (not cancelled or no-show) */
-                bookedMinutes: number;
-                availableMinutes: number;
-                /** @description bookedMinutes / availableMinutes, 0..1 */
-                utilisation: number;
-            };
-            byDay: {
-                /**
-                 * Format: date
-                 * @example 2026-10-12
-                 */
-                date: string;
-                /** @description All bookings, any status */
-                bookings: number;
-                completed: number;
-                cancelled: number;
-                noShows: number;
-                /** @description noShows / (bookings - cancelled), 0..1 */
-                noShowRate: number;
-                revenue: components["schemas"]["Money"];
-                /** @description Completed and still-active bookings (not cancelled or no-show) */
-                bookedMinutes: number;
-                availableMinutes: number;
-                /** @description bookedMinutes / availableMinutes, 0..1 */
-                utilisation: number;
-            }[];
-            /** @description By revenue, highest first */
-            byService: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                serviceId: string;
-                name: string;
-                /** @description Completed bookings with it */
-                count: number;
-                revenue: components["schemas"]["Money"] & unknown;
-            }[];
-            byStaff: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                staffId: string;
-                displayName: string;
-                /** @description All bookings, any status */
-                bookings: number;
-                completed: number;
-                cancelled: number;
-                noShows: number;
-                /** @description noShows / (bookings - cancelled), 0..1 */
-                noShowRate: number;
-                revenue: components["schemas"]["Money"];
-                /** @description Completed and still-active bookings (not cancelled or no-show) */
-                bookedMinutes: number;
-                availableMinutes: number;
-                /** @description bookedMinutes / availableMinutes, 0..1 */
-                utilisation: number;
-            }[];
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
         };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60c01",
-         *       "rating": 5,
-         *       "comment": "Great fade, very relaxed atmosphere.",
-         *       "customer": {
-         *         "name": "Ananya"
-         *       },
-         *       "staff": {
-         *         "id": "6712c0f9a1b2c3d4e5f60601",
-         *         "displayName": "Ravi"
-         *       },
-         *       "services": [
-         *         {
-         *           "id": "6712c0f9a1b2c3d4e5f60501",
-         *           "name": "Haircut"
-         *         }
-         *       ],
-         *       "createdAt": "2026-10-12T12:02:11.000Z"
-         *     }
-         */
-        Review: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Date is already a holiday (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Active bookings exist that day (ACTIVE_BOOKINGS_EXIST) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/holidays/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove a holiday (API-020)
+     * @description ADMIN. No booking check.
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Removed */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reports/dashboard': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Day dashboard (API-070)
+     * @description ADMIN, RECEPTIONIST. Live counts by status, revenue recorded so far and a per-stylist timeline for one salon-local date (default today, FR-070). Cached 30 s.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Salon-local date; default today */
+          date?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Dashboard */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Dashboard'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reports/summary': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Report for a date range (API-071)
+     * @description ADMIN. Revenue, bookings, cancellations, no-show rate, revenue by service and stylist, utilisation (FR-071), for appointment dates from..to inclusive, at most 366 days. Built from daily_stats; cached 5 min.
+     */
+    get: {
+      parameters: {
+        query: {
+          from: string;
+          to: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Summary */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReportSummary'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reports/summary.csv': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Report as CSV (API-072)
+     * @description ADMIN. The API-071 summary as a CSV download (FR-072).
+     */
+    get: {
+      parameters: {
+        query: {
+          from: string;
+          to: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description CSV file (Content-Disposition: attachment) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'text/csv': string;
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/bookings/{id}/review': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Review a completed booking (API-060)
+     * @description The booking's CUSTOMER, once it is COMPLETED and within reviewWindowDays of completion; one review per booking (BR-012). Other customers' bookings are not found.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example 5 */
             rating: number;
+            /** @example Great fade, very relaxed atmosphere. */
             comment?: string;
-            customer: {
-                /**
-                 * @description ADMIN view only
-                 * @example 6712c0f9a1b2c3d4e5f60789
-                 */
-                id?: string;
-                /** @description First name only, except in the ADMIN view */
-                name: string;
-            };
-            staff: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                id: string;
-                displayName: string;
-            };
-            services: {
-                /** @example 6712c0f9a1b2c3d4e5f60789 */
-                id: string;
-                name: string;
-            }[];
-            /**
-             * Format: date-time
-             * @example 2026-10-12T05:30:00.000Z
-             */
-            createdAt: string;
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            bookingId?: string;
-            isHidden?: boolean;
+          };
+        };
+      };
+      responses: {
+        /** @description Review created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Review'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found, including other customers' bookings (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Already reviewed (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not completed or the review window has passed (REVIEW_NOT_ALLOWED) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reviews': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List reviews (API-061)
+     * @description Public: visible reviews, newest first, optionally for one stylist or service. ADMIN may pass includeHidden=true to moderate (adds bookingId, isHidden, hiddenReason and the full customer name).
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          staffId?: string;
+          serviceId?: string;
+          /** @description ADMIN only: also list hidden reviews */
+          includeHidden?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of reviews */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['ReviewList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/reviews/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Hide or unhide a review (API-062)
+     * @description ADMIN. Hiding needs a reason (FR-062, audited); hidden reviews leave the stylist and service ratings.
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            isHidden: boolean;
+            /** @example Abusive language */
             hiddenReason?: string;
+          };
         };
-        ReviewList: {
-            data: components["schemas"]["Review"][];
-            /**
-             * @example {
-             *       "page": 1,
-             *       "pageSize": 20,
-             *       "total": 134,
-             *       "totalPages": 7
-             *     }
-             */
-            meta: {
-                page: number;
-                pageSize: number;
-                total: number;
-                totalPages: number;
-            };
+      };
+      responses: {
+        /** @description Review (admin view) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Review'];
+          };
         };
-        /**
-         * @example {
-         *       "name": "Straight Salon",
-         *       "address": "12 MG Road, Bengaluru",
-         *       "phone": "+918041234567",
-         *       "email": "hello@straightsalon.in",
-         *       "timezone": "Asia/Kolkata",
-         *       "currency": "INR",
-         *       "businessHours": [
-         *         {
-         *           "dayOfWeek": 0,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 1,
-         *           "isOpen": false,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 2,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 3,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 4,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 5,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 6,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         }
-         *       ],
-         *       "slotGranularityMin": 15,
-         *       "minLeadTimeMin": 60,
-         *       "maxAdvanceDays": 30,
-         *       "cancellationCutoffMin": 120
-         *     }
-         */
-        PublicSettings: {
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/settings/public': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Public salon information (API-016)
+     * @description Name, address, contact, business hours, timezone, currency and the booking policy the booking wizard needs. Cached 10 min.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Public settings */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['PublicSettings'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/settings': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Full settings (API-017)
+     * @description ADMIN. Defaults are returned until settings are first saved.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Settings */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Settings'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    /**
+     * Replace settings (API-018)
+     * @description ADMIN. Full replacement of every FR-080 field. A new slot granularity must fit every active service duration (BR-013). The timezone cannot change while future active bookings exist.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
             name: string;
             address?: string;
+            /** @example +919876543212 */
             phone?: string;
+            /**
+             * Format: email
+             * @example ananya@example.com
+             */
             email?: string;
+            /** @example Asia/Kolkata */
             timezone: string;
+            /** @example INR */
             currency: string;
             businessHours: {
-                dayOfWeek: number;
-                isOpen: boolean;
-                open: string;
-                close: string;
+              /**
+               * @description 0 = Sunday … 6 = Saturday
+               * @example 1
+               */
+              dayOfWeek: number;
+              isOpen: boolean;
+              /** @example 09:30 */
+              open: string;
+              /** @example 20:30 */
+              close: string;
             }[];
             /** @example 15 */
             slotGranularityMin: number;
+            /** @example 0 */
+            bufferMin: number;
             /** @example 60 */
             minLeadTimeMin: number;
             /** @example 30 */
             maxAdvanceDays: number;
             /** @example 120 */
             cancellationCutoffMin: number;
-        };
-        /**
-         * @example {
-         *       "name": "Straight Salon",
-         *       "address": "12 MG Road, Bengaluru",
-         *       "phone": "+918041234567",
-         *       "email": "hello@straightsalon.in",
-         *       "timezone": "Asia/Kolkata",
-         *       "currency": "INR",
-         *       "businessHours": [
-         *         {
-         *           "dayOfWeek": 0,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 1,
-         *           "isOpen": false,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 2,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 3,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 4,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 5,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         },
-         *         {
-         *           "dayOfWeek": 6,
-         *           "isOpen": true,
-         *           "open": "09:30",
-         *           "close": "20:30"
-         *         }
-         *       ],
-         *       "slotGranularityMin": 15,
-         *       "minLeadTimeMin": 60,
-         *       "maxAdvanceDays": 30,
-         *       "cancellationCutoffMin": 120,
-         *       "bufferMin": 0,
-         *       "noShowGraceMin": 30,
-         *       "reviewWindowDays": 14,
-         *       "updatedAt": "2026-10-06T09:12:44.000Z"
-         *     }
-         */
-        Settings: components["schemas"]["PublicSettings"] & {
-            bufferMin: number;
+            /** @example 30 */
             noShowGraceMin: number;
+            /** @example 14 */
             reviewWindowDays: number;
+          };
+        };
+      };
+      responses: {
+        /** @description Saved settings */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Settings'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Changed concurrently (STALE_VERSION) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Granularity does not fit a service (INVALID_DURATION) or timezone change with future bookings (ACTIVE_BOOKINGS_EXIST) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/staff': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List stylists (API-030)
+     * @description Active stylists, public fields only, by name. Filter by a service they perform. Cached 10 min. ADMIN may pass includeInactive=true for every stylist with admin fields.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description Only stylists who perform this service */
+          serviceId?: string;
+          /** @description ADMIN only: include deactivated stylists and admin fields (401/403 for anyone else) */
+          includeInactive?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Stylists */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['StaffList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Create a stylist profile (API-032)
+     * @description ADMIN. Links an active STAFF user (create it with POST /users first). The weekly schedule starts as the salon hours (FR-023). The user gets staffId in their token at the next login or refresh.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /**
+             * @description An active user with role STAFF and no profile yet
+             * @example 6712c0f9a1b2c3d4e5f60789
+             */
+            userId: string;
+            /** @example Ravi */
+            displayName: string;
+            bio?: string;
+            /**
+             * Format: uri
+             * @example http://localhost:4000/uploads/images/1c2d3e4f.webp
+             */
+            photoUrl?: string;
+            /** @description Services this stylist can perform */
+            serviceIds: string[];
+          };
+        };
+      };
+      responses: {
+        /** @description Stylist created (admin view) */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Staff'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description The user already has a profile (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/staff/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Stylist profile (API-031)
+     * @description Profile, services and rating. Deactivated stylists are not found, except for ADMIN, who also gets admin fields.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Profile */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['StaffProfile'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update or deactivate a stylist (API-032)
+     * @description ADMIN. isActive: false is blocked by future active bookings unless force: true cancels them and notifies the customers (BR-014).
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            displayName?: string;
+            bio?: string | null;
+            /**
+             * Format: uri
+             * @example http://localhost:4000/uploads/images/1c2d3e4f.webp
+             */
+            photoUrl?: string | null;
+            /** @description Services this stylist can perform */
+            serviceIds?: string[];
+            isActive?: boolean;
+            /** @description With isActive: false, cancel the stylist's future active bookings and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST (BR-014) */
+            force?: boolean;
+          };
+        };
+      };
+      responses: {
+        /** @description Updated stylist (admin view) */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['Staff'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Changed concurrently (STALE_VERSION) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Active bookings are affected (ACTIVE_BOOKINGS_EXIST) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/staff/{id}/schedule': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Weekly schedule (API-033)
+     * @description ADMIN, RECEPTIONIST, or the stylist themself. Times are salon-local HH:mm.
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Schedule */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['StaffSchedule'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    /**
+     * Replace the weekly schedule (API-034)
+     * @description ADMIN. Exactly 7 days; breaks must lie within working hours and not overlap.
+     */
+    put: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            weekly: {
+              /**
+               * @description 0 = Sunday … 6 = Saturday
+               * @example 1
+               */
+              dayOfWeek: number;
+              isWorking: boolean;
+              /** @example 10:00 */
+              start: string;
+              /** @example 19:00 */
+              end: string;
+              /** @default [] */
+              breaks?: {
+                /** @example 09:30 */
+                start: string;
+                /** @example 19:00 */
+                end: string;
+              }[];
+            }[];
+          };
+        };
+      };
+      responses: {
+        /** @description Saved schedule */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['StaffSchedule'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/staff/{id}/time-off': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List time-off (API-035)
+     * @description ADMIN, RECEPTIONIST, or the stylist themself. Blocks overlapping the optional salon-local date range.
+     */
+    get: {
+      parameters: {
+        query?: {
+          /** @description First salon-local date, inclusive */
+          from?: string;
+          /** @description Last salon-local date, inclusive */
+          to?: string;
+        };
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Time-off */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TimeOffList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Block time off (API-036)
+     * @description ADMIN, or the stylist themself. Overlapping active bookings fail with ACTIVE_BOOKINGS_EXIST; ADMIN may pass force: true to cancel them and notify the customers (FR-024).
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
             /**
              * Format: date-time
-             * @description Absent until an admin first saves settings (defaults are served)
              * @example 2026-10-12T05:30:00.000Z
              */
-            updatedAt?: string;
-        };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60601",
-         *       "displayName": "Ravi",
-         *       "bio": "Precision cuts and beard styling, 8 years.",
-         *       "serviceIds": [
-         *         "6712c0f9a1b2c3d4e5f60501"
-         *       ],
-         *       "ratingAvg": 4.8,
-         *       "ratingCount": 31
-         *     }
-         */
-        Staff: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            displayName: string;
-            bio?: string;
-            photoUrl?: string;
-            serviceIds: string[];
-            ratingAvg: number;
-            ratingCount: number;
-            /**
-             * @description ADMIN view only
-             * @example 6712c0f9a1b2c3d4e5f60789
-             */
-            userId?: string;
-            /** @description ADMIN view only */
-            isActive?: boolean;
-        };
-        StaffList: components["schemas"]["Staff"][];
-        /** @description Profile with the services the stylist performs (active ones for the public) */
-        StaffProfile: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            displayName: string;
-            bio?: string;
-            photoUrl?: string;
-            serviceIds: string[];
-            ratingAvg: number;
-            ratingCount: number;
-            /**
-             * @description ADMIN view only
-             * @example 6712c0f9a1b2c3d4e5f60789
-             */
-            userId?: string;
-            /** @description ADMIN view only */
-            isActive?: boolean;
-            services: components["schemas"]["Service"][];
-        };
-        /**
-         * @example {
-         *       "staffId": "6712c0f9a1b2c3d4e5f60601",
-         *       "weekly": [
-         *         {
-         *           "dayOfWeek": 0,
-         *           "isWorking": true,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         },
-         *         {
-         *           "dayOfWeek": 1,
-         *           "isWorking": false,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         },
-         *         {
-         *           "dayOfWeek": 2,
-         *           "isWorking": true,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         },
-         *         {
-         *           "dayOfWeek": 3,
-         *           "isWorking": true,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         },
-         *         {
-         *           "dayOfWeek": 4,
-         *           "isWorking": true,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         },
-         *         {
-         *           "dayOfWeek": 5,
-         *           "isWorking": true,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         },
-         *         {
-         *           "dayOfWeek": 6,
-         *           "isWorking": true,
-         *           "start": "10:00",
-         *           "end": "19:00",
-         *           "breaks": [
-         *             {
-         *               "start": "13:30",
-         *               "end": "14:15"
-         *             }
-         *           ]
-         *         }
-         *       ]
-         *     }
-         */
-        StaffSchedule: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            staffId: string;
-            weekly: {
-                dayOfWeek: number;
-                isWorking: boolean;
-                start: string;
-                end: string;
-                breaks: {
-                    start: string;
-                    end: string;
-                }[];
-            }[];
-        };
-        /**
-         * @example {
-         *       "id": "6712c0f9a1b2c3d4e5f60701",
-         *       "staffId": "6712c0f9a1b2c3d4e5f60601",
-         *       "startAt": "2026-10-14T08:30:00.000Z",
-         *       "endAt": "2026-10-14T10:30:00.000Z",
-         *       "reason": "Doctor appointment",
-         *       "createdBy": "6712c0f9a1b2c3d4e5f60111",
-         *       "createdAt": "2026-10-06T09:12:44.000Z"
-         *     }
-         */
-        TimeOff: {
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            id: string;
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            staffId: string;
             startAt: string;
-            endAt: string;
-            reason?: string;
-            /** @example 6712c0f9a1b2c3d4e5f60789 */
-            createdBy: string;
-            createdAt: string;
-        };
-        TimeOffList: components["schemas"]["TimeOff"][];
-        /**
-         * @example {
-         *       "status": "ok"
-         *     }
-         */
-        Liveness: {
-            /** @enum {string} */
-            status: "ok";
-        };
-        Readiness: {
             /**
-             * @description ok: all up. degraded: a non-critical dependency (Redis) is down, still serving (HTTP 200). error: a critical dependency (MongoDB) is down (HTTP 503). shutting_down: draining (HTTP 503).
-             * @enum {string}
+             * Format: date-time
+             * @example 2026-10-12T07:30:00.000Z
              */
-            status: "ok" | "degraded" | "error" | "shutting_down";
-            checks: {
-                [key: string]: {
-                    /** @enum {string} */
-                    status: "up" | "down";
-                };
-            };
+            endAt: string;
+            /** @example Doctor appointment */
+            reason?: string;
+            /** @description ADMIN only: cancel overlapping active bookings and notify the customers instead of failing with ACTIVE_BOOKINGS_EXIST (FR-024) */
+            force?: boolean;
+          };
         };
+      };
+      responses: {
+        /** @description Time-off created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['TimeOff'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Active bookings are affected (ACTIVE_BOOKINGS_EXIST) */
+        422: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
     };
-    responses: never;
-    parameters: never;
-    requestBodies: never;
-    headers: never;
-    pathItems: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/staff/{id}/time-off/{timeOffId}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Remove time-off (API-037)
+     * @description ADMIN, or the stylist themself.
+     */
+    delete: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+          timeOffId: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Removed */
+        204: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content?: never;
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed, or another stylist's profile (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/users/me': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /** Update my profile (API-010) */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example Ananya R */
+            name?: string;
+            /** @example +919876543212 */
+            phone?: string;
+            preferences?: {
+              /** @example 6712c0f9a1b2c3d4e5f60789 */
+              preferredStaffId?: string | null;
+              smsOptIn?: boolean;
+              emailOptIn?: boolean;
+            };
+          };
+        };
+      };
+      responses: {
+        /** @description Updated profile */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Phone already used (DUPLICATE, PHONE_ALREADY_REGISTERED) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+  '/api/v1/users': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List and search users (API-011)
+     * @description ADMIN, RECEPTIONIST. Receptionists only ever see customers.
+     */
+    get: {
+      parameters: {
+        query?: {
+          page?: number;
+          pageSize?: number;
+          sort?: string;
+          /** @description Phone prefix, email prefix, or name words */
+          q?: string;
+          role?: components['schemas']['Role'];
+          isActive?: string;
+        };
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description Page of users */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['UserList'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    /**
+     * Create a staff, receptionist or admin account (API-012)
+     * @description ADMIN. Sets a temporary password that the person changes via API-008.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example Ananya R */
+            name: string;
+            /**
+             * Format: email
+             * @example ananya@example.com
+             */
+            email: string;
+            /** @example +919876543212 */
+            phone: string;
+            /** @enum {string} */
+            role: 'STAFF' | 'RECEPTIONIST' | 'ADMIN';
+            /**
+             * Format: password
+             * @description Temporary password; the user changes it via API-008
+             * @example Fade-and-Trim7
+             */
+            password: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Account created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Email or phone already used (DUPLICATE, PHONE_ALREADY_REGISTERED) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/users/walk-in': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Find or create a walk-in customer by phone (API-013)
+     * @description ADMIN, RECEPTIONIST. 201 when created, 200 when a customer with that phone exists.
+     */
+    post: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path?: never;
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            /** @example Ananya R */
+            name: string;
+            /** @example +919876543212 */
+            phone: string;
+          };
+        };
+      };
+      responses: {
+        /** @description Existing customer */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Walk-in customer created */
+        201: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Phone belongs to a staff account (DUPLICATE) */
+        409: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  '/api/v1/users/{id}': {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a user (API-014)
+     * @description ADMIN, RECEPTIONIST (customers only; others look not found).
+     */
+    get: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody?: never;
+      responses: {
+        /** @description User */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change role or activate/deactivate (API-015)
+     * @description ADMIN. Not on your own account. A deactivated user is signed out at their next token refresh.
+     */
+    patch: {
+      parameters: {
+        query?: never;
+        header?: never;
+        path: {
+          id: string;
+        };
+        cookie?: never;
+      };
+      requestBody: {
+        content: {
+          'application/json': {
+            role?: components['schemas']['Role'];
+            isActive?: boolean;
+          };
+        };
+      };
+      responses: {
+        /** @description Updated user */
+        200: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/json': components['schemas']['User'];
+          };
+        };
+        /** @description Validation failed (VALIDATION_FAILED) */
+        400: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not authenticated (UNAUTHENTICATED, TOKEN_EXPIRED) */
+        401: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Role not allowed (FORBIDDEN) */
+        403: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+        /** @description Not found (NOT_FOUND) */
+        404: {
+          headers: {
+            [name: string]: unknown;
+          };
+          content: {
+            'application/problem+json': components['schemas']['Problem'];
+          };
+        };
+      };
+    };
+    trace?: never;
+  };
+}
+export type webhooks = Record<string, never>;
+export interface components {
+  schemas: {
+    /** @description RFC 7807 problem details (03-backend §4) */
+    Problem: {
+      /** @example https://straightsalon.dev/errors/slot-unavailable */
+      type: string;
+      /** @example Conflict */
+      title: string;
+      /** @example 409 */
+      status: number;
+      /** @example SLOT_UNAVAILABLE */
+      code: string;
+      /** @example The selected stylist is no longer free at 11:00. */
+      detail: string;
+      /** @example /api/v1/bookings */
+      instance: string;
+      /** @example 6f1c2a8e-4d1b-4c0e-9a57-2b8f0e1d3c4a */
+      requestId?: string;
+      errors?: {
+        /** @example startAt */
+        path: string;
+        /** @example Invalid ISO datetime */
+        message: string;
+      }[];
+    };
+    Money: {
+      /**
+       * @description Smallest currency unit
+       * @example 50000
+       */
+      amountMinor: number;
+      /**
+       * @description ISO 4217
+       * @example INR
+       */
+      currency: string;
+    };
+    /**
+     * @example {
+     *       "page": 1,
+     *       "pageSize": 20,
+     *       "total": 134,
+     *       "totalPages": 7
+     *     }
+     */
+    PaginationMeta: {
+      page: number;
+      pageSize: number;
+      total: number;
+      totalPages: number;
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60d01",
+     *       "at": "2026-10-06T09:12:44.123Z",
+     *       "actor": {
+     *         "id": "6712c0f9a1b2c3d4e5f60222",
+     *         "role": "RECEPTIONIST",
+     *         "ip": "10.0.0.5"
+     *       },
+     *       "action": "booking.cancel",
+     *       "entityType": "booking",
+     *       "entityId": "6712c0f9a1b2c3d4e5f60789",
+     *       "before": {
+     *         "status": "BOOKED"
+     *       },
+     *       "after": {
+     *         "status": "CANCELLED",
+     *         "cancellation": {
+     *           "reason": "Customer called",
+     *           "overridden": true
+     *         }
+     *       },
+     *       "diff": [
+     *         "status",
+     *         "cancellation"
+     *       ],
+     *       "requestId": "6f1c2a8e-4d1b-4c0e-9a57-2b8f0e1d3c4a",
+     *       "metadata": {
+     *         "override": true
+     *       }
+     *     }
+     */
+    AuditLog: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T05:30:00.000Z
+       */
+      at: string;
+      actor: {
+        /** @description A user id, or "system" for jobs */
+        id: string;
+        role: string;
+        ip?: string;
+        userAgent?: string;
+      };
+      action: string;
+      entityType: string;
+      entityId: string;
+      before: {
+        [key: string]: unknown;
+      } | null;
+      after: {
+        [key: string]: unknown;
+      } | null;
+      diff: string[];
+      requestId?: string;
+      metadata?: {
+        [key: string]: unknown;
+      };
+    };
+    AuditLogList: {
+      data: components['schemas']['AuditLog'][];
+      /**
+       * @example {
+       *       "page": 1,
+       *       "pageSize": 20,
+       *       "total": 134,
+       *       "totalPages": 7
+       *     }
+       */
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    };
+    /**
+     * @example CUSTOMER
+     * @enum {string}
+     */
+    Role: 'CUSTOMER' | 'STAFF' | 'RECEPTIONIST' | 'ADMIN';
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60111",
+     *       "name": "Ananya R",
+     *       "email": "ananya@example.com",
+     *       "phone": "+919876543212",
+     *       "role": "CUSTOMER",
+     *       "isActive": true,
+     *       "isWalkIn": false,
+     *       "preferences": {
+     *         "smsOptIn": true,
+     *         "emailOptIn": true
+     *       },
+     *       "createdAt": "2026-10-06T09:12:44.000Z",
+     *       "updatedAt": "2026-10-06T09:12:44.000Z"
+     *     }
+     */
+    User: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      name: string;
+      email?: string;
+      phone: string;
+      role: components['schemas']['Role'];
+      isActive: boolean;
+      isWalkIn: boolean;
+      preferences: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        preferredStaffId?: string;
+        smsOptIn: boolean;
+        emailOptIn: boolean;
+      };
+      /** Format: date-time */
+      lastLoginAt?: string;
+      /** Format: date-time */
+      createdAt: string;
+      /** Format: date-time */
+      updatedAt: string;
+    };
+    UserList: {
+      data: components['schemas']['User'][];
+      /**
+       * @example {
+       *       "page": 1,
+       *       "pageSize": 20,
+       *       "total": 134,
+       *       "totalPages": 7
+       *     }
+       */
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    };
+    Session: {
+      user: components['schemas']['User'];
+      /** @description JWT, 15 minutes. Keep in memory only (05 §5). */
+      accessToken: string;
+    };
+    AccessToken: {
+      accessToken: string;
+    };
+    /**
+     * @example {
+     *       "date": "2026-10-12",
+     *       "timezone": "Asia/Kolkata",
+     *       "slots": [
+     *         {
+     *           "startAt": "2026-10-12T05:30:00.000Z",
+     *           "staffIds": [
+     *             "6712c0f9a1b2c3d4e5f60601"
+     *           ]
+     *         },
+     *         {
+     *           "startAt": "2026-10-12T05:45:00.000Z",
+     *           "staffIds": [
+     *             "6712c0f9a1b2c3d4e5f60601",
+     *             "6712c0f9a1b2c3d4e5f60602"
+     *           ]
+     *         }
+     *       ]
+     *     }
+     */
+    Availability: {
+      date: string;
+      timezone: string;
+      slots: {
+        startAt: string;
+        staffIds: string[];
+      }[];
+    };
+    /**
+     * @example {
+     *       "from": "2026-10-12",
+     *       "to": "2026-10-18",
+     *       "timezone": "Asia/Kolkata",
+     *       "availableDates": [
+     *         "2026-10-12",
+     *         "2026-10-13",
+     *         "2026-10-15"
+     *       ]
+     *     }
+     */
+    AvailableDays: {
+      from: string;
+      to: string;
+      timezone: string;
+      /** @description Dates with at least one slot */
+      availableDates: string[];
+    };
+    /**
+     * @example BOOKED
+     * @enum {string}
+     */
+    BookingStatus: 'BOOKED' | 'CHECKED_IN' | 'IN_SERVICE' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW';
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60789",
+     *       "bookingRef": "SS-261012-7KQ2",
+     *       "status": "BOOKED",
+     *       "startAt": "2026-10-12T05:30:00.000Z",
+     *       "endAt": "2026-10-12T06:30:00.000Z",
+     *       "customer": {
+     *         "id": "6712c0f9a1b2c3d4e5f60111",
+     *         "name": "Ananya R",
+     *         "phone": "+919876543212"
+     *       },
+     *       "staff": {
+     *         "id": "6712c0f9a1b2c3d4e5f60601",
+     *         "displayName": "Ravi"
+     *       },
+     *       "services": [
+     *         {
+     *           "serviceId": "6712c0f9a1b2c3d4e5f60501",
+     *           "name": "Haircut",
+     *           "durationMin": 45,
+     *           "price": {
+     *             "amountMinor": 40000,
+     *             "currency": "INR"
+     *           }
+     *         },
+     *         {
+     *           "serviceId": "6712c0f9a1b2c3d4e5f60502",
+     *           "name": "Beard Trim",
+     *           "durationMin": 15,
+     *           "price": {
+     *             "amountMinor": 15000,
+     *             "currency": "INR"
+     *           }
+     *         }
+     *       ],
+     *       "total": {
+     *         "amountMinor": 55000,
+     *         "currency": "INR"
+     *       },
+     *       "source": "ONLINE",
+     *       "payment": {
+     *         "status": "UNPAID"
+     *       },
+     *       "canCancel": true,
+     *       "canReschedule": true,
+     *       "canReview": false,
+     *       "createdAt": "2026-10-06T09:12:44.000Z"
+     *     }
+     */
+    Booking: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      bookingRef: string;
+      status: components['schemas']['BookingStatus'];
+      startAt: string;
+      endAt: string;
+      customer: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        id: string;
+        /** @description First name only for STAFF viewers */
+        name: string;
+        /** @description Masked for STAFF viewers */
+        phone: string;
+      };
+      staff: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        id: string;
+        displayName: string;
+      };
+      services: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        serviceId: string;
+        name: string;
+        durationMin: number;
+        price: components['schemas']['Money'];
+      }[];
+      total: components['schemas']['Money'];
+      /**
+       * @example ONLINE
+       * @enum {string}
+       */
+      source: 'ONLINE' | 'WALK_IN' | 'PHONE';
+      notes?: string;
+      payment: {
+        /** @enum {string} */
+        status: 'UNPAID' | 'PAID';
+        /**
+         * @example UPI
+         * @enum {string}
+         */
+        method?: 'CASH' | 'CARD' | 'UPI' | 'OTHER';
+        amountPaid?: components['schemas']['Money'];
+        discount?: components['schemas']['Money'];
+        discountReason?: string;
+        recordedAt?: string;
+      };
+      cancellation?: {
+        at: string;
+        reason?: string;
+        overridden: boolean;
+      };
+      /** @description For the current user (BR-006), server-computed */
+      canCancel: boolean;
+      canReschedule: boolean;
+      /** @description For the current user (BR-012): own COMPLETED booking, inside the review window, not yet reviewed */
+      canReview: boolean;
+      createdAt: string;
+    };
+    BookingList: {
+      data: components['schemas']['Booking'][];
+      /**
+       * @example {
+       *       "page": 1,
+       *       "pageSize": 20,
+       *       "total": 134,
+       *       "totalPages": 7
+       *     }
+       */
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    };
+    BookingHistory: {
+      statusHistory: {
+        status: components['schemas']['BookingStatus'];
+        at: string;
+        by: string;
+        note?: string;
+      }[];
+      audit: {
+        at: string;
+        /** @example booking.reschedule */
+        action: string;
+        actor: {
+          id: string;
+          role: string;
+        };
+        diff: string[];
+        before: {
+          [key: string]: unknown;
+        } | null;
+        after: {
+          [key: string]: unknown;
+        } | null;
+        metadata?: {
+          [key: string]: unknown;
+        };
+      }[];
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60401",
+     *       "name": "Hair",
+     *       "slug": "hair",
+     *       "description": "Cuts, colour and treatments",
+     *       "sortOrder": 1,
+     *       "isActive": true
+     *     }
+     */
+    Category: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      name: string;
+      slug: string;
+      description?: string;
+      sortOrder: number;
+      isActive: boolean;
+    };
+    CategoryList: components['schemas']['Category'][];
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60501",
+     *       "slug": "haircut",
+     *       "name": "Haircut",
+     *       "description": "Consultation, wash, cut and style",
+     *       "categoryId": "6712c0f9a1b2c3d4e5f60401",
+     *       "durationMin": 45,
+     *       "price": {
+     *         "amountMinor": 40000,
+     *         "currency": "INR"
+     *       },
+     *       "isActive": true,
+     *       "ratingAvg": 4.6,
+     *       "ratingCount": 18
+     *     }
+     */
+    Service: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      slug: string;
+      name: string;
+      description?: string;
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      categoryId: string;
+      durationMin: number;
+      price: components['schemas']['Money'];
+      imageUrl?: string;
+      isActive: boolean;
+      ratingAvg: number;
+      ratingCount: number;
+    };
+    ServiceList: {
+      data: components['schemas']['Service'][];
+      /**
+       * @example {
+       *       "page": 1,
+       *       "pageSize": 20,
+       *       "total": 134,
+       *       "totalPages": 7
+       *     }
+       */
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60601",
+     *       "displayName": "Ravi",
+     *       "ratingAvg": 4.8,
+     *       "ratingCount": 31
+     *     }
+     */
+    StylistSummary: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      displayName: string;
+      photoUrl?: string;
+      ratingAvg: number;
+      ratingCount: number;
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60501",
+     *       "slug": "haircut",
+     *       "name": "Haircut",
+     *       "description": "Consultation, wash, cut and style",
+     *       "categoryId": "6712c0f9a1b2c3d4e5f60401",
+     *       "durationMin": 45,
+     *       "price": {
+     *         "amountMinor": 40000,
+     *         "currency": "INR"
+     *       },
+     *       "isActive": true,
+     *       "ratingAvg": 4.6,
+     *       "ratingCount": 18,
+     *       "stylists": [
+     *         {
+     *           "id": "6712c0f9a1b2c3d4e5f60601",
+     *           "displayName": "Ravi",
+     *           "ratingAvg": 4.8,
+     *           "ratingCount": 31
+     *         }
+     *       ]
+     *     }
+     */
+    ServiceDetail: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      slug: string;
+      name: string;
+      description?: string;
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      categoryId: string;
+      durationMin: number;
+      price: components['schemas']['Money'];
+      imageUrl?: string;
+      isActive: boolean;
+      ratingAvg: number;
+      ratingCount: number;
+      stylists: components['schemas']['StylistSummary'][];
+    };
+    /**
+     * @example {
+     *       "url": "http://localhost:4000/uploads/images/9f1c2a8e.webp"
+     *     }
+     */
+    UploadedImage: {
+      url: string;
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60a01",
+     *       "userId": "6712c0f9a1b2c3d4e5f60111",
+     *       "channel": "EMAIL",
+     *       "template": "booking_confirmed",
+     *       "to": "ananya@example.com",
+     *       "status": "SENT",
+     *       "attempts": 1,
+     *       "sentAt": "2026-10-06T09:12:46.000Z",
+     *       "createdAt": "2026-10-06T09:12:45.000Z",
+     *       "content": {
+     *         "subject": "Booking confirmed: Mon 12 Oct 2026, 11:00",
+     *         "text": "Hi Ananya,\n\nYour appointment with Ravi is confirmed.\n..."
+     *       }
+     *     }
+     */
+    Notification: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      userId: string;
+      /** @enum {string} */
+      channel: 'EMAIL' | 'SMS';
+      /** @enum {string} */
+      template:
+        | 'welcome'
+        | 'password_reset'
+        | 'booking_confirmed'
+        | 'booking_rescheduled'
+        | 'booking_cancelled'
+        | 'booking_reminder_24h'
+        | 'booking_reminder_2h'
+        | 'booking_no_show'
+        | 'booking_thank_you'
+        | 'staff_booking_assigned'
+        | 'staff_booking_changed'
+        | 'staff_booking_cancelled';
+      to: string;
+      /** @enum {string} */
+      status: 'QUEUED' | 'SENT' | 'FAILED';
+      attempts: number;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T05:30:00.000Z
+       */
+      sentAt?: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T05:30:00.000Z
+       */
+      createdAt: string;
+      /** @description The message as sent; secrets such as reset links are redacted */
+      content: {
+        subject?: string;
+        text: string;
+        html?: string;
+      };
+      /** @example smtp */
+      provider?: string;
+      providerMessageId?: string;
+      /** @description Last delivery error, if any */
+      error?: string;
+    };
+    NotificationList: {
+      data: components['schemas']['Notification'][];
+      /**
+       * @example {
+       *       "page": 1,
+       *       "pageSize": 20,
+       *       "total": 134,
+       *       "totalPages": 7
+       *     }
+       */
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60301",
+     *       "date": "2026-11-01",
+     *       "name": "Kannada Rajyotsava"
+     *     }
+     */
+    Holiday: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      date: string;
+      name: string;
+    };
+    HolidayList: components['schemas']['Holiday'][];
+    /**
+     * @example {
+     *       "date": "2026-10-12",
+     *       "timezone": "Asia/Kolkata",
+     *       "generatedAt": "2026-10-12T06:00:00.000Z",
+     *       "counts": {
+     *         "BOOKED": 6,
+     *         "CHECKED_IN": 1,
+     *         "IN_SERVICE": 1,
+     *         "COMPLETED": 3,
+     *         "CANCELLED": 1,
+     *         "NO_SHOW": 0
+     *       },
+     *       "totals": {
+     *         "bookings": 12,
+     *         "revenue": {
+     *           "amountMinor": 135000,
+     *           "currency": "INR"
+     *         }
+     *       },
+     *       "staff": [
+     *         {
+     *           "staffId": "6712c0f9a1b2c3d4e5f60601",
+     *           "displayName": "Ravi",
+     *           "bookings": [
+     *             {
+     *               "id": "6712c0f9a1b2c3d4e5f60789",
+     *               "bookingRef": "SS-261012-7KQ2",
+     *               "status": "COMPLETED",
+     *               "startAt": "2026-10-12T05:30:00.000Z",
+     *               "endAt": "2026-10-12T06:30:00.000Z",
+     *               "customerName": "Ananya Rao",
+     *               "services": [
+     *                 "Haircut",
+     *                 "Beard Trim"
+     *               ]
+     *             }
+     *           ]
+     *         }
+     *       ]
+     *     }
+     */
+    Dashboard: {
+      /**
+       * Format: date
+       * @example 2026-10-12
+       */
+      date: string;
+      timezone: string;
+      /**
+       * Format: date-time
+       * @example 2026-10-12T05:30:00.000Z
+       */
+      generatedAt: string;
+      /** @description Bookings that day by status */
+      counts: {
+        BOOKED: number;
+        CHECKED_IN: number;
+        IN_SERVICE: number;
+        COMPLETED: number;
+        CANCELLED: number;
+        NO_SHOW: number;
+      };
+      totals: {
+        bookings: number;
+        revenue: components['schemas']['Money'] & unknown;
+      };
+      /** @description Per-stylist timeline: active stylists and anyone with bookings that day, by name; cancelled bookings are left out */
+      staff: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        staffId: string;
+        displayName: string;
+        bookings: {
+          /** @example 6712c0f9a1b2c3d4e5f60789 */
+          id: string;
+          bookingRef: string;
+          status: components['schemas']['BookingStatus'];
+          /**
+           * Format: date-time
+           * @example 2026-10-12T05:30:00.000Z
+           */
+          startAt: string;
+          /**
+           * Format: date-time
+           * @example 2026-10-12T05:30:00.000Z
+           */
+          endAt: string;
+          customerName: string;
+          services: string[];
+        }[];
+      }[];
+    };
+    /**
+     * @description Totals and breakdowns for bookings whose appointment date (salon timezone) is in the range (FR-071). Built from daily_stats.
+     * @example {
+     *       "from": "2026-10-01",
+     *       "to": "2026-10-31",
+     *       "timezone": "Asia/Kolkata",
+     *       "totals": {
+     *         "bookings": 120,
+     *         "completed": 98,
+     *         "cancelled": 12,
+     *         "noShows": 4,
+     *         "noShowRate": 0.037,
+     *         "revenue": {
+     *           "amountMinor": 6540000,
+     *           "currency": "INR"
+     *         },
+     *         "bookedMinutes": 5400,
+     *         "availableMinutes": 9600,
+     *         "utilisation": 0.5625
+     *       },
+     *       "byDay": [],
+     *       "byService": [
+     *         {
+     *           "serviceId": "6712c0f9a1b2c3d4e5f60501",
+     *           "name": "Haircut",
+     *           "count": 40,
+     *           "revenue": {
+     *             "amountMinor": 1600000,
+     *             "currency": "INR"
+     *           }
+     *         }
+     *       ],
+     *       "byStaff": []
+     *     }
+     */
+    ReportSummary: {
+      /**
+       * Format: date
+       * @example 2026-10-12
+       */
+      from: string;
+      /**
+       * Format: date
+       * @example 2026-10-12
+       */
+      to: string;
+      timezone: string;
+      totals: {
+        /** @description All bookings, any status */
+        bookings: number;
+        completed: number;
+        cancelled: number;
+        noShows: number;
+        /** @description noShows / (bookings - cancelled), 0..1 */
+        noShowRate: number;
+        revenue: components['schemas']['Money'];
+        /** @description Completed and still-active bookings (not cancelled or no-show) */
+        bookedMinutes: number;
+        availableMinutes: number;
+        /** @description bookedMinutes / availableMinutes, 0..1 */
+        utilisation: number;
+      };
+      byDay: {
+        /**
+         * Format: date
+         * @example 2026-10-12
+         */
+        date: string;
+        /** @description All bookings, any status */
+        bookings: number;
+        completed: number;
+        cancelled: number;
+        noShows: number;
+        /** @description noShows / (bookings - cancelled), 0..1 */
+        noShowRate: number;
+        revenue: components['schemas']['Money'];
+        /** @description Completed and still-active bookings (not cancelled or no-show) */
+        bookedMinutes: number;
+        availableMinutes: number;
+        /** @description bookedMinutes / availableMinutes, 0..1 */
+        utilisation: number;
+      }[];
+      /** @description By revenue, highest first */
+      byService: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        serviceId: string;
+        name: string;
+        /** @description Completed bookings with it */
+        count: number;
+        revenue: components['schemas']['Money'] & unknown;
+      }[];
+      byStaff: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        staffId: string;
+        displayName: string;
+        /** @description All bookings, any status */
+        bookings: number;
+        completed: number;
+        cancelled: number;
+        noShows: number;
+        /** @description noShows / (bookings - cancelled), 0..1 */
+        noShowRate: number;
+        revenue: components['schemas']['Money'];
+        /** @description Completed and still-active bookings (not cancelled or no-show) */
+        bookedMinutes: number;
+        availableMinutes: number;
+        /** @description bookedMinutes / availableMinutes, 0..1 */
+        utilisation: number;
+      }[];
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60c01",
+     *       "rating": 5,
+     *       "comment": "Great fade, very relaxed atmosphere.",
+     *       "customer": {
+     *         "name": "Ananya"
+     *       },
+     *       "staff": {
+     *         "id": "6712c0f9a1b2c3d4e5f60601",
+     *         "displayName": "Ravi"
+     *       },
+     *       "services": [
+     *         {
+     *           "id": "6712c0f9a1b2c3d4e5f60501",
+     *           "name": "Haircut"
+     *         }
+     *       ],
+     *       "createdAt": "2026-10-12T12:02:11.000Z"
+     *     }
+     */
+    Review: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      rating: number;
+      comment?: string;
+      customer: {
+        /**
+         * @description ADMIN view only
+         * @example 6712c0f9a1b2c3d4e5f60789
+         */
+        id?: string;
+        /** @description First name only, except in the ADMIN view */
+        name: string;
+      };
+      staff: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        id: string;
+        displayName: string;
+      };
+      services: {
+        /** @example 6712c0f9a1b2c3d4e5f60789 */
+        id: string;
+        name: string;
+      }[];
+      /**
+       * Format: date-time
+       * @example 2026-10-12T05:30:00.000Z
+       */
+      createdAt: string;
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      bookingId?: string;
+      isHidden?: boolean;
+      hiddenReason?: string;
+    };
+    ReviewList: {
+      data: components['schemas']['Review'][];
+      /**
+       * @example {
+       *       "page": 1,
+       *       "pageSize": 20,
+       *       "total": 134,
+       *       "totalPages": 7
+       *     }
+       */
+      meta: {
+        page: number;
+        pageSize: number;
+        total: number;
+        totalPages: number;
+      };
+    };
+    /**
+     * @example {
+     *       "name": "Straight Salon",
+     *       "address": "12 MG Road, Bengaluru",
+     *       "phone": "+918041234567",
+     *       "email": "hello@straightsalon.in",
+     *       "timezone": "Asia/Kolkata",
+     *       "currency": "INR",
+     *       "businessHours": [
+     *         {
+     *           "dayOfWeek": 0,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 1,
+     *           "isOpen": false,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 2,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 3,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 4,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 5,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 6,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         }
+     *       ],
+     *       "slotGranularityMin": 15,
+     *       "minLeadTimeMin": 60,
+     *       "maxAdvanceDays": 30,
+     *       "cancellationCutoffMin": 120
+     *     }
+     */
+    PublicSettings: {
+      name: string;
+      address?: string;
+      phone?: string;
+      email?: string;
+      timezone: string;
+      currency: string;
+      businessHours: {
+        dayOfWeek: number;
+        isOpen: boolean;
+        open: string;
+        close: string;
+      }[];
+      /** @example 15 */
+      slotGranularityMin: number;
+      /** @example 60 */
+      minLeadTimeMin: number;
+      /** @example 30 */
+      maxAdvanceDays: number;
+      /** @example 120 */
+      cancellationCutoffMin: number;
+    };
+    /**
+     * @example {
+     *       "name": "Straight Salon",
+     *       "address": "12 MG Road, Bengaluru",
+     *       "phone": "+918041234567",
+     *       "email": "hello@straightsalon.in",
+     *       "timezone": "Asia/Kolkata",
+     *       "currency": "INR",
+     *       "businessHours": [
+     *         {
+     *           "dayOfWeek": 0,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 1,
+     *           "isOpen": false,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 2,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 3,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 4,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 5,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         },
+     *         {
+     *           "dayOfWeek": 6,
+     *           "isOpen": true,
+     *           "open": "09:30",
+     *           "close": "20:30"
+     *         }
+     *       ],
+     *       "slotGranularityMin": 15,
+     *       "minLeadTimeMin": 60,
+     *       "maxAdvanceDays": 30,
+     *       "cancellationCutoffMin": 120,
+     *       "bufferMin": 0,
+     *       "noShowGraceMin": 30,
+     *       "reviewWindowDays": 14,
+     *       "updatedAt": "2026-10-06T09:12:44.000Z"
+     *     }
+     */
+    Settings: components['schemas']['PublicSettings'] & {
+      bufferMin: number;
+      noShowGraceMin: number;
+      reviewWindowDays: number;
+      /**
+       * Format: date-time
+       * @description Absent until an admin first saves settings (defaults are served)
+       * @example 2026-10-12T05:30:00.000Z
+       */
+      updatedAt?: string;
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60601",
+     *       "displayName": "Ravi",
+     *       "bio": "Precision cuts and beard styling, 8 years.",
+     *       "serviceIds": [
+     *         "6712c0f9a1b2c3d4e5f60501"
+     *       ],
+     *       "ratingAvg": 4.8,
+     *       "ratingCount": 31
+     *     }
+     */
+    Staff: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      displayName: string;
+      bio?: string;
+      photoUrl?: string;
+      serviceIds: string[];
+      ratingAvg: number;
+      ratingCount: number;
+      /**
+       * @description ADMIN view only
+       * @example 6712c0f9a1b2c3d4e5f60789
+       */
+      userId?: string;
+      /** @description ADMIN view only */
+      isActive?: boolean;
+    };
+    StaffList: components['schemas']['Staff'][];
+    /** @description Profile with the services the stylist performs (active ones for the public) */
+    StaffProfile: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      displayName: string;
+      bio?: string;
+      photoUrl?: string;
+      serviceIds: string[];
+      ratingAvg: number;
+      ratingCount: number;
+      /**
+       * @description ADMIN view only
+       * @example 6712c0f9a1b2c3d4e5f60789
+       */
+      userId?: string;
+      /** @description ADMIN view only */
+      isActive?: boolean;
+      services: components['schemas']['Service'][];
+    };
+    /**
+     * @example {
+     *       "staffId": "6712c0f9a1b2c3d4e5f60601",
+     *       "weekly": [
+     *         {
+     *           "dayOfWeek": 0,
+     *           "isWorking": true,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "dayOfWeek": 1,
+     *           "isWorking": false,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "dayOfWeek": 2,
+     *           "isWorking": true,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "dayOfWeek": 3,
+     *           "isWorking": true,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "dayOfWeek": 4,
+     *           "isWorking": true,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "dayOfWeek": 5,
+     *           "isWorking": true,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         },
+     *         {
+     *           "dayOfWeek": 6,
+     *           "isWorking": true,
+     *           "start": "10:00",
+     *           "end": "19:00",
+     *           "breaks": [
+     *             {
+     *               "start": "13:30",
+     *               "end": "14:15"
+     *             }
+     *           ]
+     *         }
+     *       ]
+     *     }
+     */
+    StaffSchedule: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      staffId: string;
+      weekly: {
+        dayOfWeek: number;
+        isWorking: boolean;
+        start: string;
+        end: string;
+        breaks: {
+          start: string;
+          end: string;
+        }[];
+      }[];
+    };
+    /**
+     * @example {
+     *       "id": "6712c0f9a1b2c3d4e5f60701",
+     *       "staffId": "6712c0f9a1b2c3d4e5f60601",
+     *       "startAt": "2026-10-14T08:30:00.000Z",
+     *       "endAt": "2026-10-14T10:30:00.000Z",
+     *       "reason": "Doctor appointment",
+     *       "createdBy": "6712c0f9a1b2c3d4e5f60111",
+     *       "createdAt": "2026-10-06T09:12:44.000Z"
+     *     }
+     */
+    TimeOff: {
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      id: string;
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      staffId: string;
+      startAt: string;
+      endAt: string;
+      reason?: string;
+      /** @example 6712c0f9a1b2c3d4e5f60789 */
+      createdBy: string;
+      createdAt: string;
+    };
+    TimeOffList: components['schemas']['TimeOff'][];
+    /**
+     * @example {
+     *       "status": "ok"
+     *     }
+     */
+    Liveness: {
+      /** @enum {string} */
+      status: 'ok';
+    };
+    Readiness: {
+      /**
+       * @description ok: all up. degraded: a non-critical dependency (Redis) is down, still serving (HTTP 200). error: a critical dependency (MongoDB) is down (HTTP 503). shutting_down: draining (HTTP 503).
+       * @enum {string}
+       */
+      status: 'ok' | 'degraded' | 'error' | 'shutting_down';
+      checks: {
+        [key: string]: {
+          /** @enum {string} */
+          status: 'up' | 'down';
+        };
+      };
+    };
+  };
+  responses: never;
+  parameters: never;
+  requestBodies: never;
+  headers: never;
+  pathItems: never;
 }
 export type $defs = Record<string, never>;
 export type operations = Record<string, never>;

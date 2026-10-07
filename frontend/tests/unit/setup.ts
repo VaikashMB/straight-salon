@@ -21,6 +21,16 @@ if (typeof window !== 'undefined')
     }),
   });
 
+// Charts (Recharts' ResponsiveContainer) measure their box with ResizeObserver.
+if (typeof window !== 'undefined' && !('ResizeObserver' in window)) {
+  class ResizeObserverStub {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+  Object.defineProperty(window, 'ResizeObserver', { writable: true, value: ResizeObserverStub });
+}
+
 vi.mock('next/navigation', () => import('./helpers/next-navigation'));
 vi.mock('sonner', async (original) => ({
   ...(await original<typeof import('sonner')>()),

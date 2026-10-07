@@ -1,0 +1,110 @@
+'use client';
+
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState } from 'react';
+import { ErrorState, LoadingList } from '@/components/states/list-states';
+import { Button } from '@/components/ui/button';
+import { useBookingSearch } from '@/features/booking/api';
+import { StatusBadge } from '@/features/booking/components/status-badge';
+import { firstName } from '@/features/booking/status';
+import { WEEKDAYS } from '@/features/catalog/hours';
+import { useAuth } from '@/lib/auth/AuthProvider';
+import { formatCalendarDate, formatTime } from '@/lib/format';
+import { usePublicSettings } from '@/lib/settings';
+import { addDays, dateInZone, datesBetween, todayInZone, weekdayOf } from '@/lib/time';
+import { useSchedule } from '../api';
+
+// The stylist's next seven days (05 §3 staff/week): working hours from their schedule
+// (API-033) and bookings per day (API-052).
+export function WeekView() {
+  const { data: settings } = usePublicSettings();
+  if (!settings) return <LoadingList label="Loading your week" />;
+  return <Week timeZone={settings.timezone} />;
+}
+
+function Week({ timeZone }: { timeZone: string }) {
+  const { staffId } = useAuth();
+  const [offset, setOffset] = useState(0);
+  const from = addDays(todayInZone(timeZone), offset * 7);
+  const to = addDays(from, 6);
+  const bookings = useBookingSearch({ from, to, pageSize: 100, sort: 'startAt' });
+  const schedule = useSchedule(staffId);
+
+  return (
+    <section className="grid gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold">My week</h1>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Previous week"
+            disabled={offset === 0}
+            onClick={() => setOffset((o) => o - 1)}
+          >
+            <ChevronLeft aria-hidden />
+          </Button>
+          <span className="text-sm" aria-live="polite">
+            {formatCalendarDate(from)} – {formatCalendarDate(to)}
+          </span>
+          <Button
+            variant="outline"
+            size="icon"
+            aria-label="Next week"
+            onClick={() => setOffset((o) => o + 1)}
+          >
+            <ChevronRight aria-hidden />
+          </Button>
+        </div>
+      </div>
+      {bookings.isPending ? (
+        <LoadingList label="Loading bookings" rows={4} />
+      ) : bookings.error ? (
+        <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          {datesBetween(from, to).map((date) => {
+            const day = schedule.data?.weekly.find((d) => d.dayOfWeek === weekdayOf(date));
+            const list = bookings.data.data.filter(
+              (b) => b.status !== 'CANCELLED' && dateInZone(b.startAt, timeZone) === date,
+            );
+            return (
+              <section
+                key={date}
+                aria-label={formatCalendarDate(date)}
+                className="grid content-start gap-2 rounded-lg border bg-card p-4"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <h2 className="font-semibold">
+                    {WEEKDAYS[weekdayOf(date)]} {Number(date.slice(8))}
+                  </h2>
+                  <span className="text-xs text-muted-foreground">
+                    {day ? (day.isWorking ? `${day.start}–${day.end}` : 'Day off') : ''}
+                  </span>
+                </div>
+                {list.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No bookings</p>
+                ) : (
+                  <ul className="grid gap-2">
+                    {list.map((b) => (
+                      <li
+                        key={b.id}
+                        className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                      >
+                        <span>
+                          <span className="font-medium">{formatTime(b.startAt, timeZone)}</span>{' '}
+                          {firstName(b.customer.name)} · {b.services.map((s) => s.name).join(', ')}
+                        </span>
+                        <StatusBadge status={b.status} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}

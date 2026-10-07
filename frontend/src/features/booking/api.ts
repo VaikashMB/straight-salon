@@ -1,7 +1,8 @@
 'use client';
 
-import { useQueries, useQuery } from '@tanstack/react-query';
+import { keepPreviousData, useQueries, useQuery } from '@tanstack/react-query';
 import { unwrap, type Schemas } from '@/lib/api/client';
+import type { paths } from '@/lib/api/schema';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { dayRanges } from './slots';
 
@@ -102,3 +103,19 @@ export function useBooking(id: string | null) {
 
 // Idempotency-Key for POST /bookings (03 §9): 8–100 characters of [A-Za-z0-9_-].
 export const newIdempotencyKey = (): string => crypto.randomUUID();
+
+export type BookingQuery = NonNullable<paths['/api/v1/bookings']['get']['parameters']['query']>;
+
+// API-052 for staff, reception and admin (STAFF are limited to their own bookings by the API).
+export function useBookingSearch(
+  query: BookingQuery,
+  options: { refetchInterval?: number; enabled?: boolean } = {},
+) {
+  const { api } = useAuth();
+  return useQuery({
+    queryKey: ['bookings', 'list', query],
+    queryFn: () => unwrap(api.GET('/api/v1/bookings', { params: { query } })),
+    placeholderData: keepPreviousData,
+    ...options,
+  });
+}

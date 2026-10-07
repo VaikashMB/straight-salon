@@ -44,25 +44,16 @@ function AreaFrame({ area, children }: { area: Area; children: ReactNode }) {
           <ul className="flex gap-1 pb-2 text-sm">
             {items.map((item) => (
               <li key={item.href}>
-                {item.ready ? (
-                  <Link
-                    href={item.href}
-                    aria-current={item.href === active ? 'page' : undefined}
-                    className={cn(
-                      'block rounded-md px-3 py-1.5 whitespace-nowrap hover:bg-secondary',
-                      item.href === active && 'bg-secondary font-medium',
-                    )}
-                  >
-                    {item.label}
-                  </Link>
-                ) : (
-                  <span
-                    aria-disabled="true"
-                    className="block cursor-not-allowed rounded-md px-3 py-1.5 whitespace-nowrap text-muted-foreground"
-                  >
-                    {item.label} <span className="text-xs">(soon)</span>
-                  </span>
-                )}
+                <Link
+                  href={item.href}
+                  aria-current={item.href === active ? 'page' : undefined}
+                  className={cn(
+                    'block rounded-md px-3 py-1.5 whitespace-nowrap hover:bg-secondary',
+                    item.href === active && 'bg-secondary font-medium',
+                  )}
+                >
+                  {item.label}
+                </Link>
               </li>
             ))}
           </ul>

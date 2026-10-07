@@ -19,20 +19,17 @@ const AREA_LABEL: Record<Role, string> = {
 // Public site header: catalogue links and the visitor's session state.
 export function SiteHeader() {
   const { status, user } = useAuth();
-  const links = PUBLIC_NAV.filter((item) => item.ready);
   return (
     <header className="border-b">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
         <Brand />
-        {links.length > 0 ? (
-          <nav aria-label="Main" className="hidden gap-6 text-sm sm:flex">
-            {links.map((item) => (
-              <Link key={item.href} href={item.href} className="hover:underline">
-                {item.label}
-              </Link>
-            ))}
-          </nav>
-        ) : null}
+        <nav aria-label="Main" className="hidden gap-6 text-sm sm:flex">
+          {PUBLIC_NAV.map((item) => (
+            <Link key={item.href} href={item.href} className="hover:underline">
+              {item.label}
+            </Link>
+          ))}
+        </nav>
         <div className="flex items-center gap-2">
           {status === 'loading' ? <Skeleton className="h-8 w-28" aria-label="Loading" /> : null}
           {status === 'anonymous' ? (

@@ -18,6 +18,7 @@
 ## 2. Brand and UI direction
 - Name: **Straight Salon**. Tone: clean, modern, confident.
 - Palette: near-black `#111111` primary, warm off-white `#FAF7F2` background, accent brass `#B08D57`, success/warning/error from Tailwind defaults. Define as CSS variables for light/dark themes.
+- Charts use one series hue, `--chart-1` (a more saturated brass: `#A06A1C` light, `#B8802A` dark), because the brand brass is too low in chroma to read as a colour against the card surface; both values pass the dataviz palette checks (lightness band, chroma floor, ≥ 3:1 contrast) against `--card` (decision 2026-10-07).
 - Typography: a geometric sans for headings (e.g. "Outfit"), a neutral sans for body (e.g. "Inter"), via `next/font`.
 - Mobile-first. Booking flow must be comfortably usable one-handed on a phone.
 
@@ -113,13 +114,21 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
 - **Reports:** date-range picker, KPI cards, revenue-over-time line chart, revenue by service bar chart, utilisation by stylist bar chart, "Download CSV".
 - **Audit log:** filter by entity/actor/action/date; row expands to show JSON diff.
 - **Settings:** form for all FR-080 fields; business hours grid.
+- Phase 10 decisions (2026-10-07):
+  - The "New walk-in" dialog also offers **Book a time** (FR-037): the same customer and service steps, then the wizard's date & time picker; API-050 with `startAt` (source defaults to `PHONE`). Customers are found by phone (API-011 `q`, role `CUSTOMER`); a phone with no match creates a walk-in record (API-013).
+  - Holidays (API-019/020) are managed in a section of the Settings page; team accounts (API-012) and role/status changes (API-015) on the Customers page, which ADMIN sees as "Customers & team" and RECEPTIONIST as customers only. A new stylist profile (API-032) links an existing STAFF account without one.
+  - ADMIN-only pages opened by RECEPTIONIST show "This page is for admins" with a link back (the API refuses the data anyway).
+  - Day views (staff My day/Week, admin calendar) read one page of up to 100 bookings (API-052's maximum `pageSize`), which covers a salon day.
+  - Dashboard "Next 2 hours" lists `BOOKED`/`CHECKED_IN` bookings starting from 15 minutes ago (late arrivals) to 2 hours ahead, measured from the time the dashboard was last fetched (it refetches every minute).
+  - Staff Week shows the next seven days with the stylist's working hours from API-033.
+  - Each report chart has a "Show data" table with the same numbers (05 §7, NFR-006), and the CSV is downloaded through the authenticated client as a blob.
 
 ## 5. Authentication on the frontend
 - Access token kept **in memory only** (React context), never in localStorage.
 - Refresh token is an httpOnly, `SameSite=Lax`, `Secure` (prod) cookie set by the API. To keep cookies first-party, the browser only talks to the Next.js origin, and `proxy.ts` rewrites `/api/*` to `${API_INTERNAL_URL}/api/*` **at request time**. This is not done with `next.config` `rewrites`, which are fixed at build time in standalone output and would bake the backend URL into the image (11 §5). The backend sets `trust proxy` to one hop so rate limits see the client IP from `X-Forwarded-For`.
 - On app load, `AuthProvider` calls `POST /auth/refresh`; success → user is logged in.
 - `openapi-fetch` middleware: attach bearer token; on 401 `TOKEN_EXPIRED`, call refresh once (single-flight shared promise so parallel requests don't stampede), retry original request; if refresh fails → clear state, redirect to `/login?next=...`. Implemented as the client's `fetch` wrapper (`lib/api/client.ts`) around a session object outside React (`lib/auth/session.ts`). `?next` is honoured only for same-site paths the role may open, never for auth pages (no open redirect).
-- Until their pages arrive (Phases 9 and 10), `/account`, `/staff` and `/admin` show a short welcome page inside the real area layout, and navigation items for later pages are shown as "soon" in the signed-in areas and hidden on the public site (decision 2026-10-07). Phase 9 delivered the public site and `/account`; `/staff` and `/admin` follow in Phase 10.
+- Until their pages arrive (Phases 9 and 10), `/account`, `/staff` and `/admin` show a short welcome page inside the real area layout, and navigation items for later pages are shown as "soon" in the signed-in areas and hidden on the public site (decision 2026-10-07). Phase 9 delivered the public site and `/account`, Phase 10 `/staff` and `/admin`; the welcome pages and the "soon" mechanism were then removed.
 - STAFF pages need the stylist's own `staffId` (time-off, API-035…037), which neither `/auth/me` nor the `User` DTO carries. `AuthProvider` reads the `staffId` claim from the in-memory access token (06 §1) without verifying it: the API verifies every request and enforces ownership (decision 2026-10-07).
 - `proxy.ts` provides coarse protection: routes under `/account`, `/staff`, `/admin` require the presence of the **`ss_session` indicator cookie** (06 §1), else redirect to login. It cannot check the refresh cookie itself, because that cookie is scoped to `Path=/api/v1/auth` and the browser does not send it on page navigations. Fine-grained role checks happen in layouts after `/auth/me` resolves (and the API always enforces authoritatively).
 - Role-based landing after login: CUSTOMER → `/account`, STAFF → `/staff`, RECEPTIONIST/ADMIN → `/admin`.
