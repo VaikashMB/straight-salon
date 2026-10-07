@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from 'react';
 import { CSRF, unwrap, type ApiClient, type Schemas } from '../api/client';
+import { readClaims } from './claims';
 import { loginPathFor } from './roles';
 import { createSession, type Session } from './session';
 
@@ -31,10 +32,12 @@ export interface RegisterInput {
 export interface AuthContextValue {
   status: AuthStatus;
   user: User | null;
+  staffId: string | null; // STAFF only: their stylist profile, from the token (06 §1)
   api: ApiClient; // authenticated client: bearer token + refresh-and-retry
   login: (email: string, password: string) => Promise<User>;
   register: (input: RegisterInput) => Promise<User>;
   logout: () => Promise<void>;
+  updateUser: (user: User) => void; // after PATCH /users/me
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -50,10 +53,11 @@ export function AuthProvider({
   const pathname = usePathname();
   const queryClient = useQueryClient();
   const [session] = useState(() => injected ?? createSession());
-  const [state, setState] = useState<{ status: AuthStatus; user: User | null }>({
-    status: 'loading',
-    user: null,
-  });
+  const [state, setState] = useState<{
+    status: AuthStatus;
+    user: User | null;
+    staffId: string | null;
+  }>({ status: 'loading', user: null, staffId: null });
 
   // Bootstrap: a valid refresh cookie means a session.
   useEffect(() => {
@@ -63,7 +67,13 @@ export function AuthProvider({
       const user = token
         ? await unwrap(session.api.GET('/api/v1/auth/me')).catch(() => null)
         : null;
-      if (!cancelled) setState({ status: user ? 'authenticated' : 'anonymous', user });
+      if (!cancelled) {
+        setState({
+          status: user ? 'authenticated' : 'anonymous',
+          user,
+          staffId: user ? readClaims(session.getToken()).staffId : null,
+        });
+      }
     })();
     return () => {
       cancelled = true;
@@ -74,7 +84,7 @@ export function AuthProvider({
   useEffect(
     () =>
       session.onExpired(() => {
-        setState({ status: 'anonymous', user: null });
+        setState({ status: 'anonymous', user: null, staffId: null });
         queryClient.clear();
         router.replace(loginPathFor(pathname));
       }),
@@ -84,7 +94,11 @@ export function AuthProvider({
   const startSession = useCallback(
     (result: { user: User; accessToken: string }) => {
       session.setToken(result.accessToken);
-      setState({ status: 'authenticated', user: result.user });
+      setState({
+        status: 'authenticated',
+        user: result.user,
+        staffId: readClaims(result.accessToken).staffId,
+      });
       return result.user;
     },
     [session],
@@ -114,13 +128,15 @@ export function AuthProvider({
     // Signing out locally must work even if the API is unreachable.
     await session.publicApi.POST('/api/v1/auth/logout', { params: CSRF }).catch(() => undefined);
     session.setToken(null);
-    setState({ status: 'anonymous', user: null });
+    setState({ status: 'anonymous', user: null, staffId: null });
     queryClient.clear();
   }, [session, queryClient]);
 
+  const updateUser = useCallback((user: User) => setState((s) => ({ ...s, user })), []);
+
   const value = useMemo<AuthContextValue>(
-    () => ({ ...state, api: session.api, login, register, logout }),
-    [state, session, login, register, logout],
+    () => ({ ...state, api: session.api, login, register, logout, updateUser }),
+    [state, session, login, register, logout, updateUser],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

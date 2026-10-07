@@ -15,16 +15,16 @@ export interface NavItem {
 const ADMIN_ONLY = ['ADMIN'] as const;
 
 export const PUBLIC_NAV: NavItem[] = [
-  { href: '/services', label: 'Services', ready: false },
-  { href: '/stylists', label: 'Stylists', ready: false },
-  { href: '/book', label: 'Book now', ready: false },
+  { href: '/services', label: 'Services', ready: true },
+  { href: '/stylists', label: 'Stylists', ready: true },
+  { href: '/book', label: 'Book now', ready: true },
 ];
 
 export const AREA_NAV: Record<Area, NavItem[]> = {
   account: [
     { href: '/account', label: 'Upcoming', ready: true },
-    { href: '/account/history', label: 'History', ready: false },
-    { href: '/account/profile', label: 'Profile', ready: false },
+    { href: '/account/history', label: 'History', ready: true },
+    { href: '/account/profile', label: 'Profile', ready: true },
   ],
   staff: [
     { href: '/staff', label: 'My day', ready: true },

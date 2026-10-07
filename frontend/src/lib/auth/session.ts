@@ -11,6 +11,7 @@ export interface Session {
   api: ApiClient;
   // A new access token from the refresh cookie, or null when there is no session.
   refresh(this: void): Promise<string | null>;
+  getToken(this: void): string | null;
   setToken(this: void, token: string | null): void;
   // Called when the session ended under us (refresh failed after an expired token).
   onExpired(this: void, listener: () => void): () => void;
@@ -45,6 +46,7 @@ export function createSession(options: { baseUrl?: string } = {}): Session {
     publicApi,
     api,
     refresh,
+    getToken: () => token,
     setToken: (value) => {
       token = value;
     },

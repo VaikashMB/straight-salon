@@ -49,12 +49,12 @@ describe('login page (API-002, 05 §5)', () => {
     loginReturns(makeUser({ role: 'RECEPTIONIST' }));
     setLocation('/login', 'next=/admin/bookings');
     renderWithProviders(<LoginPage />);
-    await fill('desk@example.com', 'Fade-and-Trim7');
-    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/bookings'));
-    expect(screen.getByRole('link', { name: 'Create an account' })).toHaveAttribute(
+    expect(await screen.findByRole('link', { name: 'Create an account' })).toHaveAttribute(
       'href',
       '/register?next=%2Fadmin%2Fbookings',
     );
+    await fill('desk@example.com', 'Fade-and-Trim7');
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/admin/bookings'));
   });
 
   it('wrong credentials: one generic message (06 §2)', async () => {

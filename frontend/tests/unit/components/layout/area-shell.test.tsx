@@ -66,15 +66,21 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
     expect(screen.getByRole('link', { name: 'Go to my area' })).toHaveAttribute('href', '/account');
   });
 
-  it('customers and stylists get their own landing pages', async () => {
+  it('customers land on their upcoming bookings', async () => {
     signedInAs(makeUser({ name: 'Ananya Rao', role: 'CUSTOMER' }));
+    server.use(
+      http.get(api('/bookings/me'), () =>
+        HttpResponse.json({ data: [], meta: { page: 1, pageSize: 10, total: 0, totalPages: 0 } }),
+      ),
+    );
     setLocation('/account');
     renderWithProviders(
       <AccountLayout>
         <AccountPage />
       </AccountLayout>,
     );
-    expect(await screen.findByRole('heading', { name: 'Hi, Ananya' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Upcoming bookings' })).toBeInTheDocument();
+    expect(await screen.findByText('No upcoming bookings')).toBeInTheDocument();
   });
 
   it('stylists see their day page', async () => {
