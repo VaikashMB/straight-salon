@@ -14,11 +14,14 @@ backend/uploads/
 
 # Tests & reports
 coverage/
-reports/
-!backend/src/modules/reports/
+# Test-report output (JUnit, Playwright) only. Anchored: source folders named "reports" exist.
+/reports/
+/backend/reports/
+/frontend/reports/
 test-results/
 playwright-report/
 .scannerwork/
+.sonar-cache/
 
 # Environment (never commit secrets; .env.example is the template)
 .env

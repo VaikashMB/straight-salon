@@ -12,10 +12,18 @@ scripts
 **/dist
 **/.next
 **/coverage
-**/reports
-# ...but not the reports module (source code, not test output)
-!backend/src/modules/reports
+# Test-report output only (JUnit, Playwright). Anchored: source folders named "reports"
+# (backend module, frontend feature and route) must stay in the context.
+reports
+backend/reports
+frontend/reports
 **/*.tsbuildinfo
+.scannerwork
+.sonar-cache
+playwright-report
+test-results
+**/playwright-report
+**/test-results
 **/*.log
 backend/uploads
 .env
