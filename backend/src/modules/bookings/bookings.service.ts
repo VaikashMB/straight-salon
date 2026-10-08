@@ -131,6 +131,44 @@ const slotUnavailable = (
 
 const actorId = () => getRequestContext()?.userId ?? 'system';
 
+type BookingCriteria = Omit<BookingSearch, 'skip' | 'limit' | 'sort'>;
+
+// "Staff only" fields (04 API-050) are for reception/admin.
+function assertNoStaffOnlyFields(body: CreateBookingBody): void {
+  const staffOnly = (['customerId', 'source', 'checkInNow'] as const).filter(
+    (f) => body[f] !== undefined,
+  );
+  if (staffOnly.length > 0) {
+    throw new ValidationError(
+      'The request is invalid.',
+      staffOnly.map((path) => ({ path, message: 'Only reception or an admin can set this' })),
+    );
+  }
+}
+
+// Customers book online; reception records a phone booking or a walk-in unless it says otherwise.
+function bookingSource(body: CreateBookingBody, desk: boolean): BookingSource {
+  if (!desk) return 'ONLINE';
+  if (body.source) return body.source;
+  return body.checkInNow ? 'WALK_IN' : 'PHONE';
+}
+
+// Date (salon-local days), stylist and status filters of API-052.
+function listCriteria(
+  query: ListBookingsQuery,
+  staffId: string | undefined,
+  s: SettingsDto,
+): BookingCriteria {
+  const criteria: BookingCriteria = {};
+  const first = query.date ?? query.from;
+  const last = query.date ?? query.to;
+  if (first) criteria.from = startOfZonedDay(first, s.timezone);
+  if (last) criteria.to = startOfZonedDay(addDays(last, 1), s.timezone);
+  if (staffId) criteria.staffId = staffId;
+  if (query.status) criteria.status = query.status;
+  return criteria;
+}
+
 export function createBookingsService(deps: BookingsServiceDeps): BookingsService {
   const {
     repository,
@@ -302,7 +340,7 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
       viewer: AuthContext;
       source: BookingSource;
       status: 'BOOKED' | 'CHECKED_IN';
-      notes?: string | undefined;
+      notes?: string;
     },
   ): Promise<BookingDoc | null> {
     const s = p.settings;
@@ -381,6 +419,69 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
     return created;
   }
 
+  // Reception/admin book for an active customer (04 API-050); customers book for themselves.
+  async function bookingCustomerId(
+    body: CreateBookingBody,
+    viewer: AuthContext,
+    desk: boolean,
+  ): Promise<string> {
+    if (!desk) return viewer.userId;
+    if (!body.customerId) {
+      throw new ValidationError('The request is invalid.', [
+        { path: 'customerId', message: 'Required when booking for a customer' },
+      ]);
+    }
+    const customer = await users.findActiveById(body.customerId);
+    if (customer?.role !== 'CUSTOMER') {
+      throw new ValidationError('The request is invalid.', [
+        { path: 'customerId', message: 'Must be an active customer' },
+      ]);
+    }
+    return body.customerId;
+  }
+
+  // Stylist/start pairs to try, in order: walk-ins take the earliest free start today; otherwise
+  // every candidate free at the requested start, in FR-033 order.
+  async function bookingTargets(
+    body: CreateBookingBody,
+    p: BookingPlan,
+    viewer: AuthContext,
+  ): Promise<{ staffId: string; startAt: Date }[]> {
+    if (body.checkInNow) {
+      const targets = await walkInTargets(p);
+      if (targets.length === 0)
+        throw slotUnavailable('No qualified stylist is free for the rest of today.');
+      return targets;
+    }
+    const s = p.settings;
+    const startAt = new Date(body.startAt!);
+    const date = assertStartAllowed(startAt, viewer, s);
+    const span = { start: startAt.getTime(), end: startAt.getTime() + p.spanMin * MINUTE };
+    const fitting = await withinHours(p.candidates, date, span, s);
+    if (fitting.length === 0) throw outsideHours();
+    return (await fairOrder(fitting, date, s)).map((c) => ({ staffId: c.id, startAt }));
+  }
+
+  // `q` (API-052) is a booking-ref prefix ("SS-...") or a customer phone prefix, combined with
+  // `customerId`. Returns false when no customer can match, i.e. the page is empty.
+  async function applyCustomerSearch(
+    query: ListBookingsQuery,
+    criteria: BookingCriteria,
+  ): Promise<boolean> {
+    let customerIds = query.customerId ? [query.customerId] : undefined;
+    if (query.q) {
+      if (/^ss-/i.test(query.q)) {
+        criteria.bookingRefPrefix = query.q.toUpperCase();
+      } else {
+        const byPhone = await users.idsByPhonePrefix(query.q);
+        customerIds = customerIds ? customerIds.filter((id) => byPhone.includes(id)) : byPhone;
+        if (customerIds.length === 0) return false;
+      }
+    }
+    if (customerIds) criteria.customerIds = customerIds;
+    return true;
+  }
+
   // Walk-ins (00 US-03): from the current slot boundary, the earliest free start today.
   async function walkInTargets(p: BookingPlan): Promise<{ staffId: string; startAt: Date }[]> {
     const s = p.settings;
@@ -410,7 +511,7 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
     session: ClientSession,
     details: {
       by: string;
-      reason?: string | undefined;
+      reason?: string;
       overridden: boolean;
       metadata?: Record<string, unknown>;
     },
@@ -601,35 +702,10 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
 
     async create(body, viewer) {
       const desk = isDesk(viewer);
-      // "Staff only" fields (04 API-050) are for reception/admin.
-      if (!desk) {
-        const staffOnly = (['customerId', 'source', 'checkInNow'] as const).filter(
-          (f) => body[f] !== undefined,
-        );
-        if (staffOnly.length > 0) {
-          throw new ValidationError(
-            'The request is invalid.',
-            staffOnly.map((path) => ({ path, message: 'Only reception or an admin can set this' })),
-          );
-        }
-      }
-      if (desk && !body.customerId) {
-        throw new ValidationError('The request is invalid.', [
-          { path: 'customerId', message: 'Required when booking for a customer' },
-        ]);
-      }
-      const customerId = desk ? body.customerId! : viewer.userId;
-      if (desk) {
-        const customer = await users.findActiveById(customerId);
-        if (customer?.role !== 'CUSTOMER') {
-          throw new ValidationError('The request is invalid.', [
-            { path: 'customerId', message: 'Must be an active customer' },
-          ]);
-        }
-      }
+      if (!desk) assertNoStaffOnlyFields(body);
+      const customerId = await bookingCustomerId(body, viewer, desk);
 
       const p = await availability.plan(body.serviceIds, body.staffId);
-      const s = p.settings;
       // BR-009: not for bookings made by reception/admin on a customer's behalf.
       if (
         !desk &&
@@ -644,25 +720,11 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
         customerId,
         viewer,
         notes: body.notes,
-        source: desk
-          ? (body.source ?? (body.checkInNow ? 'WALK_IN' : 'PHONE'))
-          : ('ONLINE' as BookingSource),
+        source: bookingSource(body, desk),
         status: body.checkInNow ? ('CHECKED_IN' as const) : ('BOOKED' as const),
       };
 
-      let targets: { staffId: string; startAt: Date }[];
-      if (body.checkInNow) {
-        targets = await walkInTargets(p);
-        if (targets.length === 0)
-          throw slotUnavailable('No qualified stylist is free for the rest of today.');
-      } else {
-        const startAt = new Date(body.startAt!);
-        const date = assertStartAllowed(startAt, viewer, s);
-        const span = { start: startAt.getTime(), end: startAt.getTime() + p.spanMin * MINUTE };
-        const fitting = await withinHours(p.candidates, date, span, s);
-        if (fitting.length === 0) throw outsideHours();
-        targets = (await fairOrder(fitting, date, s)).map((c) => ({ staffId: c.id, startAt }));
-      }
+      const targets = await bookingTargets(body, p, viewer);
 
       // For "any", try candidates in FR-033 order until one succeeds (03 §5.1).
       for (const target of targets) {
@@ -691,24 +753,8 @@ export function createBookingsService(deps: BookingsServiceDeps): BookingsServic
         if (!viewer.staffId) return empty;
         staffId = viewer.staffId;
       }
-      const criteria: Omit<BookingSearch, 'skip' | 'limit' | 'sort'> = {};
-      const first = query.date ?? query.from;
-      const last = query.date ?? query.to;
-      if (first) criteria.from = startOfZonedDay(first, s.timezone);
-      if (last) criteria.to = startOfZonedDay(addDays(last, 1), s.timezone);
-      if (staffId) criteria.staffId = staffId;
-      if (query.status) criteria.status = query.status;
-      let customerIds = query.customerId ? [query.customerId] : undefined;
-      if (query.q) {
-        if (/^ss-/i.test(query.q)) {
-          criteria.bookingRefPrefix = query.q.toUpperCase();
-        } else {
-          const byPhone = await users.idsByPhonePrefix(query.q);
-          customerIds = customerIds ? customerIds.filter((id) => byPhone.includes(id)) : byPhone;
-          if (customerIds.length === 0) return empty;
-        }
-      }
-      if (customerIds) criteria.customerIds = customerIds;
+      const criteria = listCriteria(query, staffId, s);
+      if (!(await applyCustomerSearch(query, criteria))) return empty;
       const result = await repository.search({
         ...criteria,
         skip: skipFor(query),

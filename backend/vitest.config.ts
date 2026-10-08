@@ -7,6 +7,9 @@ import { defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     environment: 'node',
+    // CI test reports (10 §3): JUnit next to the console output; locally the console only.
+    reporters: process.env.CI ? ['default', 'junit'] : ['default'],
+    outputFile: { junit: 'reports/junit.xml' },
     projects: [
       {
         extends: true,
@@ -39,7 +42,8 @@ export default defineConfig({
         'src/db/seed/**',
         'src/db/migrations/**',
       ],
-      reporter: ['text', 'text-summary', 'lcov', 'cobertura'],
+      // lcov paths relative to the repo root (backend/src/...), where SonarQube resolves them.
+      reporter: ['text', 'text-summary', ['lcov', { projectRoot: '..' }], 'cobertura'],
       thresholds: { lines: 80, branches: 80, functions: 80, statements: 80 },
     },
   },

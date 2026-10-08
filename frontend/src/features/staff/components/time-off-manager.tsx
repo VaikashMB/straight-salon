@@ -99,6 +99,40 @@ function Manager({
     save({ startAt, endAt, ...(draft.reason.trim() ? { reason: draft.reason.trim() } : {}) });
   };
 
+  const renderBlocks = () => {
+    if (blocks.isPending) return <LoadingList rows={2} label="Loading time off" />;
+    if (blocks.error)
+      return <ErrorState error={blocks.error} onRetry={() => void blocks.refetch()} />;
+    if (blocks.data.length === 0) return <EmptyState title="No time off planned" />;
+    return (
+      <ul className="grid gap-2">
+        {blocks.data.map((block) => (
+          <li
+            key={block.id}
+            className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm"
+          >
+            <span>
+              <span className="font-medium">
+                {formatDateTime(block.startAt, timeZone)} – {formatDateTime(block.endAt, timeZone)}
+              </span>
+              {block.reason ? (
+                <span className="text-muted-foreground"> · {block.reason}</span>
+              ) : null}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Remove time off from ${formatDateTime(block.startAt, timeZone)}`}
+              onClick={() => setDeleting(block)}
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <div className="grid gap-8">
       <form
@@ -157,40 +191,7 @@ function Manager({
         <h2 id="upcoming-time-off" className="text-lg font-semibold">
           Upcoming time off
         </h2>
-        {blocks.isPending ? (
-          <LoadingList rows={2} label="Loading time off" />
-        ) : blocks.error ? (
-          <ErrorState error={blocks.error} onRetry={() => void blocks.refetch()} />
-        ) : blocks.data.length === 0 ? (
-          <EmptyState title="No time off planned" />
-        ) : (
-          <ul className="grid gap-2">
-            {blocks.data.map((block) => (
-              <li
-                key={block.id}
-                className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm"
-              >
-                <span>
-                  <span className="font-medium">
-                    {formatDateTime(block.startAt, timeZone)} –{' '}
-                    {formatDateTime(block.endAt, timeZone)}
-                  </span>
-                  {block.reason ? (
-                    <span className="text-muted-foreground"> · {block.reason}</span>
-                  ) : null}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove time off from ${formatDateTime(block.startAt, timeZone)}`}
-                  onClick={() => setDeleting(block)}
-                >
-                  <Trash2 aria-hidden />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        )}
+        {renderBlocks()}
       </section>
 
       <ConfirmDialog

@@ -135,14 +135,14 @@ export function RescheduleBookingDialog({
             Close
           </Button>
           <Button disabled={!start || reschedule.isPending} onClick={submit}>
-            {reschedule.isPending
-              ? 'Saving…'
-              : start
-                ? `Move to ${formatDateTime(start, timeZone)}`
-                : 'Pick a time'}
+            {reschedule.isPending ? 'Saving…' : moveLabel(start, timeZone)}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
+}
+
+function moveLabel(start: string | null, timeZone: string): string {
+  return start ? `Move to ${formatDateTime(start, timeZone)}` : 'Pick a time';
 }

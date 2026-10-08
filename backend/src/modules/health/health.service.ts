@@ -65,11 +65,9 @@ export function createReadinessService(
       );
 
       const down = results.filter((r) => r.status === 'down');
-      const status: ReadinessStatus = down.some((r) => r.critical)
-        ? 'error'
-        : down.length > 0
-          ? 'degraded'
-          : 'ok';
+      let status: ReadinessStatus = 'ok';
+      if (down.some((r) => r.critical)) status = 'error';
+      else if (down.length > 0) status = 'degraded';
 
       return {
         status,

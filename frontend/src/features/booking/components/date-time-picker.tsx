@@ -128,13 +128,8 @@ function Picker({
             onSelect={onSelect}
             timeZone={timeZone}
           />
-        ) : days.isPending ? (
-          <SlotSkeleton />
         ) : (
-          <EmptyState
-            title="No free times in the next few weeks"
-            description="Try fewer services or another stylist, or call the salon."
-          />
+          <NoDateChosen loading={days.isPending} />
         )}
       </div>
     </div>
@@ -177,7 +172,7 @@ function Slots({
         <EmptyState title="No times left on this day" description="Please pick another date." />
       ) : (
         groups.map(({ part, slots }) => (
-          <div key={part} role="group" aria-label={part} className="grid gap-2">
+          <fieldset key={part} aria-label={part} className="m-0 grid min-w-0 gap-2 border-0 p-0">
             <p className="text-sm text-muted-foreground">{part}</p>
             <div className="flex flex-wrap gap-2">
               {slots.map((slot) => {
@@ -199,28 +194,39 @@ function Slots({
                 );
               })}
             </div>
-          </div>
+          </fieldset>
         ))
       )}
     </>
   );
 }
 
+// Before a date is chosen: still looking for the first bookable day, or there is none.
+function NoDateChosen({ loading }: Readonly<{ loading: boolean }>) {
+  if (loading) return <SlotSkeleton />;
+  return (
+    <EmptyState
+      title="No free times in the next few weeks"
+      description="Try fewer services or another stylist, or call the salon."
+    />
+  );
+}
+
 function SlotSkeleton() {
   return (
-    <div className="flex flex-wrap gap-2" role="status" aria-label="Loading times">
+    <output className="flex flex-wrap gap-2" aria-label="Loading times">
       {Array.from({ length: 8 }, (_, i) => (
         <Skeleton key={i} className="h-9 w-20" />
       ))}
-    </div>
+    </output>
   );
 }
 
 function PickerSkeleton() {
   return (
-    <div className="grid gap-3" role="status" aria-label="Loading calendar">
+    <output className="grid gap-3" aria-label="Loading calendar">
       <Skeleton className="h-6 w-40" />
       <Skeleton className="h-64 w-full max-w-sm" />
-    </div>
+    </output>
   );
 }

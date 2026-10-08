@@ -12,7 +12,7 @@ import { useAuth } from '@/lib/auth/AuthProvider';
 import { formatCalendarDate, formatTime } from '@/lib/format';
 import { usePublicSettings } from '@/lib/settings';
 import { addDays, dateInZone, datesBetween, todayInZone, weekdayOf } from '@/lib/time';
-import { useSchedule } from '../api';
+import { useSchedule, type StaffSchedule } from '../api';
 
 // The stylist's next seven days (05 §3 staff/week): working hours from their schedule
 // (API-033) and bookings per day (API-052).
@@ -22,6 +22,14 @@ export function WeekView() {
   return <Week timeZone={settings.timezone} />;
 }
 
+type ScheduleDay = StaffSchedule['weekly'][number];
+
+// The day's working hours, "Day off", or nothing while the schedule loads.
+function hoursLabel(day: ScheduleDay | undefined): string {
+  if (!day) return '';
+  return day.isWorking ? `${day.start}–${day.end}` : 'Day off';
+}
+
 function Week({ timeZone }: { timeZone: string }) {
   const { staffId } = useAuth();
   const [offset, setOffset] = useState(0);
@@ -29,6 +37,54 @@ function Week({ timeZone }: { timeZone: string }) {
   const to = addDays(from, 6);
   const bookings = useBookingSearch({ from, to, pageSize: 100, sort: 'startAt' });
   const schedule = useSchedule(staffId);
+
+  const renderDays = () => {
+    if (bookings.isPending) return <LoadingList label="Loading bookings" rows={4} />;
+    if (bookings.error)
+      return <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />;
+    return (
+      <div className="grid gap-4 md:grid-cols-2">
+        {datesBetween(from, to).map((date) => {
+          const day = schedule.data?.weekly.find((d) => d.dayOfWeek === weekdayOf(date));
+          const list = bookings.data.data.filter(
+            (b) => b.status !== 'CANCELLED' && dateInZone(b.startAt, timeZone) === date,
+          );
+          return (
+            <section
+              key={date}
+              aria-label={formatCalendarDate(date)}
+              className="grid content-start gap-2 rounded-lg border bg-card p-4"
+            >
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <h2 className="font-semibold">
+                  {WEEKDAYS[weekdayOf(date)]} {Number(date.slice(8))}
+                </h2>
+                <span className="text-xs text-muted-foreground">{hoursLabel(day)}</span>
+              </div>
+              {list.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No bookings</p>
+              ) : (
+                <ul className="grid gap-2">
+                  {list.map((b) => (
+                    <li
+                      key={b.id}
+                      className="flex flex-wrap items-center justify-between gap-2 text-sm"
+                    >
+                      <span>
+                        <span className="font-medium">{formatTime(b.startAt, timeZone)}</span>{' '}
+                        {firstName(b.customer.name)} · {b.services.map((s) => s.name).join(', ')}
+                      </span>
+                      <StatusBadge status={b.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <section className="grid gap-6">
@@ -57,54 +113,7 @@ function Week({ timeZone }: { timeZone: string }) {
           </Button>
         </div>
       </div>
-      {bookings.isPending ? (
-        <LoadingList label="Loading bookings" rows={4} />
-      ) : bookings.error ? (
-        <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {datesBetween(from, to).map((date) => {
-            const day = schedule.data?.weekly.find((d) => d.dayOfWeek === weekdayOf(date));
-            const list = bookings.data.data.filter(
-              (b) => b.status !== 'CANCELLED' && dateInZone(b.startAt, timeZone) === date,
-            );
-            return (
-              <section
-                key={date}
-                aria-label={formatCalendarDate(date)}
-                className="grid content-start gap-2 rounded-lg border bg-card p-4"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 className="font-semibold">
-                    {WEEKDAYS[weekdayOf(date)]} {Number(date.slice(8))}
-                  </h2>
-                  <span className="text-xs text-muted-foreground">
-                    {day ? (day.isWorking ? `${day.start}–${day.end}` : 'Day off') : ''}
-                  </span>
-                </div>
-                {list.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No bookings</p>
-                ) : (
-                  <ul className="grid gap-2">
-                    {list.map((b) => (
-                      <li
-                        key={b.id}
-                        className="flex flex-wrap items-center justify-between gap-2 text-sm"
-                      >
-                        <span>
-                          <span className="font-medium">{formatTime(b.startAt, timeZone)}</span>{' '}
-                          {firstName(b.customer.name)} · {b.services.map((s) => s.name).join(', ')}
-                        </span>
-                        <StatusBadge status={b.status} />
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-            );
-          })}
-        </div>
-      )}
+      {renderDays()}
     </section>
   );
 }

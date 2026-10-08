@@ -63,8 +63,8 @@ export function createMockSmsProvider(logger: Logger): SmsProvider {
 export interface SmtpConfig {
   host: string;
   port: number;
-  user?: string | undefined;
-  pass?: string | undefined;
+  user?: string;
+  pass?: string;
   from: string;
 }
 

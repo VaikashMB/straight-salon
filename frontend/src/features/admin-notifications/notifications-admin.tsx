@@ -63,6 +63,48 @@ export function NotificationsAdmin() {
   });
   const reset = () => setPage(1);
 
+  const renderNotifications = () => {
+    if (list.isPending || !settings) return <LoadingList label="Loading notifications" />;
+    if (list.error) return <ErrorState error={list.error} onRetry={() => void list.refetch()} />;
+    if (list.data.data.length === 0) return <EmptyState title="No notifications match" />;
+    return (
+      <>
+        <ul className="grid gap-2">
+          {list.data.data.map((n) => (
+            <li key={n.id}>
+              <details className="group rounded-lg border bg-card">
+                <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                  <span>
+                    <span className="font-medium">{n.template.replace(/_/g, ' ')}</span> ·{' '}
+                    {n.channel} · {n.to}
+                  </span>
+                  <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                    {formatDateTime(n.createdAt, settings.timezone)}
+                    <Badge variant={STATUS_VARIANT[n.status]}>{n.status.toLowerCase()}</Badge>
+                  </span>
+                </summary>
+                <div className="grid gap-2 border-t p-3 text-sm">
+                  {n.content.subject ? <p className="font-medium">{n.content.subject}</p> : null}
+                  <pre className="font-sans whitespace-pre-wrap">{n.content.text}</pre>
+                  <p className="text-xs text-muted-foreground">
+                    {n.attempts} attempt(s){n.provider ? ` · via ${n.provider}` : ''}
+                    {n.providerMessageId ? ` · ${n.providerMessageId}` : ''}
+                  </p>
+                  {n.error ? <p className="text-xs text-destructive">Error: {n.error}</p> : null}
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+        <Pagination
+          page={list.data.meta.page}
+          totalPages={list.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader
@@ -111,48 +153,7 @@ export function NotificationsAdmin() {
           ))}
         </SelectField>
       </div>
-      {list.isPending || !settings ? (
-        <LoadingList label="Loading notifications" />
-      ) : list.error ? (
-        <ErrorState error={list.error} onRetry={() => void list.refetch()} />
-      ) : list.data.data.length === 0 ? (
-        <EmptyState title="No notifications match" />
-      ) : (
-        <>
-          <ul className="grid gap-2">
-            {list.data.data.map((n) => (
-              <li key={n.id}>
-                <details className="group rounded-lg border bg-card">
-                  <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm">
-                    <span>
-                      <span className="font-medium">{n.template.replace(/_/g, ' ')}</span> ·{' '}
-                      {n.channel} · {n.to}
-                    </span>
-                    <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {formatDateTime(n.createdAt, settings.timezone)}
-                      <Badge variant={STATUS_VARIANT[n.status]}>{n.status.toLowerCase()}</Badge>
-                    </span>
-                  </summary>
-                  <div className="grid gap-2 border-t p-3 text-sm">
-                    {n.content.subject ? <p className="font-medium">{n.content.subject}</p> : null}
-                    <pre className="font-sans whitespace-pre-wrap">{n.content.text}</pre>
-                    <p className="text-xs text-muted-foreground">
-                      {n.attempts} attempt(s){n.provider ? ` · via ${n.provider}` : ''}
-                      {n.providerMessageId ? ` · ${n.providerMessageId}` : ''}
-                    </p>
-                    {n.error ? <p className="text-xs text-destructive">Error: {n.error}</p> : null}
-                  </div>
-                </details>
-              </li>
-            ))}
-          </ul>
-          <Pagination
-            page={list.data.meta.page}
-            totalPages={list.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      {renderNotifications()}
     </section>
   );
 }

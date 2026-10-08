@@ -30,11 +30,13 @@
     "typecheck": "npm run typecheck --workspaces",
     "test": "npm run test --workspaces",
     "test:coverage": "npm run test:coverage --workspaces",
-    "test:e2e": "node scripts/not-yet.mjs test:e2e 11",
+    "test:e2e": "npm run test:e2e -w frontend",
     "openapi:export": "npm run openapi:export -w backend",
     "api:client": "npm run api:client -w frontend",
     "contract:check": "node scripts/contract-check.mjs",
-    "sonar": "node scripts/not-yet.mjs sonar 11",
+    "audit": "node scripts/audit.mjs",
+    "sonar": "node --env-file-if-exists=.env scripts/sonar.mjs",
+    "sonar:setup": "node --env-file-if-exists=.env scripts/sonar-setup.mjs",
     "db:seed": "npm run db:seed -w backend",
     "db:migrate": "npm run db:migrate -w backend",
     "stats:rebuild": "npm run stats:rebuild -w backend --",
@@ -49,6 +51,9 @@
     "lint-staged": "^17.6.0",
     "prettier": "^3.9.9",
     "prettier-plugin-tailwindcss": "^0.8.1"
+  },
+  "overrides": {
+    "shell-quote": "^1.12.0"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,

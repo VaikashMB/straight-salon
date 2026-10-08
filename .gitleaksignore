@@ -1,0 +1,5 @@
+# gitleaks findings reviewed and accepted (06 §4: CI secret scan). One fingerprint per line:
+# <commit>:<file>:<rule>:<line>. Both are fixed JWT signing secrets used only by tests,
+# not credentials for any real system.
+4fe519471b37269f0fa1d259a350d259549a01b9:backend/src/shared/auth/__tests__/optionalAuth.test.ts:generic-api-key:8
+e3746227f08c92001e72d3f9c56b1eb0217c24e3:backend/test/setup/testApp.ts:generic-api-key:16

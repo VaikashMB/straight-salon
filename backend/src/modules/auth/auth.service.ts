@@ -22,8 +22,8 @@ import type { TokensRepository } from './tokens.repository.js';
 export const RESET_TOKEN_TTL_MS = 30 * 60_000; // FR-004
 
 export interface ClientMeta {
-  userAgent?: string | undefined;
-  ip?: string | undefined;
+  userAgent?: string;
+  ip?: string;
 }
 
 export interface IssuedRefreshToken {
@@ -80,6 +80,19 @@ const newOpaqueToken = (): string => randomBytes(32).toString('base64url');
 
 const invalidCredentials = () => new UnauthorizedError('Invalid email or password.');
 const invalidRefresh = () => new UnauthorizedError('Your session has ended. Please log in again.');
+
+// Audit `reason` for a failed login (metadata only; the caller always sees the same error).
+function loginFailureReason(user: UserDoc | null): string {
+  if (!user) return 'unknown_email';
+  return user.isActive ? 'bad_password' : 'inactive';
+}
+
+// Same for the queues-board admin check, which also rejects non-admin accounts.
+function adminFailureReason(user: UserDoc | null): string {
+  if (!user) return 'unknown_email';
+  if (!user.isActive) return 'inactive';
+  return user.role === 'ADMIN' ? 'bad_password' : 'not_admin';
+}
 
 export function createAuthService(deps: AuthServiceDeps): AuthService {
   const {
@@ -152,7 +165,7 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
           entityType: 'user',
           entityId: user?._id.toHexString() ?? 'unknown',
           metadata: {
-            reason: !user ? 'unknown_email' : user.isActive ? 'bad_password' : 'inactive',
+            reason: loginFailureReason(user),
           },
           ...(user ? { actor: actorOf(user) } : {}),
         });
@@ -186,13 +199,7 @@ export function createAuthService(deps: AuthServiceDeps): AuthService {
         entityId: user?._id.toHexString() ?? 'unknown',
         metadata: {
           channel: 'queues-board',
-          reason: !user
-            ? 'unknown_email'
-            : !user.isActive
-              ? 'inactive'
-              : user.role !== 'ADMIN'
-                ? 'not_admin'
-                : 'bad_password',
+          reason: adminFailureReason(user),
         },
         ...(user ? { actor: actorOf(user) } : {}),
       });

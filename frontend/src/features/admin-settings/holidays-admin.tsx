@@ -86,6 +86,35 @@ export function HolidaysAdmin() {
     add.mutate(false);
   };
 
+  const renderHolidays = () => {
+    if (holidays.isPending) return <LoadingList rows={2} label="Loading holidays" />;
+    if (holidays.error)
+      return <ErrorState error={holidays.error} onRetry={() => void holidays.refetch()} />;
+    if (holidays.data.length === 0) return <EmptyState title="No upcoming holidays" />;
+    return (
+      <ul className="grid gap-2">
+        {holidays.data.map((h) => (
+          <li
+            key={h.id}
+            className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm"
+          >
+            <span>
+              <span className="font-medium">{formatCalendarDate(h.date)}</span> · {h.name}
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={`Remove ${h.name}`}
+              onClick={() => setDeleting(h)}
+            >
+              <Trash2 aria-hidden />
+            </Button>
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
   return (
     <section aria-labelledby="holidays" className="grid gap-4 border-t pt-8">
       <h2 id="holidays" className="text-lg font-semibold">
@@ -110,34 +139,7 @@ export function HolidaysAdmin() {
         </Button>
       </form>
       <FormError>{error}</FormError>
-      {holidays.isPending ? (
-        <LoadingList rows={2} label="Loading holidays" />
-      ) : holidays.error ? (
-        <ErrorState error={holidays.error} onRetry={() => void holidays.refetch()} />
-      ) : holidays.data.length === 0 ? (
-        <EmptyState title="No upcoming holidays" />
-      ) : (
-        <ul className="grid gap-2">
-          {holidays.data.map((h) => (
-            <li
-              key={h.id}
-              className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm"
-            >
-              <span>
-                <span className="font-medium">{formatCalendarDate(h.date)}</span> · {h.name}
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label={`Remove ${h.name}`}
-                onClick={() => setDeleting(h)}
-              >
-                <Trash2 aria-hidden />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+      {renderHolidays()}
       <ConfirmDialog
         open={forcing}
         onOpenChange={setForcing}

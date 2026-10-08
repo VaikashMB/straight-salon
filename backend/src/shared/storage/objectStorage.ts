@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve, sep } from 'node:path';
+import { trimEndChar } from '../text/strings.js';
 
 // Object storage port (01 §6: no local file storage in business code). v1 ships a local-disk
 // adapter whose files the API serves at /uploads (app.ts); an S3-compatible adapter can replace
@@ -21,7 +22,7 @@ export interface LocalStorageConfig {
 
 export function createLocalStorage({ dir, publicUrl }: LocalStorageConfig): ObjectStorage {
   const root = resolve(dir);
-  const base = publicUrl.replace(/\/+$/, '');
+  const base = trimEndChar(publicUrl, '/');
   return {
     async put(key, body) {
       const path = resolve(join(root, key));

@@ -4,7 +4,7 @@ export interface CalendarEvent {
   uid: string;
   title: string;
   description: string;
-  location?: string | undefined;
+  location?: string;
   startAt: string; // UTC ISO
   endAt: string;
 }
@@ -13,7 +13,11 @@ const stamp = (iso: string) => iso.replace(/[-:]/g, '').replace(/\.\d{3}/, '');
 
 // RFC 5545 text: escape backslashes, separators and newlines.
 const text = (value: string) =>
-  value.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+  value
+    .replaceAll('\\', String.raw`\\`)
+    .replaceAll(';', String.raw`\;`)
+    .replaceAll(',', String.raw`\,`)
+    .replaceAll(/\r?\n/g, String.raw`\n`);
 
 export function buildIcs(event: CalendarEvent, now: Date = new Date()): string {
   const lines = [

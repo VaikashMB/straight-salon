@@ -8,7 +8,16 @@ import tseslint from 'typescript-eslint';
 // no import cycles, no console, no floating promises, no explicit any.
 export default defineConfig([
   // schema.d.ts is generated from backend/openapi.json (npm run api:client).
-  globalIgnores(['.next/', 'out/', 'coverage/', 'next-env.d.ts', 'src/lib/api/schema.d.ts']),
+  globalIgnores([
+    '.next/',
+    'out/',
+    'coverage/',
+    'reports/',
+    'playwright-report/',
+    'test-results/',
+    'next-env.d.ts',
+    'src/lib/api/schema.d.ts',
+  ]),
   ...nextVitals,
   ...nextTs,
   {

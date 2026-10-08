@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { compareStrings } from '../text/strings.js';
 
 // Every Redis key is built here (08-caching §1): prefixed `ss:` + schema version. Bumping
 // CACHE_VERSION invalidates everything after a breaking change to cached shapes.
@@ -16,7 +17,8 @@ function stableStringify(value: unknown): string {
     const entries = Object.entries(value as Record<string, unknown>)
       .filter(([, v]) => v !== undefined)
       .sort(([a], [b]) => a.localeCompare(b));
-    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
+    const members = entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`);
+    return `{${members.join(',')}}`;
   }
   return JSON.stringify(value) ?? 'null';
 }
@@ -32,7 +34,7 @@ export const cacheKeys = {
   availability: (staffId: string, date: string, spanMin: number) =>
     `${P}:avail:${staffId}:${date}:${spanMin}`,
   availableDays: (staffId: string /* or 'any' */, serviceIds: string[], from: string, to: string) =>
-    `${P}:availdays:${staffId}:${hashKey([...serviceIds].sort())}:${from}:${to}`,
+    `${P}:availdays:${staffId}:${hashKey([...serviceIds].sort(compareStrings))}:${from}:${to}`,
   dashboard: (date: string) => `${P}:reports:dashboard:${date}`,
   reportSummary: (from: string, to: string) => `${P}:reports:summary:${from}:${to}`,
   idempotency: (userId: string, key: string) => `${P}:idem:${userId}:${key}`,

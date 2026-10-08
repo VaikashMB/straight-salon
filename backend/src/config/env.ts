@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { trimEndChar } from '../shared/text/strings.js';
 
 // Subset of 03-backend §3 needed so far. Later phases add their variables here, never read
 // process.env anywhere else.
@@ -89,13 +90,13 @@ const envSchema = z
           error: 'Must be an http(s) URL such as http://localhost:4000/uploads',
         }),
       )
-      .transform((value) => value.replace(/\/+$/, '')),
+      .transform((value) => trimEndChar(value, '/')),
     // ---- Notifications (09 §8) ----
     // Browser-facing frontend URL, used for links in emails (booking pages, password reset).
     APP_BASE_URL: z
       .string({ error: 'Required' })
       .pipe(z.url({ protocol: /^https?$/, error: 'Must be an http(s) URL' }))
-      .transform((value) => value.replace(/\/+$/, '')),
+      .transform((value) => trimEndChar(value, '/')),
     EMAIL_PROVIDER: z.enum(['mock', 'smtp']).default('mock'),
     SMS_PROVIDER: z.enum(['mock']).default('mock'),
     EMAIL_FROM: z.string().min(3).default('Straight Salon <no-reply@straightsalon.local>'),

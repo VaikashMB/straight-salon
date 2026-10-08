@@ -64,6 +64,16 @@ export interface UsersServiceDeps {
 
 const SORTABLE = ['name', 'createdAt', 'lastLoginAt'] as const;
 
+// Preferred stylist after an update: omitted keeps the current one, null clears it.
+function nextPreferredStaff(
+  requested: string | null | undefined,
+  current: Types.ObjectId | undefined,
+): Types.ObjectId | undefined {
+  if (requested === undefined) return current;
+  if (requested === null) return undefined;
+  return new Types.ObjectId(requested);
+}
+
 export function createUsersService(deps: UsersServiceDeps): UsersService {
   const { repository, audit, outbox, hasher, connection } = deps;
 
@@ -172,12 +182,10 @@ export function createUsersService(deps: UsersServiceDeps): UsersService {
       if (body.phone !== undefined) changes.phone = body.phone;
       if (body.preferences) {
         const current = user.preferences ?? { smsOptIn: true, emailOptIn: true };
-        const preferredStaffId =
-          body.preferences.preferredStaffId === undefined
-            ? current.preferredStaffId
-            : body.preferences.preferredStaffId === null
-              ? undefined
-              : new Types.ObjectId(body.preferences.preferredStaffId);
+        const preferredStaffId = nextPreferredStaff(
+          body.preferences.preferredStaffId,
+          current.preferredStaffId,
+        );
         changes.preferences = {
           smsOptIn: body.preferences.smsOptIn ?? current.smsOptIn,
           emailOptIn: body.preferences.emailOptIn ?? current.emailOptIn,

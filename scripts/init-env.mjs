@@ -10,6 +10,8 @@ const EXAMPLE = '.env.example';
 const generators = {
   JWT_ACCESS_SECRET: () => randomBytes(48).toString('base64url'),
   OUTBOX_ENCRYPTION_KEY: () => randomBytes(32).toString('base64'),
+  // SonarQube's policy: 12+ characters with upper and lower case, a digit and a symbol.
+  SONAR_ADMIN_PASSWORD: () => `Sq-${randomBytes(18).toString('base64url')}-9a`,
 };
 
 const isPlaceholder = (value) => value === '' || value.startsWith('replace-with-');

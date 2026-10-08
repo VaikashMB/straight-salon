@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:unit": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "api:client": "npx -y openapi-typescript@7.13.0 ../backend/openapi.json -o src/lib/api/schema.d.ts"
+    "test:e2e": "playwright test",
+    "api:client": "npx -y openapi-typescript@7.13.0 ../backend/openapi.json -o src/lib/api/schema.d.ts && prettier --write src/lib/api/schema.d.ts"
   },
   "dependencies": {
     "@date-fns/tz": "^1.5.0",
@@ -34,6 +35,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/postcss": "^4.3.3",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/jest-dom": "^7.0.1",

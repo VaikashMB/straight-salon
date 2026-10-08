@@ -10,15 +10,16 @@ export interface Metrics {
   cacheHits: Counter<'prefix'>;
   cacheMisses: Counter<'prefix'>;
   cacheErrors: Counter;
-  // Gauge whose value is read at scrape time (e.g. outbox pending count).
-  registerGauge(name: string, help: string, read: () => Promise<number> | number): void;
+  // Gauge whose value is read at scrape time (e.g. outbox pending count). Registered on
+  // creation; returned for callers that want the instance.
+  registerGauge(name: string, help: string, read: () => Promise<number> | number): Gauge;
   // Same, with labels: one sample per returned row (e.g. jobs per queue and state).
   registerLabeledGauge<L extends string>(
     name: string,
     help: string,
     labelNames: readonly L[],
     read: () => Promise<{ labels: Record<L, string>; value: number }[]>,
-  ): void;
+  ): Gauge<L>;
 }
 
 export function createMetrics(options: { defaultMetrics?: boolean } = {}): Metrics {
@@ -54,7 +55,7 @@ export function createMetrics(options: { defaultMetrics?: boolean } = {}): Metri
       registers: [registry],
     }),
     registerGauge(name, help, read) {
-      new Gauge({
+      return new Gauge({
         name,
         help,
         registers: [registry],
@@ -64,7 +65,7 @@ export function createMetrics(options: { defaultMetrics?: boolean } = {}): Metri
       });
     },
     registerLabeledGauge(name, help, labelNames, read) {
-      new Gauge({
+      return new Gauge({
         name,
         help,
         labelNames: [...labelNames],

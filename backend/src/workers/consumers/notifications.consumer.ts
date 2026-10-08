@@ -13,7 +13,7 @@ import type { StaffService } from '../../modules/staff/staff.service.js';
 import type { UsersService } from '../../modules/users/users.service.js';
 import type { DomainEvent } from '../../shared/events/envelope.js';
 import type { EventHandler } from '../../shared/events/EventBus.js';
-import { parseEventPayload } from '../../shared/events/registry.js';
+import { parseEventPayload, type EventPayload } from '../../shared/events/registry.js';
 import { decryptSecret } from '../../shared/events/secret.js';
 import type { Logger } from '../../shared/logger/index.js';
 import { createMessenger } from './messenger.js';
@@ -71,6 +71,43 @@ export function createNotificationsConsumer(deps: NotificationsConsumerDeps): Ev
     );
   }
 
+  async function passwordResetMessage(event: DomainEvent, userId: string): Promise<void> {
+    if (!event.secret) {
+      log.error({ eventId: event.eventId }, 'Password reset event has no token; not sent');
+      return;
+    }
+    // The raw token only ever exists encrypted in the outbox and in the email (09 §7).
+    const token = decryptSecret(event.secret, deps.encryptionKey);
+    const s = await settings.get();
+    await messenger.send(event, userId, 'account', (name) => ({
+      template: 'password_reset',
+      data: {
+        name,
+        salon: salonInfo(s),
+        resetUrl: `${appBaseUrl}/reset-password?token=${encodeURIComponent(token)}`,
+        validMinutes: RESET_TOKEN_TTL_MS / 60_000,
+      },
+    }));
+  }
+
+  async function reminderMessage(
+    event: DomainEvent,
+    p: EventPayload<'booking.reminder_due'>,
+  ): Promise<void> {
+    const booking = await loadBooking(p.bookingId);
+    if (!booking) return;
+    // Cancelled, checked in or moved since the job queued it: the reminder is stale.
+    if (booking.status !== 'BOOKED' || booking.startAt.toISOString() !== p.startAt) {
+      log.debug({ bookingId: p.bookingId, window: p.window }, 'Stale reminder skipped');
+      return;
+    }
+    await bookingMessage(event, booking, (data) =>
+      p.window === '24h'
+        ? { template: 'booking_reminder_24h', data }
+        : { template: 'booking_reminder_2h', data },
+    );
+  }
+
   return async (event) => {
     switch (event.type) {
       case 'user.registered': {
@@ -85,22 +122,7 @@ export function createNotificationsConsumer(deps: NotificationsConsumerDeps): Ev
 
       case 'user.password_reset_requested': {
         const { userId } = parseEventPayload(event.type, event.payload);
-        if (!event.secret) {
-          log.error({ eventId: event.eventId }, 'Password reset event has no token; not sent');
-          return;
-        }
-        // The raw token only ever exists encrypted in the outbox and in the email (09 §7).
-        const token = decryptSecret(event.secret, deps.encryptionKey);
-        const s = await settings.get();
-        await messenger.send(event, userId, 'account', (name) => ({
-          template: 'password_reset',
-          data: {
-            name,
-            salon: salonInfo(s),
-            resetUrl: `${appBaseUrl}/reset-password?token=${encodeURIComponent(token)}`,
-            validMinutes: RESET_TOKEN_TTL_MS / 60_000,
-          },
-        }));
+        await passwordResetMessage(event, userId);
         return;
       }
 
@@ -155,22 +177,9 @@ export function createNotificationsConsumer(deps: NotificationsConsumerDeps): Ev
         return;
       }
 
-      case 'booking.reminder_due': {
-        const p = parseEventPayload(event.type, event.payload);
-        const booking = await loadBooking(p.bookingId);
-        if (!booking) return;
-        // Cancelled, checked in or moved since the job queued it: the reminder is stale.
-        if (booking.status !== 'BOOKED' || booking.startAt.toISOString() !== p.startAt) {
-          log.debug({ bookingId: p.bookingId, window: p.window }, 'Stale reminder skipped');
-          return;
-        }
-        await bookingMessage(event, booking, (data) =>
-          p.window === '24h'
-            ? { template: 'booking_reminder_24h', data }
-            : { template: 'booking_reminder_2h', data },
-        );
+      case 'booking.reminder_due':
+        await reminderMessage(event, parseEventPayload(event.type, event.payload));
         return;
-      }
 
       default:
         return;

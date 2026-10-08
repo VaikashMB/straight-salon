@@ -86,6 +86,49 @@ export function UsersAdmin() {
     onError: (e) => toast.error(errorMessage(e)),
   });
 
+  const renderUsers = () => {
+    if (users.isPending) return <LoadingList label="Loading people" />;
+    if (users.error) return <ErrorState error={users.error} onRetry={() => void users.refetch()} />;
+    if (users.data.data.length === 0)
+      return <EmptyState title="Nobody matches" description="Try another search." />;
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Contact</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              {isAdmin ? (
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              ) : null}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.data.data.map((u) => (
+              <UserRow
+                key={u.id}
+                user={u}
+                isAdmin={isAdmin}
+                isMe={u.id === me?.id}
+                pending={update.isPending}
+                onChange={(body) => update.mutate({ id: u.id, body })}
+              />
+            ))}
+          </TableBody>
+        </Table>
+        <Pagination
+          page={users.data.meta.page}
+          totalPages={users.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader
@@ -127,48 +170,7 @@ export function UsersAdmin() {
           </SelectField>
         ) : null}
       </div>
-      {users.isPending ? (
-        <LoadingList label="Loading people" />
-      ) : users.error ? (
-        <ErrorState error={users.error} onRetry={() => void users.refetch()} />
-      ) : users.data.data.length === 0 ? (
-        <EmptyState title="Nobody matches" description="Try another search." />
-      ) : (
-        <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Contact</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                {isAdmin ? (
-                  <TableHead>
-                    <span className="sr-only">Actions</span>
-                  </TableHead>
-                ) : null}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.data.data.map((u) => (
-                <UserRow
-                  key={u.id}
-                  user={u}
-                  isAdmin={isAdmin}
-                  isMe={u.id === me?.id}
-                  pending={update.isPending}
-                  onChange={(body) => update.mutate({ id: u.id, body })}
-                />
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination
-            page={users.data.meta.page}
-            totalPages={users.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      {renderUsers()}
       <Dialog open={creating} onOpenChange={setCreating}>
         {creating ? (
           <DialogContent side="right">

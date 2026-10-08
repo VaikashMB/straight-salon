@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 // announced and tied to the field). Spread react-hook-form's register() into it.
 export interface TextFieldProps extends ComponentProps<'input'> {
   label: string;
-  error?: string | undefined;
+  error?: string;
   hint?: ReactNode;
 }
 

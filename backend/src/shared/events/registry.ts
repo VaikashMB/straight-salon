@@ -101,9 +101,8 @@ export class InvalidEventPayloadError extends Error {
     readonly eventType: string,
     readonly issues: { path: string; message: string }[],
   ) {
-    super(
-      `Invalid payload for event "${eventType}": ${issues.map((i) => `${i.path} ${i.message}`).join('; ')}`,
-    );
+    const details = issues.map((i) => `${i.path} ${i.message}`).join('; ');
+    super(`Invalid payload for event "${eventType}": ${details}`);
     this.name = 'InvalidEventPayloadError';
   }
 }

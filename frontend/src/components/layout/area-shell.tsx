@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import { landingFor, type Area } from '@/lib/auth/roles';
+import { landingFor, type Area, type Role } from '@/lib/auth/roles';
 import { cn } from '@/lib/utils';
 import { Brand } from './brand';
 import { activeHref, navFor } from './nav';
@@ -21,6 +21,8 @@ export function AreaShell({ area, children }: { area: Area; children: ReactNode 
   );
 }
 
+const adminRoleLabel = (role: Role) => (role === 'ADMIN' ? 'Admin' : 'Reception');
+
 function AreaFrame({ area, children }: { area: Area; children: ReactNode }) {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -35,7 +37,7 @@ function AreaFrame({ area, children }: { area: Area; children: ReactNode }) {
           <div className="flex items-center gap-3 text-sm">
             <span className="hidden text-muted-foreground sm:inline">
               {user.name}
-              {area === 'admin' ? ` · ${user.role === 'ADMIN' ? 'Admin' : 'Reception'}` : ''}
+              {area === 'admin' ? ` · ${adminRoleLabel(user.role)}` : ''}
             </span>
             <SignOutButton variant="outline" />
           </div>

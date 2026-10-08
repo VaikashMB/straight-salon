@@ -1,0 +1,31 @@
+# Release (12-automation-and-ci §1): semantic-release, started by hand from the Actions tab on main.
+# It reads the Conventional Commits since the last v* tag, picks the next version, and creates the
+# tag and a GitHub Release with generated notes (the changelog). It commits nothing back to main,
+# so branch protection needs no bypass. The first run creates v1.0.0 (Phase 12).
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # tag and GitHub Release
+      issues: write # comment on issues fixed in the release
+      pull-requests: write # comment on PRs included in the release
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # all commits and tags
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      # Pinned and run through npx, like other repo tools that are not app dependencies
+      - run: npx -y semantic-release@25.0.9
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

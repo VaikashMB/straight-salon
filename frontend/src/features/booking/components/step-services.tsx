@@ -76,9 +76,9 @@ export function StepServices({
         </Alert>
       ) : null}
       {full ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <output className="block text-sm text-muted-foreground">
           You can book up to {MAX_SERVICES} services in one appointment.
-        </p>
+        </output>
       ) : null}
       {groups.map(({ category, services: list }) => (
         <section key={category.id} aria-labelledby={`cat-${category.id}`} className="grid gap-3">

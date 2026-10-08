@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
 import { ErrorState, LoadingList } from '@/components/states/list-states';
 import { Button } from '@/components/ui/button';
-import { useBooking } from '@/features/booking/api';
+import { useBooking, type Booking } from '@/features/booking/api';
 import { BookingActions } from '@/features/booking/components/booking-actions';
 import { StatusBadge } from '@/features/booking/components/status-badge';
 import { STATUS_LABEL } from '@/features/booking/status';
@@ -17,33 +17,39 @@ import { PAYMENT_METHODS } from '@/features/booking/components/payment-dialog';
 
 const SOURCE = { ONLINE: 'Online', WALK_IN: 'Walk-in', PHONE: 'Phone' } as const;
 
-// One booking for reception/admin (API-053) with its actions and history (API-058).
-export function AdminBookingDetail({ id }: { id: string }) {
+// Status changes and audit entries for one booking (API-058).
+function useBookingHistory(id: string) {
   const { api } = useAuth();
-  const booking = useBooking(id);
-  const { data: settings } = usePublicSettings();
-  const history = useQuery({
+  return useQuery({
     queryKey: ['bookings', 'detail', id, 'history'],
     queryFn: () => unwrap(api.GET('/api/v1/bookings/{id}/history', { params: { path: { id } } })),
   });
+}
+
+// "Paid ₹X by Cash (discount …)" or "Unpaid".
+function paymentSummary(b: Booking): string {
+  const { payment } = b;
+  if (payment.status !== 'PAID' || !payment.amountPaid) return 'Unpaid';
+  const method = PAYMENT_METHODS.find((m) => m.value === payment.method)?.label;
+  const discount = payment.discount?.amountMinor
+    ? ` (discount ${formatMoney(payment.discount.amountMinor, payment.discount.currency)}: ${payment.discountReason})`
+    : '';
+  return `Paid ${formatMoney(payment.amountPaid.amountMinor, payment.amountPaid.currency)} by ${method ?? payment.method}${discount}`;
+}
+
+// One booking for reception/admin (API-053) with its actions and history (API-058).
+export function AdminBookingDetail({ id }: { id: string }) {
+  const booking = useBooking(id);
+  const { data: settings } = usePublicSettings();
+  const history = useBookingHistory(id);
 
   if (booking.isPending || !settings) return <LoadingList rows={3} label="Loading booking" />;
   if (booking.error) {
-    if (booking.error instanceof ApiError && booking.error.status === 404) {
-      return (
-        <div className="grid justify-items-start gap-3">
-          <h1 className="text-2xl font-semibold">Booking not found</h1>
-          <Button asChild variant="outline">
-            <Link href="/admin/bookings">Back to bookings</Link>
-          </Button>
-        </div>
-      );
-    }
+    if (booking.error instanceof ApiError && booking.error.status === 404) return <NotFound />;
     return <ErrorState error={booking.error} onRetry={() => void booking.refetch()} />;
   }
   const b = booking.data;
   const tz = settings.timezone;
-  const method = PAYMENT_METHODS.find((m) => m.value === b.payment.method)?.label;
 
   return (
     <article className="grid gap-6">
@@ -78,14 +84,7 @@ export function AdminBookingDetail({ id }: { id: string }) {
         <div className="grid gap-0.5">
           <dt className="text-muted-foreground">Payment</dt>
           <dd>
-            {formatMoney(b.total.amountMinor, b.total.currency)} ·{' '}
-            {b.payment.status === 'PAID' && b.payment.amountPaid
-              ? `Paid ${formatMoney(b.payment.amountPaid.amountMinor, b.payment.amountPaid.currency)} by ${method ?? b.payment.method}${
-                  b.payment.discount?.amountMinor
-                    ? ` (discount ${formatMoney(b.payment.discount.amountMinor, b.payment.discount.currency)}: ${b.payment.discountReason})`
-                    : ''
-                }`
-              : 'Unpaid'}
+            {formatMoney(b.total.amountMinor, b.total.currency)} · {paymentSummary(b)}
           </dd>
         </div>
         {b.notes ? (
@@ -109,28 +108,48 @@ export function AdminBookingDetail({ id }: { id: string }) {
         <h2 id="history" className="text-lg font-semibold">
           History
         </h2>
-        {history.isPending ? (
-          <LoadingList rows={2} label="Loading history" />
-        ) : history.error ? (
-          <ErrorState error={history.error} onRetry={() => void history.refetch()} />
-        ) : (
-          <ol className="grid gap-2 border-l pl-4 text-sm">
-            {history.data.statusHistory.map((h) => (
-              <li key={`${h.status}-${h.at}`}>
-                <span className="font-medium">{STATUS_LABEL[h.status]}</span> ·{' '}
-                {formatDateTime(h.at, tz)} · by {h.by === 'system' ? 'system' : h.by}
-                {h.note ? ` · ${h.note}` : ''}
-              </li>
-            ))}
-            {history.data.audit.map((a) => (
-              <li key={`${a.action}-${a.at}`} className="text-muted-foreground">
-                {a.action} · {formatDateTime(a.at, tz)} · {a.actor.role}
-                {a.diff.length ? ` · changed ${a.diff.join(', ')}` : ''}
-              </li>
-            ))}
-          </ol>
-        )}
+        <BookingHistory history={history} timeZone={tz} />
       </section>
     </article>
+  );
+}
+
+function NotFound() {
+  return (
+    <div className="grid justify-items-start gap-3">
+      <h1 className="text-2xl font-semibold">Booking not found</h1>
+      <Button asChild variant="outline">
+        <Link href="/admin/bookings">Back to bookings</Link>
+      </Button>
+    </div>
+  );
+}
+
+function BookingHistory({
+  history,
+  timeZone,
+}: Readonly<{
+  history: ReturnType<typeof useBookingHistory>;
+  timeZone: string;
+}>) {
+  if (history.isPending) return <LoadingList rows={2} label="Loading history" />;
+  if (history.error)
+    return <ErrorState error={history.error} onRetry={() => void history.refetch()} />;
+  return (
+    <ol className="grid gap-2 border-l pl-4 text-sm">
+      {history.data.statusHistory.map((h) => (
+        <li key={`${h.status}-${h.at}`}>
+          <span className="font-medium">{STATUS_LABEL[h.status]}</span> ·{' '}
+          {formatDateTime(h.at, timeZone)} · by {h.by === 'system' ? 'system' : h.by}
+          {h.note ? ` · ${h.note}` : ''}
+        </li>
+      ))}
+      {history.data.audit.map((a) => (
+        <li key={`${a.action}-${a.at}`} className="text-muted-foreground">
+          {a.action} · {formatDateTime(a.at, timeZone)} · {a.actor.role}
+          {a.diff.length ? ` · changed ${a.diff.join(', ')}` : ''}
+        </li>
+      ))}
+    </ol>
   );
 }

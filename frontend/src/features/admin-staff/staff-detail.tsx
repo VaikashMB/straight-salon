@@ -70,6 +70,13 @@ export function StaffDetail({ id }: { id: string }) {
   );
 }
 
+function activationMessage(isActive: boolean, force: boolean): string {
+  if (isActive) return 'Stylist activated.';
+  return force
+    ? 'Stylist deactivated; their future bookings were cancelled.'
+    : 'Stylist deactivated.';
+}
+
 function ProfileForm({ profile }: { profile: StaffProfile }) {
   const services = useServices();
   const update = useUpdateStaff(profile.id);
@@ -100,13 +107,7 @@ function ProfileForm({ profile }: { profile: StaffProfile }) {
       {
         onSuccess: () => {
           setConfirm(null);
-          toast.success(
-            isActive
-              ? 'Stylist activated.'
-              : force
-                ? 'Stylist deactivated; their future bookings were cancelled.'
-                : 'Stylist deactivated.',
-          );
+          toast.success(activationMessage(isActive, force));
         },
         onError: (err) => {
           if (err instanceof ApiError && err.code === 'ACTIVE_BOOKINGS_EXIST' && !force)

@@ -1,0 +1,8 @@
+[
+  {
+    "advisory": "GHSA-vfj7-8cjw-p6xm",
+    "package": "braces",
+    "reason": "No patched release exists (3.0.3 is the latest). Dev-only: reached through eslint-config-next > @next/eslint-plugin-next > fast-glob > micromatch, which expands glob patterns written in this repo's ESLint config, never user input.",
+    "until": "2026-12-31"
+  }
+]

@@ -28,6 +28,43 @@ function Day({ timeZone }: { timeZone: string }) {
   const list = bookings.data?.data.filter((b) => b.status !== 'CANCELLED') ?? [];
   const done = list.filter((b) => b.status === 'COMPLETED').length;
 
+  const renderBookings = () => {
+    if (bookings.isPending) return <LoadingList label="Loading bookings" />;
+    if (bookings.error)
+      return <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />;
+    if (list.length === 0)
+      return (
+        <EmptyState
+          title="No bookings today"
+          description="New bookings will appear here automatically."
+        />
+      );
+    return (
+      <ol className="relative grid gap-4 border-l pl-6">
+        {list.map((b) => (
+          <li key={b.id} className="relative">
+            <span
+              aria-hidden
+              className="absolute top-5 -left-[1.95rem] size-3 rounded-full border-2 border-background bg-accent"
+            />
+            <article className="grid gap-3 rounded-lg border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="font-semibold">
+                  {formatTime(b.startAt, timeZone)}–{formatTime(b.endAt, timeZone)} ·{' '}
+                  {firstName(b.customer.name)}
+                </h2>
+                <StatusBadge status={b.status} />
+              </div>
+              <p className="text-sm">{b.services.map((s) => s.name).join(', ')}</p>
+              {b.notes ? <p className="text-sm text-muted-foreground">Note: {b.notes}</p> : null}
+              <StatusActions booking={b} />
+            </article>
+          </li>
+        ))}
+      </ol>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <div className="grid gap-1">
@@ -37,39 +74,7 @@ function Day({ timeZone }: { timeZone: string }) {
           {bookings.data ? ` · ${list.length} bookings, ${done} completed` : ''}
         </p>
       </div>
-      {bookings.isPending ? (
-        <LoadingList label="Loading bookings" />
-      ) : bookings.error ? (
-        <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />
-      ) : list.length === 0 ? (
-        <EmptyState
-          title="No bookings today"
-          description="New bookings will appear here automatically."
-        />
-      ) : (
-        <ol className="relative grid gap-4 border-l pl-6">
-          {list.map((b) => (
-            <li key={b.id} className="relative">
-              <span
-                aria-hidden
-                className="absolute top-5 -left-[1.95rem] size-3 rounded-full border-2 border-background bg-accent"
-              />
-              <article className="grid gap-3 rounded-lg border bg-card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <h2 className="font-semibold">
-                    {formatTime(b.startAt, timeZone)}–{formatTime(b.endAt, timeZone)} ·{' '}
-                    {firstName(b.customer.name)}
-                  </h2>
-                  <StatusBadge status={b.status} />
-                </div>
-                <p className="text-sm">{b.services.map((s) => s.name).join(', ')}</p>
-                {b.notes ? <p className="text-sm text-muted-foreground">Note: {b.notes}</p> : null}
-                <StatusActions booking={b} />
-              </article>
-            </li>
-          ))}
-        </ol>
-      )}
+      {renderBookings()}
     </section>
   );
 }

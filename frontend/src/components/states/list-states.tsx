@@ -9,11 +9,11 @@ import { errorMessage } from '@/lib/errors';
 
 export function LoadingList({ rows = 3, label = 'Loading' }: { rows?: number; label?: string }) {
   return (
-    <div className="grid gap-3" aria-busy="true" aria-label={label} role="status">
+    <output className="grid gap-3" aria-busy="true" aria-label={label}>
       {Array.from({ length: rows }, (_, i) => (
         <Skeleton key={i} className="h-20 w-full" />
       ))}
-    </div>
+    </output>
   );
 }
 

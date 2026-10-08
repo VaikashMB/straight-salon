@@ -83,6 +83,7 @@ function CustomerStep({ onSelect }: { onSelect: (customer: Customer) => void }) 
       ),
     enabled: searched !== null,
   });
+  const matches = results.data?.data;
 
   const createWalkIn = useMutation({
     mutationFn: (body: { name: string; phone: string }) =>
@@ -123,46 +124,45 @@ function CustomerStep({ onSelect }: { onSelect: (customer: Customer) => void }) 
       {searched && results.isPending ? (
         <p className="text-sm text-muted-foreground">Searching…</p>
       ) : null}
-      {results.data ? (
-        results.data.data.length > 0 ? (
-          <ul className="grid gap-2" aria-label="Matching customers">
-            {results.data.data.map((c) => (
-              <li
-                key={c.id}
-                className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"
-              >
-                <span>
-                  <span className="font-medium">{c.name}</span> · {c.phone}
-                  {c.isWalkIn ? <span className="text-muted-foreground"> · walk-in</span> : null}
-                </span>
-                <Button size="sm" onClick={() => onSelect(c)}>
-                  Choose
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <form
-            className="grid gap-3 rounded-lg border p-4"
-            onSubmit={(e) => {
-              e.preventDefault();
-              setError(null);
-              if (name.trim().length < 2) return setError("Enter the customer's name.");
-              createWalkIn.mutate({ name: name.trim(), phone: searched! });
-            }}
-          >
-            <p className="text-sm">No customer with {searched}. Add them as a walk-in:</p>
-            <TextField
-              label="Customer's name"
-              value={name}
-              maxLength={80}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <Button type="submit" disabled={createWalkIn.isPending} className="justify-self-start">
-              Add customer
-            </Button>
-          </form>
-        )
+      {matches && matches.length > 0 ? (
+        <ul className="grid gap-2" aria-label="Matching customers">
+          {matches.map((c) => (
+            <li
+              key={c.id}
+              className="flex items-center justify-between gap-3 rounded-lg border p-3 text-sm"
+            >
+              <span>
+                <span className="font-medium">{c.name}</span> · {c.phone}
+                {c.isWalkIn ? <span className="text-muted-foreground"> · walk-in</span> : null}
+              </span>
+              <Button size="sm" onClick={() => onSelect(c)}>
+                Choose
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {matches?.length === 0 ? (
+        <form
+          className="grid gap-3 rounded-lg border p-4"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            if (name.trim().length < 2) return setError("Enter the customer's name.");
+            createWalkIn.mutate({ name: name.trim(), phone: searched! });
+          }}
+        >
+          <p className="text-sm">No customer with {searched}. Add them as a walk-in:</p>
+          <TextField
+            label="Customer's name"
+            value={name}
+            maxLength={80}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <Button type="submit" disabled={createWalkIn.isPending} className="justify-self-start">
+            Add customer
+          </Button>
+        </form>
       ) : null}
     </div>
   );

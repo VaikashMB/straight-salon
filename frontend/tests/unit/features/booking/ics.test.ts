@@ -19,7 +19,7 @@ describe('add to calendar (05 §4.1)', () => {
     expect(lines).toContain('DTEND:20261012T063000Z');
     expect(lines).toContain('DTSTAMP:20261006T091244Z');
     expect(lines).toContain('SUMMARY:Haircut\\, Beard Trim at Straight Salon');
-    expect(lines).toContain('DESCRIPTION:Booking SS-1\; bring a photo\\nThanks');
+    expect(lines).toContain('DESCRIPTION:Booking SS-1\\; bring a photo\\nThanks');
     expect(lines).toContain('LOCATION:12 MG Road\\, Bengaluru');
     expect(ics.endsWith('END:VCALENDAR\r\n')).toBe(true);
   });

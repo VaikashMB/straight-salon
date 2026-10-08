@@ -10,7 +10,7 @@ export function StylistAvatar({
   className,
 }: {
   name: string;
-  photoUrl?: string | undefined;
+  photoUrl?: string;
   size?: number;
   className?: string;
 }) {

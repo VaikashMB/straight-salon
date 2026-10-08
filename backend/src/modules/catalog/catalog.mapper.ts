@@ -1,3 +1,4 @@
+import { trimChar, trimEndChar } from '../../shared/text/strings.js';
 import type { CategoryDoc, ServiceDoc } from './catalog.model.js';
 import type { CategoryDto, ServiceDto } from './catalog.schemas.js';
 
@@ -52,14 +53,12 @@ export const serviceAuditView = (s: ServiceDoc): Record<string, unknown> => ({
 
 // "Hair Colour (Global)" -> "hair-colour-global"
 export function slugify(name: string): string {
-  const slug = name
+  const dashed = name
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 100)
-    .replace(/-+$/, '');
+    .replace(/[^a-z0-9]+/g, '-');
+  const slug = trimEndChar(trimChar(dashed, '-').slice(0, 100), '-');
   return slug || 'item';
 }
 

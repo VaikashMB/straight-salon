@@ -38,6 +38,58 @@ import { useAdminStaff, useCreateStaff, useStaffAccounts } from './api';
 export function StaffAdmin() {
   const staff = useAdminStaff();
   const [creating, setCreating] = useState(false);
+  const renderStaff = () => {
+    if (staff.isPending) return <LoadingList label="Loading stylists" />;
+    if (staff.error) return <ErrorState error={staff.error} onRetry={() => void staff.refetch()} />;
+    if (staff.data.length === 0)
+      return (
+        <EmptyState
+          title="No stylists yet"
+          action={
+            <Button variant="outline" onClick={() => setCreating(true)}>
+              Add a stylist
+            </Button>
+          }
+        />
+      );
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Stylist</TableHead>
+            <TableHead>Services</TableHead>
+            <TableHead>Rating</TableHead>
+            <TableHead>Status</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {staff.data.map((s) => (
+            <TableRow key={s.id}>
+              <TableCell>
+                <Link
+                  href={`/admin/staff/${s.id}`}
+                  className="flex items-center gap-3 font-medium hover:underline"
+                >
+                  <StylistAvatar name={s.displayName} photoUrl={s.photoUrl} size={36} />
+                  {s.displayName}
+                </Link>
+              </TableCell>
+              <TableCell>{s.serviceIds.length}</TableCell>
+              <TableCell>
+                <Rating value={s.ratingAvg} count={s.ratingCount} />
+              </TableCell>
+              <TableCell>
+                <Badge variant={s.isActive === false ? 'secondary' : 'success'}>
+                  {s.isActive === false ? 'Inactive' : 'Active'}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader
@@ -49,55 +101,7 @@ export function StaffAdmin() {
           </Button>
         }
       />
-      {staff.isPending ? (
-        <LoadingList label="Loading stylists" />
-      ) : staff.error ? (
-        <ErrorState error={staff.error} onRetry={() => void staff.refetch()} />
-      ) : staff.data.length === 0 ? (
-        <EmptyState
-          title="No stylists yet"
-          action={
-            <Button variant="outline" onClick={() => setCreating(true)}>
-              Add a stylist
-            </Button>
-          }
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Stylist</TableHead>
-              <TableHead>Services</TableHead>
-              <TableHead>Rating</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {staff.data.map((s) => (
-              <TableRow key={s.id}>
-                <TableCell>
-                  <Link
-                    href={`/admin/staff/${s.id}`}
-                    className="flex items-center gap-3 font-medium hover:underline"
-                  >
-                    <StylistAvatar name={s.displayName} photoUrl={s.photoUrl} size={36} />
-                    {s.displayName}
-                  </Link>
-                </TableCell>
-                <TableCell>{s.serviceIds.length}</TableCell>
-                <TableCell>
-                  <Rating value={s.ratingAvg} count={s.ratingCount} />
-                </TableCell>
-                <TableCell>
-                  <Badge variant={s.isActive === false ? 'secondary' : 'success'}>
-                    {s.isActive === false ? 'Inactive' : 'Active'}
-                  </Badge>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {renderStaff()}
       <Dialog open={creating} onOpenChange={setCreating}>
         {creating ? (
           <DialogContent side="right">

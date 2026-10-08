@@ -61,6 +61,84 @@ export function CategoriesAdmin() {
       },
     );
 
+  const renderCategories = () => {
+    if (categories.isPending) return <LoadingList label="Loading categories" />;
+    if (categories.error)
+      return <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />;
+    if (categories.data.length === 0)
+      return (
+        <EmptyState
+          title="No categories yet"
+          action={
+            <Button variant="outline" onClick={() => setEditing('new')}>
+              Add a category
+            </Button>
+          }
+        />
+      );
+    return (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Name</TableHead>
+            <TableHead>Order</TableHead>
+            <TableHead>Status</TableHead>
+            <TableHead>
+              <span className="sr-only">Actions</span>
+            </TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {categories.data.map((c) => (
+            <TableRow key={c.id}>
+              <TableCell className="font-medium">
+                {c.name}
+                {c.description ? (
+                  <span className="block text-xs text-muted-foreground">{c.description}</span>
+                ) : null}
+              </TableCell>
+              <TableCell>{c.sortOrder}</TableCell>
+              <TableCell>
+                <Badge variant={c.isActive ? 'success' : 'secondary'}>
+                  {c.isActive ? 'Active' : 'Inactive'}
+                </Badge>
+              </TableCell>
+              <TableCell className="flex justify-end gap-2">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`Edit ${c.name}`}
+                  onClick={() => setEditing(c)}
+                >
+                  Edit
+                </Button>
+                {c.isActive ? (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Deactivate ${c.name}`}
+                    onClick={() => setDeactivating(c)}
+                  >
+                    Deactivate
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    aria-label={`Activate ${c.name}`}
+                    onClick={() => toggle(c, true)}
+                  >
+                    Activate
+                  </Button>
+                )}
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader
@@ -71,80 +149,7 @@ export function CategoriesAdmin() {
           </Button>
         }
       />
-      {categories.isPending ? (
-        <LoadingList label="Loading categories" />
-      ) : categories.error ? (
-        <ErrorState error={categories.error} onRetry={() => void categories.refetch()} />
-      ) : categories.data.length === 0 ? (
-        <EmptyState
-          title="No categories yet"
-          action={
-            <Button variant="outline" onClick={() => setEditing('new')}>
-              Add a category
-            </Button>
-          }
-        />
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Order</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {categories.data.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-medium">
-                  {c.name}
-                  {c.description ? (
-                    <span className="block text-xs text-muted-foreground">{c.description}</span>
-                  ) : null}
-                </TableCell>
-                <TableCell>{c.sortOrder}</TableCell>
-                <TableCell>
-                  <Badge variant={c.isActive ? 'success' : 'secondary'}>
-                    {c.isActive ? 'Active' : 'Inactive'}
-                  </Badge>
-                </TableCell>
-                <TableCell className="flex justify-end gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    aria-label={`Edit ${c.name}`}
-                    onClick={() => setEditing(c)}
-                  >
-                    Edit
-                  </Button>
-                  {c.isActive ? (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={`Deactivate ${c.name}`}
-                      onClick={() => setDeactivating(c)}
-                    >
-                      Deactivate
-                    </Button>
-                  ) : (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      aria-label={`Activate ${c.name}`}
-                      onClick={() => toggle(c, true)}
-                    >
-                      Activate
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
+      {renderCategories()}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         {editing ? (
           <DialogContent side="right">

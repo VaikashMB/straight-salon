@@ -1,0 +1,23 @@
+name: Node and dependencies
+description: >
+  Node from .nvmrc, then node_modules restored from the cache the `setup` job saved for this
+  lockfile (npm ci only on a cache miss). Used by every CI job that needs dependencies.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7
+      with:
+        node-version-file: .nvmrc
+    - id: cache
+      uses: actions/cache@v6
+      with:
+        path: |
+          node_modules
+          backend/node_modules
+          frontend/node_modules
+        key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+    - if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: npm ci
+      env:
+        HUSKY: '0' # no git hooks on CI runners

@@ -8,8 +8,8 @@ export interface PublicEnv {
 }
 
 export function readPublicEnv(source: {
-  NEXT_PUBLIC_APP_NAME?: string | undefined;
-  NEXT_PUBLIC_DEFAULT_COUNTRY_CODE?: string | undefined;
+  NEXT_PUBLIC_APP_NAME?: string;
+  NEXT_PUBLIC_DEFAULT_COUNTRY_CODE?: string;
 }): PublicEnv {
   const countryCode = (source.NEXT_PUBLIC_DEFAULT_COUNTRY_CODE ?? '').replace(/^\+/, '').trim();
   if (countryCode && !/^[1-9]\d{0,2}$/.test(countryCode)) {

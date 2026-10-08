@@ -42,6 +42,7 @@ backend/src/
 │   │                          #   EventBus + in-memory + BullMQ adapters, subscriptions table, relay, idempotent()
 │   ├── locks/                 # Redis distributed lock (SET NX PX + token)
 │   ├── time/                  # tz helpers, slot math
+│   ├── text/                  # string helpers: code-unit compare for sorting ids/keys, linear-time trims
 │   ├── db/                    # withTransaction helper
 │   ├── storage/               # ObjectStorage interface + local adapter
 │   └── lifecycle/             # loadEnvOrExit, createProcessLogger, registerShutdown (shared by api/worker/relay)

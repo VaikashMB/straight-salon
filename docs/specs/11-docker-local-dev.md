@@ -58,7 +58,7 @@ Stage runtime  : node:24-alpine + tini, NODE_ENV=production, copy node_modules f
                CMD ["node", "dist/server.js"]   # worker overrides command
 ```
 - `--ignore-scripts`: images never run git hooks (Husky) or dependency install scripts; native packages resolve their prebuilt optional binaries.
-- `.dockerignore` (repo root): node_modules, dist, .next, coverage, .env*, tests, .git, docs, infra, scripts.
+- `.dockerignore` (repo root): node_modules, dist, .next, coverage, .env*, tests, .git, docs, infra, scripts, plus test and scanner output (`reports`, `playwright-report`, `test-results`, `.scannerwork`, `.sonar-cache`). Report folders are matched by **anchored** paths (`reports`, `backend/reports`, `frontend/reports`), never `**/reports`: source folders are named `reports` too (backend module, frontend feature and route). The same applies to `.gitignore`. Until Phase 11 a `**/reports` pattern left the frontend reports page out of git and of the image (`/admin/reports` was a 404); the e2e suite found it.
 - Use `tini` (or `--init`) as PID 1 so `SIGTERM` reaches Node for graceful shutdown.
 - Image labels: `org.opencontainers.image.source`, `version`, `revision` (git SHA via build arg).
 

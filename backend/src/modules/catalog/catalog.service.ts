@@ -84,6 +84,29 @@ const SORTABLE = ['name', 'durationMin', 'priceMinor', 'createdAt'] as const;
 
 const asObjectId = (id: string) => (Types.ObjectId.isValid(id) ? new Types.ObjectId(id) : null);
 
+// A field present in an update body whose value is not the stored one.
+const differs = <T>(next: T | undefined, current: T): next is T =>
+  next !== undefined && next !== current;
+
+// The fields of an update that differ from the stored service; `categoryId` is resolved (and
+// checked) by the caller. An empty result means the update is a no-op.
+function serviceChanges(
+  service: ServiceDoc,
+  body: UpdateServiceBody,
+  categoryId: Types.ObjectId | undefined,
+): ServiceChanges {
+  const changes: ServiceChanges = {};
+  if (differs(body.name, service.name)) changes.name = body.name;
+  if (categoryId) changes.categoryId = categoryId;
+  if (differs(body.description, service.description ?? null))
+    changes.description = body.description || null;
+  if (differs(body.durationMin, service.durationMin)) changes.durationMin = body.durationMin;
+  if (differs(body.priceMinor, service.priceMinor)) changes.priceMinor = body.priceMinor;
+  if (differs(body.imageUrl, service.imageUrl ?? null)) changes.imageUrl = body.imageUrl;
+  if (differs(body.isActive, service.isActive)) changes.isActive = body.isActive;
+  return changes;
+}
+
 export function createCatalogService(deps: CatalogServiceDeps): CatalogService {
   const { repository, audit, outbox, cache, connection, settings, stylists, storage } = deps;
   const newId = deps.newId ?? randomUUID;
@@ -130,6 +153,20 @@ export function createCatalogService(deps: CatalogServiceDeps): CatalogService {
     if (existing && !(exceptId && existing._id.equals(exceptId))) {
       throw new ConflictError('An active service with this name already exists.');
     }
+  }
+
+  // An active result must satisfy BR-013 and the unique-active-name rule; a reactivated
+  // service is re-checked because settings may have changed while it was inactive.
+  async function assertActiveServiceRules(
+    service: ServiceDoc,
+    changes: ServiceChanges,
+  ): Promise<void> {
+    const activeAfter = changes.isActive ?? service.isActive;
+    if (!activeAfter) return;
+    if (changes.durationMin !== undefined || changes.isActive === true)
+      await assertDurationFits(changes.durationMin ?? service.durationMin);
+    if (changes.name !== undefined || changes.isActive === true)
+      await assertActiveNameFree(changes.name ?? service.name, service._id);
   }
 
   // EVT-031
@@ -383,33 +420,14 @@ export function createCatalogService(deps: CatalogServiceDeps): CatalogService {
 
     async updateService(id, body) {
       const service = await requireService(id);
-      const changes: ServiceChanges = {};
-      if (body.name !== undefined && body.name !== service.name) changes.name = body.name;
+      let categoryId: Types.ObjectId | undefined;
       if (body.categoryId !== undefined && body.categoryId !== service.categoryId.toHexString()) {
         await assertCategoryExists(body.categoryId);
-        changes.categoryId = new Types.ObjectId(body.categoryId);
+        categoryId = new Types.ObjectId(body.categoryId);
       }
-      if (body.description !== undefined && body.description !== (service.description ?? null))
-        changes.description = body.description || null;
-      if (body.durationMin !== undefined && body.durationMin !== service.durationMin)
-        changes.durationMin = body.durationMin;
-      if (body.priceMinor !== undefined && body.priceMinor !== service.priceMinor)
-        changes.priceMinor = body.priceMinor;
-      if (body.imageUrl !== undefined && body.imageUrl !== (service.imageUrl ?? null))
-        changes.imageUrl = body.imageUrl;
-      if (body.isActive !== undefined && body.isActive !== service.isActive)
-        changes.isActive = body.isActive;
+      const changes = serviceChanges(service, body, categoryId);
       if (Object.keys(changes).length === 0) return toServiceDto(service, await currency());
-
-      // An active result must satisfy BR-013 and the unique-active-name rule; a reactivated
-      // service is re-checked because settings may have changed while it was inactive.
-      const activeAfter = changes.isActive ?? service.isActive;
-      if (activeAfter) {
-        if (changes.durationMin !== undefined || changes.isActive === true)
-          await assertDurationFits(changes.durationMin ?? service.durationMin);
-        if (changes.name !== undefined || changes.isActive === true)
-          await assertActiveNameFree(changes.name ?? service.name, service._id);
-      }
+      await assertActiveServiceRules(service, changes);
       return toServiceDto(await applyServiceChange(service, changes), await currency());
     },
 

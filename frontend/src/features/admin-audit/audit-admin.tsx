@@ -66,6 +66,57 @@ export function AuditAdmin() {
     setPage(1);
   };
 
+  const renderLogs = () => {
+    if (logs.isPending || !settings) return <LoadingList label="Loading audit log" />;
+    if (logs.error) return <ErrorState error={logs.error} onRetry={() => void logs.refetch()} />;
+    if (logs.data.data.length === 0) return <EmptyState title="No entries match" />;
+    return (
+      <>
+        <ul className="grid gap-2">
+          {logs.data.data.map((entry) => (
+            <li key={entry.id}>
+              <details className="rounded-lg border bg-card">
+                <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm">
+                  <span>
+                    <span className="font-medium">{entry.action}</span> · {entry.entityType}{' '}
+                    {entry.entityId}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {formatDateTime(entry.at, settings.timezone)} · {entry.actor.role}{' '}
+                    {entry.actor.id}
+                  </span>
+                </summary>
+                <div className="grid gap-3 border-t p-3 text-sm">
+                  <p>
+                    Changed: {entry.diff.length ? entry.diff.join(', ') : 'nothing recorded'}
+                    {entry.requestId ? (
+                      <span className="text-xs text-muted-foreground">
+                        {' '}
+                        · request {entry.requestId}
+                      </span>
+                    ) : null}
+                  </p>
+                  <div className="grid gap-3 md:grid-cols-2">
+                    <Json label="Before" value={entry.before} />
+                    <Json label="After" value={entry.after} />
+                  </div>
+                  {entry.metadata && Object.keys(entry.metadata).length ? (
+                    <Json label="Details" value={entry.metadata} />
+                  ) : null}
+                </div>
+              </details>
+            </li>
+          ))}
+        </ul>
+        <Pagination
+          page={logs.data.meta.page}
+          totalPages={logs.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader title="Audit log" description="Who changed what, and when. Newest first." />
@@ -94,57 +145,7 @@ export function AuditAdmin() {
         <TextField label="From" type="date" value={filters.from} onChange={set('from')} />
         <TextField label="To" type="date" value={filters.to} onChange={set('to')} />
       </div>
-      {logs.isPending || !settings ? (
-        <LoadingList label="Loading audit log" />
-      ) : logs.error ? (
-        <ErrorState error={logs.error} onRetry={() => void logs.refetch()} />
-      ) : logs.data.data.length === 0 ? (
-        <EmptyState title="No entries match" />
-      ) : (
-        <>
-          <ul className="grid gap-2">
-            {logs.data.data.map((entry) => (
-              <li key={entry.id}>
-                <details className="rounded-lg border bg-card">
-                  <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm">
-                    <span>
-                      <span className="font-medium">{entry.action}</span> · {entry.entityType}{' '}
-                      {entry.entityId}
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatDateTime(entry.at, settings.timezone)} · {entry.actor.role}{' '}
-                      {entry.actor.id}
-                    </span>
-                  </summary>
-                  <div className="grid gap-3 border-t p-3 text-sm">
-                    <p>
-                      Changed: {entry.diff.length ? entry.diff.join(', ') : 'nothing recorded'}
-                      {entry.requestId ? (
-                        <span className="text-xs text-muted-foreground">
-                          {' '}
-                          · request {entry.requestId}
-                        </span>
-                      ) : null}
-                    </p>
-                    <div className="grid gap-3 md:grid-cols-2">
-                      <Json label="Before" value={entry.before} />
-                      <Json label="After" value={entry.after} />
-                    </div>
-                    {entry.metadata && Object.keys(entry.metadata).length ? (
-                      <Json label="Details" value={entry.metadata} />
-                    ) : null}
-                  </div>
-                </details>
-              </li>
-            ))}
-          </ul>
-          <Pagination
-            page={logs.data.meta.page}
-            totalPages={logs.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      {renderLogs()}
     </section>
   );
 }

@@ -17,6 +17,8 @@ describe('slugs', () => {
     expect(slugify('  Crème Brûlée Facial  ')).toBe('creme-brulee-facial');
     expect(slugify('***')).toBe('item');
     expect(slugify('a'.repeat(150))).toHaveLength(100);
+    expect(slugify(`${'a'.repeat(99)} b`)).toBe('a'.repeat(99));
+    expect(slugify('--Hair--')).toBe('hair');
   });
 
   it('nextFreeSlug appends the first free number', () => {

@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 
 export interface TextareaFieldProps extends ComponentProps<'textarea'> {
   label: string;
-  error?: string | undefined;
+  error?: string;
   hint?: ReactNode;
 }
 

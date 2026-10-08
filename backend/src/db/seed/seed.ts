@@ -241,6 +241,30 @@ const STAFF = [
 const LUNCH = { start: '13:30', end: '14:15' };
 const MONDAY = 1;
 
+type SeedService = (typeof SERVICES)[number];
+type SeedStaff = (typeof STAFF)[number];
+type Ids = Map<string, Types.ObjectId>;
+// Tallies what a run created, for the final log line.
+type Count = (what: string) => void;
+
+// Bookings (Phase 5): start times cycled per stylist/day, and payment methods per booking.
+const SERVICE_BY_SLUG = new Map(SERVICES.map((svc) => [svc.slug, svc]));
+const BOOKING_TIMES = ['10:00', '11:30', '14:30', '16:00', '17:30'];
+const PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'UPI', 'CARD', 'UPI', 'CASH', 'OTHER'];
+
+// Reviews (Phase 7): one rating (and maybe a comment) per reviewed booking, in order.
+const REVIEW_COMMENTS = [
+  'Great cut, exactly what I asked for.',
+  undefined,
+  'Friendly and on time. Will come back.',
+  'Good, but the wait was a little long.',
+  undefined,
+  'Best beard trim in town!',
+  'Very relaxing, thank you.',
+  undefined,
+];
+const REVIEW_RATINGS = [5, 4, 5, 3, 4, 5, 5, 4];
+
 export async function seedDatabase({
   logger,
   bcryptCost,
@@ -253,21 +277,38 @@ export async function seedDatabase({
   const log = logger.child({ component: 'seed' });
   const hasher = createPasswordHasher(bcryptCost);
   const created: Record<string, number> = {};
-  const count = (what: string) => {
+  const count: Count = (what) => {
     created[what] = (created[what] ?? 0) + 1;
   };
 
-  // Settings
+  const settings = await seedSettings(count);
+  const tz = settings.timezone;
+  const userIds = await seedUsers(await hasher.hash(SEED_PASSWORD), count);
+  const categoryIds = await seedCategories(count);
+  const serviceIds = await seedServices(categoryIds, count);
+  const staffIds = await seedStaff(settings, userIds, serviceIds, count);
+  const today = toZonedDate(clock.now(), tz);
+  await seedHoliday(today, count);
+  await seedTimeOff(today, tz, staffIds, userIds.get('admin')!, count);
+  await seedBookings({ today, tz, clock, userIds, staffIds, serviceIds }, count);
+  await seedReviews(settings, clock, count);
+
+  log.info(
+    { created },
+    `Seed complete. Every seeded account uses the password ${SEED_PASSWORD} (e.g. admin@${DOMAIN}).`,
+  );
+}
+
+async function seedSettings(count: Count): Promise<SettingsFields> {
   if (!(await settingsRepository.find())) {
     await settingsRepository.save(SETTINGS, null);
     count('settings');
   }
-  const settings = (await settingsRepository.find()) ?? { ...SETTINGS };
-  const tz = settings.timezone;
+  return (await settingsRepository.find()) ?? { ...SETTINGS };
+}
 
-  // Users
-  const passwordHash = await hasher.hash(SEED_PASSWORD);
-  const userIds = new Map<string, Types.ObjectId>();
+async function seedUsers(passwordHash: string, count: Count): Promise<Ids> {
+  const userIds: Ids = new Map();
   for (const user of USERS) {
     let existing = await usersRepository.findByEmail(user.email);
     if (!existing) {
@@ -283,9 +324,11 @@ export async function seedDatabase({
     }
     userIds.set(user.key, existing._id);
   }
+  return userIds;
+}
 
-  // Catalogue
-  const categoryIds = new Map<string, Types.ObjectId>();
+async function seedCategories(count: Count): Promise<Ids> {
+  const categoryIds: Ids = new Map();
   for (const [index, category] of CATEGORIES.entries()) {
     let existing = await catalogRepository.findCategoryByName(category.name);
     if (!existing) {
@@ -297,8 +340,11 @@ export async function seedDatabase({
     }
     categoryIds.set(category.name, existing._id);
   }
+  return categoryIds;
+}
 
-  const serviceIds = new Map<string, Types.ObjectId>();
+async function seedServices(categoryIds: Ids, count: Count): Promise<Ids> {
+  const serviceIds: Ids = new Map();
   for (const service of SERVICES) {
     let existing = await catalogRepository.findServiceBySlug(service.slug);
     if (!existing) {
@@ -315,9 +361,17 @@ export async function seedDatabase({
     }
     serviceIds.set(service.slug, existing._id);
   }
+  return serviceIds;
+}
 
-  // Staff profiles and schedules
-  const staffIds = new Map<string, Types.ObjectId>();
+// Staff profiles, each followed by its weekly schedule.
+async function seedStaff(
+  settings: SettingsFields,
+  userIds: Ids,
+  serviceIds: Ids,
+  count: Count,
+): Promise<Ids> {
+  const staffIds: Ids = new Map();
   for (const member of STAFF) {
     const userId = userIds.get(member.user)!;
     let existing = await staffRepository.findByUserId(userId);
@@ -331,28 +385,46 @@ export async function seedDatabase({
       count('staff');
     }
     staffIds.set(member.user, existing._id);
-
-    if (!(await staffRepository.findSchedule(existing._id))) {
-      const weekly = defaultWeekly(settings).map((day) => ({
-        ...day,
-        isWorking: day.isWorking && !(member.offOnMonday && day.dayOfWeek === MONDAY),
-        breaks: [LUNCH],
-      }));
-      await staffRepository.saveSchedule(existing._id, weekly);
-      count('schedules');
-    }
+    await seedSchedule(existing._id, member, settings, count);
   }
+  return staffIds;
+}
 
-  // One holiday next month (the 15th, salon timezone)
-  const today = toZonedDate(clock.now(), tz);
-  const holidayDate = `${addDays(`${today.slice(0, 8)}01`, 32).slice(0, 8)}15`;
+async function seedSchedule(
+  staffId: Types.ObjectId,
+  member: SeedStaff,
+  settings: SettingsFields,
+  count: Count,
+): Promise<void> {
+  if (await staffRepository.findSchedule(staffId)) return;
+  const weekly = defaultWeekly(settings).map((day) => ({
+    ...day,
+    isWorking: day.isWorking && !(member.offOnMonday && day.dayOfWeek === MONDAY),
+    breaks: [LUNCH],
+  }));
+  await staffRepository.saveSchedule(staffId, weekly);
+  count('schedules');
+}
+
+// One holiday next month (the 15th, salon timezone)
+async function seedHoliday(today: string, count: Count): Promise<void> {
+  const firstOfMonth = `${today.slice(0, 8)}01`;
+  const nextMonth = addDays(firstOfMonth, 32).slice(0, 8);
+  const holidayDate = `${nextMonth}15`;
   if (!(await holidaysRepository.findByDate(holidayDate))) {
     await holidaysRepository.create({ date: holidayDate, name: 'Staff Training Day' });
     count('holidays');
   }
+}
 
-  // A few time-off blocks in the coming week
-  const admin = userIds.get('admin')!;
+// A few time-off blocks in the coming week
+async function seedTimeOff(
+  today: string,
+  tz: string,
+  staffIds: Ids,
+  admin: Types.ObjectId,
+  count: Count,
+): Promise<void> {
   const timeOff = [
     {
       staff: 'priya',
@@ -388,181 +460,240 @@ export async function seedDatabase({
     });
     count('timeOff');
   }
+}
 
-  // Bookings over the past 14 days and the next 7, across all statuses, with payments on
-  // completed ones (02 §3, Phase 5). One booking per stylist per day, so none overlap.
-  if ((await bookingsRepository.search({ skip: 0, limit: 1, sort: { startAt: 1 } })).total === 0) {
-    const holidays = new Set(
-      (await holidaysRepository.list({ from: addDays(today, -14), to: addDays(today, 7) })).map(
-        (h) => h.date,
-      ),
-    );
-    const services = new Map(SERVICES.map((svc) => [svc.slug, svc]));
-    const customers = USERS.filter((u) => u.role === 'CUSTOMER').map((u) => userIds.get(u.key)!);
-    const reception = userIds.get('reception')!;
-    const futureBooked = new Map<string, number>();
-    const times = ['10:00', '11:30', '14:30', '16:00', '17:30'];
-    const methods: PaymentMethod[] = ['CASH', 'UPI', 'CARD', 'UPI', 'CASH', 'OTHER'];
-    const now = clock.now();
-    let n = 0;
+interface BookingSeedInput {
+  today: string;
+  tz: string;
+  clock: Clock;
+  userIds: Ids;
+  staffIds: Ids;
+  serviceIds: Ids;
+}
 
-    for (let offset = -14; offset <= 7; offset++) {
-      const date = addDays(today, offset);
-      if (holidays.has(date)) continue;
-      for (const [index, member] of STAFF.entries()) {
-        if ((offset + index + 20) % 4 === 0) continue; // about three bookings a day
-        if (member.offOnMonday && weekdayOf(date) === MONDAY) continue;
-        const staffId = staffIds.get(member.user)!;
-        const slug = member.services[(offset + 20 + index) % member.services.length]!;
-        const svc = services.get(slug)!;
-        const startAt = zonedDateTime(date, times[(offset + 20 + index * 2) % times.length]!, tz);
-        const endAt = new Date(startAt.getTime() + svc.durationMin * 60_000);
-        const blocks = await staffRepository.listTimeOff(staffId, { from: startAt, to: endAt });
-        if (
-          blocks.some((b) =>
-            overlaps(
-              { start: b.startAt.getTime(), end: b.endAt.getTime() },
-              { start: startAt.getTime(), end: endAt.getTime() },
-            ),
-          )
-        )
-          continue;
-        n++;
+interface BookingSeedContext {
+  tz: string;
+  now: Date;
+  staffIds: Ids;
+  serviceIds: Ids;
+  customers: Types.ObjectId[];
+  reception: Types.ObjectId;
+  futureBooked: Map<string, number>; // upcoming BOOKED per customer (BR-009)
+}
 
-        const future = endAt.getTime() > now.getTime();
-        let status: BookingStatus = 'COMPLETED';
-        if (future) status = n % 8 === 0 ? 'CANCELLED' : 'BOOKED';
-        else if (n % 9 === 0) status = 'NO_SHOW';
-        else if (n % 7 === 0) status = 'CANCELLED';
+interface SeedSlot {
+  date: string;
+  staffId: Types.ObjectId;
+  slug: string;
+  svc: SeedService;
+  startAt: Date;
+  endAt: Date;
+}
 
-        // BR-009: at most 3 upcoming BOOKED per customer.
-        let customer = customers[n % customers.length]!;
-        if (status === 'BOOKED') {
-          for (
-            let k = 0;
-            (futureBooked.get(customer.toHexString()) ?? 0) >= 3 && k < customers.length;
-            k++
-          ) {
-            customer = customers[(n + k + 1) % customers.length]!;
-          }
-          futureBooked.set(
-            customer.toHexString(),
-            (futureBooked.get(customer.toHexString()) ?? 0) + 1,
-          );
-        }
-        const source: BookingSource = n % 5 === 0 ? 'WALK_IN' : n % 3 === 0 ? 'PHONE' : 'ONLINE';
-        const createdBy = source === 'ONLINE' ? customer : reception;
-        const createdAt = new Date(startAt.getTime() - 2 * 86_400_000);
-        const history: StatusChange[] = [
-          { status: 'BOOKED', at: createdAt, by: createdBy.toHexString() },
-        ];
-        const step = (st: BookingStatus, minutes: number) =>
-          history.push({
-            status: st,
-            at: new Date(startAt.getTime() + minutes * 60_000),
-            by: reception.toHexString(),
-          });
-        if (status === 'COMPLETED') {
-          step('CHECKED_IN', -5);
-          step('IN_SERVICE', 0);
-          step('COMPLETED', svc.durationMin);
-        }
-        if (status === 'NO_SHOW') step('NO_SHOW', 30);
-        if (status === 'CANCELLED') step('CANCELLED', -24 * 60);
-        const discountMinor = status === 'COMPLETED' && n % 6 === 0 ? 5_000 : 0;
-
-        await bookingsRepository.create({
-          bookingRef: makeBookingRef(date),
-          customerId: customer,
-          staffId,
-          services: [
-            {
-              serviceId: serviceIds.get(slug)!,
-              name: svc.name,
-              durationMin: svc.durationMin,
-              priceMinor: svc.priceMinor,
-            },
-          ],
-          startAt,
-          endAt,
-          blockedUntil: endAt, // bufferMin is 0 in the seeded settings
-          totalDurationMin: svc.durationMin,
-          totalPriceMinor: svc.priceMinor,
-          status,
-          statusHistory: history,
-          source,
-          payment:
-            status === 'COMPLETED'
-              ? {
-                  status: 'PAID',
-                  method: methods[n % methods.length]!,
-                  amountPaidMinor: svc.priceMinor - discountMinor,
-                  discountMinor,
-                  ...(discountMinor > 0 ? { discountReason: 'Loyalty discount' } : {}),
-                  recordedBy: reception,
-                  recordedAt: endAt,
-                }
-              : { status: 'UNPAID' },
-          reminders: {},
-          createdBy,
-          ...(status === 'CANCELLED'
-            ? {
-                cancellation: {
-                  at: history.at(-1)!.at,
-                  by: customer.toHexString(),
-                  reason: 'Plans changed',
-                  overridden: false,
-                },
-              }
-            : {}),
-        });
-        count('bookings');
-      }
-    }
-  }
-
-  // A handful of reviews on recently completed bookings, within the review window (Phase 7).
-  if ((await ReviewModel.countDocuments()) === 0) {
-    const comments = [
-      'Great cut, exactly what I asked for.',
-      undefined,
-      'Friendly and on time. Will come back.',
-      'Good, but the wait was a little long.',
-      undefined,
-      'Best beard trim in town!',
-      'Very relaxing, thank you.',
-      undefined,
-    ];
-    const ratings = [5, 4, 5, 3, 4, 5, 5, 4];
-    const windowStart = new Date(clock.now().getTime() - settings.reviewWindowDays * 86_400_000);
-    const { data: recent } = await bookingsRepository.search({
-      from: windowStart,
-      to: clock.now(),
-      status: 'COMPLETED',
-      skip: 0,
-      limit: ratings.length * 2,
-      sort: { startAt: -1 },
-    });
-    // Every other completed booking, so not every visit has a review.
-    for (const [i, booking] of recent.filter((_, k) => k % 2 === 0).entries()) {
-      const comment = comments[i];
-      await ReviewModel.create({
-        bookingId: booking._id,
-        customerId: booking.customerId,
-        staffId: booking.staffId,
-        serviceIds: booking.services.map((svc) => svc.serviceId),
-        rating: ratings[i]!,
-        ...(comment ? { comment } : {}),
-        isHidden: false,
-      });
-      count('reviews');
-    }
-  }
-
-  log.info(
-    { created },
-    `Seed complete. Every seeded account uses the password ${SEED_PASSWORD} (e.g. admin@${DOMAIN}).`,
+// Bookings over the past 14 days and the next 7, across all statuses, with payments on
+// completed ones (02 §3, Phase 5). One booking per stylist per day, so none overlap.
+async function seedBookings(input: BookingSeedInput, count: Count): Promise<void> {
+  const { today, userIds } = input;
+  if ((await bookingsRepository.search({ skip: 0, limit: 1, sort: { startAt: 1 } })).total !== 0)
+    return;
+  const holidays = new Set(
+    (await holidaysRepository.list({ from: addDays(today, -14), to: addDays(today, 7) })).map(
+      (h) => h.date,
+    ),
   );
+  const ctx: BookingSeedContext = {
+    tz: input.tz,
+    staffIds: input.staffIds,
+    serviceIds: input.serviceIds,
+    customers: USERS.filter((u) => u.role === 'CUSTOMER').map((u) => userIds.get(u.key)!),
+    reception: userIds.get('reception')!,
+    futureBooked: new Map(),
+    now: input.clock.now(),
+  };
+  let n = 0;
+
+  for (let offset = -14; offset <= 7; offset++) {
+    const date = addDays(today, offset);
+    if (holidays.has(date)) continue;
+    for (const [index, member] of STAFF.entries()) {
+      const slot = await bookableSlot(ctx, date, offset, index, member);
+      if (!slot) continue;
+      n++;
+      await createSeedBooking(ctx, slot, n);
+      count('bookings');
+    }
+  }
+}
+
+// The stylist's booking on `date`, or null on a day off or when it would hit their time-off.
+async function bookableSlot(
+  ctx: BookingSeedContext,
+  date: string,
+  offset: number,
+  index: number,
+  member: SeedStaff,
+): Promise<SeedSlot | null> {
+  if ((offset + index + 20) % 4 === 0) return null; // about three bookings a day
+  if (member.offOnMonday && weekdayOf(date) === MONDAY) return null;
+  const staffId = ctx.staffIds.get(member.user)!;
+  const slug = member.services[(offset + 20 + index) % member.services.length]!;
+  const svc = SERVICE_BY_SLUG.get(slug)!;
+  const time = BOOKING_TIMES[(offset + 20 + index * 2) % BOOKING_TIMES.length]!;
+  const startAt = zonedDateTime(date, time, ctx.tz);
+  const endAt = new Date(startAt.getTime() + svc.durationMin * 60_000);
+  const blocks = await staffRepository.listTimeOff(staffId, { from: startAt, to: endAt });
+  const blocked = blocks.some((b) =>
+    overlaps(
+      { start: b.startAt.getTime(), end: b.endAt.getTime() },
+      { start: startAt.getTime(), end: endAt.getTime() },
+    ),
+  );
+  return blocked ? null : { date, staffId, slug, svc, startAt, endAt };
+}
+
+// The n-th seeded booking: its status, customer, source, history and payment all follow from n.
+async function createSeedBooking(
+  ctx: BookingSeedContext,
+  slot: SeedSlot,
+  n: number,
+): Promise<void> {
+  const { date, staffId, slug, svc, startAt, endAt } = slot;
+  const { reception } = ctx;
+  const status = seedStatus(n, endAt.getTime() > ctx.now.getTime());
+  const customer =
+    status === 'BOOKED' ? reserveCustomer(ctx, n) : ctx.customers[n % ctx.customers.length]!;
+  const source = seedSource(n);
+  const createdBy = source === 'ONLINE' ? customer : reception;
+  const history = seedHistory(status, startAt, svc.durationMin, createdBy, reception);
+  const discountMinor = status === 'COMPLETED' && n % 6 === 0 ? 5_000 : 0;
+
+  await bookingsRepository.create({
+    bookingRef: makeBookingRef(date),
+    customerId: customer,
+    staffId,
+    services: [
+      {
+        serviceId: ctx.serviceIds.get(slug)!,
+        name: svc.name,
+        durationMin: svc.durationMin,
+        priceMinor: svc.priceMinor,
+      },
+    ],
+    startAt,
+    endAt,
+    blockedUntil: endAt, // bufferMin is 0 in the seeded settings
+    totalDurationMin: svc.durationMin,
+    totalPriceMinor: svc.priceMinor,
+    status,
+    statusHistory: history,
+    source,
+    payment:
+      status === 'COMPLETED'
+        ? {
+            status: 'PAID',
+            method: PAYMENT_METHODS[n % PAYMENT_METHODS.length]!,
+            amountPaidMinor: svc.priceMinor - discountMinor,
+            discountMinor,
+            ...(discountMinor > 0 ? { discountReason: 'Loyalty discount' } : {}),
+            recordedBy: reception,
+            recordedAt: endAt,
+          }
+        : { status: 'UNPAID' },
+    reminders: {},
+    createdBy,
+    ...(status === 'CANCELLED'
+      ? {
+          cancellation: {
+            at: history.at(-1)!.at,
+            by: customer.toHexString(),
+            reason: 'Plans changed',
+            overridden: false,
+          },
+        }
+      : {}),
+  });
+}
+
+function seedStatus(n: number, future: boolean): BookingStatus {
+  if (future) return n % 8 === 0 ? 'CANCELLED' : 'BOOKED';
+  if (n % 9 === 0) return 'NO_SHOW';
+  if (n % 7 === 0) return 'CANCELLED';
+  return 'COMPLETED';
+}
+
+function seedSource(n: number): BookingSource {
+  if (n % 5 === 0) return 'WALK_IN';
+  return n % 3 === 0 ? 'PHONE' : 'ONLINE';
+}
+
+// BR-009: at most 3 upcoming BOOKED per customer; moves on to the next customer with room.
+function reserveCustomer(ctx: BookingSeedContext, n: number): Types.ObjectId {
+  const { customers, futureBooked } = ctx;
+  let customer = customers[n % customers.length]!;
+  for (
+    let k = 0;
+    (futureBooked.get(customer.toHexString()) ?? 0) >= 3 && k < customers.length;
+    k++
+  ) {
+    customer = customers[(n + k + 1) % customers.length]!;
+  }
+  futureBooked.set(customer.toHexString(), (futureBooked.get(customer.toHexString()) ?? 0) + 1);
+  return customer;
+}
+
+function seedHistory(
+  status: BookingStatus,
+  startAt: Date,
+  durationMin: number,
+  createdBy: Types.ObjectId,
+  reception: Types.ObjectId,
+): StatusChange[] {
+  const createdAt = new Date(startAt.getTime() - 2 * 86_400_000);
+  const history: StatusChange[] = [
+    { status: 'BOOKED', at: createdAt, by: createdBy.toHexString() },
+  ];
+  const step = (st: BookingStatus, minutes: number) =>
+    history.push({
+      status: st,
+      at: new Date(startAt.getTime() + minutes * 60_000),
+      by: reception.toHexString(),
+    });
+  if (status === 'COMPLETED') {
+    step('CHECKED_IN', -5);
+    step('IN_SERVICE', 0);
+    step('COMPLETED', durationMin);
+  }
+  if (status === 'NO_SHOW') step('NO_SHOW', 30);
+  if (status === 'CANCELLED') step('CANCELLED', -24 * 60);
+  return history;
+}
+
+// A handful of reviews on recently completed bookings, within the review window (Phase 7).
+async function seedReviews(settings: SettingsFields, clock: Clock, count: Count): Promise<void> {
+  if ((await ReviewModel.countDocuments()) !== 0) return;
+  const windowStart = new Date(clock.now().getTime() - settings.reviewWindowDays * 86_400_000);
+  const { data: recent } = await bookingsRepository.search({
+    from: windowStart,
+    to: clock.now(),
+    status: 'COMPLETED',
+    skip: 0,
+    limit: REVIEW_RATINGS.length * 2,
+    sort: { startAt: -1 },
+  });
+  // Every other completed booking, so not every visit has a review.
+  for (const [i, booking] of recent.filter((_, k) => k % 2 === 0).entries()) {
+    const comment = REVIEW_COMMENTS[i];
+    await ReviewModel.create({
+      bookingId: booking._id,
+      customerId: booking.customerId,
+      staffId: booking.staffId,
+      serviceIds: booking.services.map((svc) => svc.serviceId),
+      rating: REVIEW_RATINGS[i]!,
+      ...(comment ? { comment } : {}),
+      isHidden: false,
+    });
+    count('reviews');
+  }
 }
 
 export const SEED_STAFF_EMAILS = STAFF.map((s) => `${s.user}@${DOMAIN}`);

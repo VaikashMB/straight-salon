@@ -5,7 +5,7 @@ import { render, type MessageSpec, type RenderedMessage } from './layout.js';
 
 export interface SalonInfo {
   name: string;
-  phone?: string | undefined;
+  phone?: string;
 }
 
 export interface BookingInfo {
@@ -32,14 +32,14 @@ export interface TemplateData {
   password_reset: { name: string; salon: SalonInfo; resetUrl: string; validMinutes: number };
   booking_confirmed: CustomerBooking;
   booking_rescheduled: CustomerBooking & { previousWhen: string };
-  booking_cancelled: CustomerBooking & { reason?: string | undefined };
+  booking_cancelled: CustomerBooking & { reason?: string };
   booking_reminder_24h: CustomerBooking;
   booking_reminder_2h: CustomerBooking;
   booking_no_show: CustomerBooking;
   booking_thank_you: CustomerBooking;
   staff_booking_assigned: StaffBooking;
   staff_booking_changed: StaffBooking & { previousWhen: string };
-  staff_booking_cancelled: StaffBooking & { reason?: string | undefined };
+  staff_booking_cancelled: StaffBooking & { reason?: string };
 }
 
 export type TemplateName = keyof TemplateData;
@@ -52,6 +52,7 @@ export type TemplateMessage = {
 const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
 const signOff = (salon: SalonInfo) => (salon.phone ? `${salon.name} · ${salon.phone}` : salon.name);
 const callUs = (salon: SalonInfo) => (salon.phone ? ` Call ${salon.phone} for help.` : '');
+const reasonNote = (reason?: string) => (reason ? ` Reason: ${reason}` : '');
 
 const bookingDetails = (b: BookingInfo): [string, string][] => [
   ['Booking', b.ref],
@@ -141,7 +142,7 @@ const TEMPLATES: { [K in TemplateName]: (data: TemplateData[K]) => MessageSpec }
     customerMessage(d, {
       subject: `Booking cancelled: ${d.booking.when}`,
       intro: [
-        `Your appointment on ${d.booking.when} has been cancelled.${d.reason ? ` Reason: ${d.reason}` : ''}`,
+        `Your appointment on ${d.booking.when} has been cancelled.${reasonNote(d.reason)}`,
         `We hope to see you again soon.${callUs(d.salon)}`,
       ],
       sms: `booking ${d.booking.ref} on ${d.booking.when} is cancelled.${callUs(d.salon)}`,
@@ -205,7 +206,7 @@ const TEMPLATES: { [K in TemplateName]: (data: TemplateData[K]) => MessageSpec }
     staffMessage(d, {
       subject: `Booking removed: ${d.booking.when}`,
       intro: [
-        `A booking on ${d.booking.when} is no longer on your schedule.${d.reason ? ` Reason: ${d.reason}` : ''}`,
+        `A booking on ${d.booking.when} is no longer on your schedule.${reasonNote(d.reason)}`,
       ],
       sms: `booking ${d.booking.ref} on ${d.booking.when} is off your schedule.`,
     }),

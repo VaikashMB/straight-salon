@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 // Labelled native select with its inline message, like TextField.
 export interface SelectFieldProps extends ComponentProps<'select'> {
   label: string;
-  error?: string | undefined;
+  error?: string;
   hint?: ReactNode;
 }
 

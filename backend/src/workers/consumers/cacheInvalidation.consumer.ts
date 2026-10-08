@@ -30,7 +30,8 @@ export async function tagsForEvent(
 
   switch (event.type) {
     // Bookings change a stylist's free time on one day (08 §2) and the report figures.
-    case 'booking.created': {
+    case 'booking.created':
+    case 'booking.cancelled': {
       const p = parseEventPayload(event.type, event.payload);
       return [...availabilityTagsFor(p.staffId, [await day(p.startAt)]), cacheTags.reports];
     }
@@ -41,10 +42,6 @@ export async function tagsForEvent(
         ...availabilityTagsFor(p.to.staffId, [await day(p.to.startAt)]),
         cacheTags.reports,
       ];
-    }
-    case 'booking.cancelled': {
-      const p = parseEventPayload(event.type, event.payload);
-      return [...availabilityTagsFor(p.staffId, [await day(p.startAt)]), cacheTags.reports];
     }
     case 'booking.status_changed': {
       const p = parseEventPayload(event.type, event.payload);

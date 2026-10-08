@@ -67,6 +67,68 @@ export function ReviewsAdmin() {
     },
   });
 
+  const renderReviews = () => {
+    if (reviews.isPending || !settings) return <LoadingList label="Loading reviews" />;
+    if (reviews.error)
+      return <ErrorState error={reviews.error} onRetry={() => void reviews.refetch()} />;
+    if (reviews.data.data.length === 0) return <EmptyState title="No reviews yet" />;
+    return (
+      <>
+        <ul className="grid gap-3">
+          {reviews.data.data.map((r) => (
+            <li key={r.id} className="grid gap-2 rounded-lg border bg-card p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span
+                  className="inline-flex items-center gap-1 text-sm font-medium"
+                  aria-label={`${r.rating} out of 5`}
+                >
+                  <Star aria-hidden className="size-4 fill-accent text-accent" /> {r.rating}/5
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {r.customer.name} · {r.staff.displayName} ·{' '}
+                  {formatDate(r.createdAt, settings.timezone)}
+                </span>
+              </div>
+              {r.comment ? <p className="text-sm">{r.comment}</p> : null}
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-muted-foreground">
+                  {r.services.map((s) => s.name).join(', ')}
+                </span>
+                {r.isHidden ? (
+                  <span className="flex items-center gap-2">
+                    <Badge variant="secondary">Hidden: {r.hiddenReason}</Badge>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={moderate.isPending}
+                      onClick={() =>
+                        moderate.mutate(
+                          { id: r.id, body: { isHidden: false } },
+                          { onError: (e) => toast.error(errorMessage(e)) },
+                        )
+                      }
+                    >
+                      Unhide
+                    </Button>
+                  </span>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={() => setHiding(r)}>
+                    Hide
+                  </Button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+        <Pagination
+          page={reviews.data.meta.page}
+          totalPages={reviews.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader title="Reviews" description="Hidden reviews no longer count towards ratings." />
@@ -86,67 +148,7 @@ export function ReviewsAdmin() {
           </option>
         ))}
       </SelectField>
-      {reviews.isPending || !settings ? (
-        <LoadingList label="Loading reviews" />
-      ) : reviews.error ? (
-        <ErrorState error={reviews.error} onRetry={() => void reviews.refetch()} />
-      ) : reviews.data.data.length === 0 ? (
-        <EmptyState title="No reviews yet" />
-      ) : (
-        <>
-          <ul className="grid gap-3">
-            {reviews.data.data.map((r) => (
-              <li key={r.id} className="grid gap-2 rounded-lg border bg-card p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span
-                    className="inline-flex items-center gap-1 text-sm font-medium"
-                    aria-label={`${r.rating} out of 5`}
-                  >
-                    <Star aria-hidden className="size-4 fill-accent text-accent" /> {r.rating}/5
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {r.customer.name} · {r.staff.displayName} ·{' '}
-                    {formatDate(r.createdAt, settings.timezone)}
-                  </span>
-                </div>
-                {r.comment ? <p className="text-sm">{r.comment}</p> : null}
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <span className="text-xs text-muted-foreground">
-                    {r.services.map((s) => s.name).join(', ')}
-                  </span>
-                  {r.isHidden ? (
-                    <span className="flex items-center gap-2">
-                      <Badge variant="secondary">Hidden: {r.hiddenReason}</Badge>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={moderate.isPending}
-                        onClick={() =>
-                          moderate.mutate(
-                            { id: r.id, body: { isHidden: false } },
-                            { onError: (e) => toast.error(errorMessage(e)) },
-                          )
-                        }
-                      >
-                        Unhide
-                      </Button>
-                    </span>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={() => setHiding(r)}>
-                      Hide
-                    </Button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-          <Pagination
-            page={reviews.data.meta.page}
-            totalPages={reviews.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      {renderReviews()}
       {hiding ? (
         <HideDialog
           review={hiding}

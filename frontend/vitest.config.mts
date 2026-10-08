@@ -7,6 +7,9 @@ export default defineConfig({
   resolve: { tsconfigPaths: true },
   test: {
     environment: 'jsdom',
+    // CI test reports (10 §3): JUnit next to the console output; locally the console only.
+    reporters: process.env.CI ? ['default', 'junit'] : ['default'],
+    outputFile: { junit: 'reports/junit.xml' },
     // The page origin the API client calls (MSW mocks it; tests/unit/helpers/api.ts).
     environmentOptions: { jsdom: { url: 'http://localhost:3000/' } },
     setupFiles: ['./tests/unit/setup.ts'],
@@ -21,7 +24,8 @@ export default defineConfig({
         'src/app/**/layout.tsx',
         'src/app/fonts.ts', // next/font declarations only (used by the root layout)
       ],
-      reporter: ['text', 'text-summary', 'lcov', 'cobertura'],
+      // lcov paths relative to the repo root (backend/src/...), where SonarQube resolves them.
+      reporter: ['text', 'text-summary', ['lcov', { projectRoot: '..' }], 'cobertura'],
       thresholds: { lines: 80, branches: 80, functions: 80, statements: 80 },
     },
   },

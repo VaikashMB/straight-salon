@@ -3,6 +3,7 @@ import { BOOKING_STATUSES, type BookingStatus } from '../../config/constants.js'
 import type { Cache } from '../../shared/cache/cache.js';
 import { cacheKeys, cacheTags } from '../../shared/cache/keys.js';
 import { withTransaction } from '../../shared/db/withTransaction.js';
+import { compareStrings } from '../../shared/text/strings.js';
 import type { Clock } from '../../shared/time/clock.js';
 import { addDays, startOfZonedDay, toZonedDate } from '../../shared/time/tz.js';
 import type { AvailabilityService } from '../availability/availability.service.js';
@@ -238,7 +239,7 @@ export function createReportsService(deps: ReportsServiceDeps): ReportsService {
     },
 
     async recomputeDays(dates) {
-      const unique = [...new Set(dates)].sort();
+      const unique = [...new Set(dates)].sort(compareStrings);
       for (const date of unique) await computeDay(date);
       if (unique.length > 0) await invalidateSummaries();
     },

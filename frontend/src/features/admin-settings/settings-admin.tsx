@@ -99,16 +99,18 @@ export function SettingsAdmin() {
     queryKey: ['settings', 'full'],
     queryFn: () => unwrap(api.GET('/api/v1/settings')),
   });
+
+  const renderSettings = () => {
+    if (settings.isPending) return <LoadingList rows={4} label="Loading settings" />;
+    if (settings.error)
+      return <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />;
+    return <SettingsForm key={settings.data.updatedAt ?? 'settings'} settings={settings.data} />;
+  };
+
   return (
     <section className="grid gap-10">
       <PageHeader title="Settings" />
-      {settings.isPending ? (
-        <LoadingList rows={4} label="Loading settings" />
-      ) : settings.error ? (
-        <ErrorState error={settings.error} onRetry={() => void settings.refetch()} />
-      ) : (
-        <SettingsForm key={settings.data.updatedAt ?? 'settings'} settings={settings.data} />
-      )}
+      {renderSettings()}
       <HolidaysAdmin />
     </section>
   );

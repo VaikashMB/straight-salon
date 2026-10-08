@@ -71,6 +71,90 @@ export function ServicesAdmin() {
       },
     );
 
+  const renderServices = () => {
+    if (services.isPending) return <LoadingList label="Loading services" />;
+    if (services.error)
+      return <ErrorState error={services.error} onRetry={() => void services.refetch()} />;
+    if (services.data.data.length === 0)
+      return (
+        <EmptyState
+          title="No services yet"
+          action={
+            <Button variant="outline" onClick={() => setEditing('new')}>
+              Add a service
+            </Button>
+          }
+        />
+      );
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Category</TableHead>
+              <TableHead>Duration</TableHead>
+              <TableHead>Price</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {services.data.data.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell className="font-medium">{s.name}</TableCell>
+                <TableCell>{categoryName(s.categoryId)}</TableCell>
+                <TableCell>{formatMinutes(s.durationMin)}</TableCell>
+                <TableCell>{formatMoney(s.price.amountMinor, s.price.currency)}</TableCell>
+                <TableCell>
+                  <Badge variant={s.isActive ? 'success' : 'secondary'}>
+                    {s.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Edit ${s.name}`}
+                    onClick={() => setEditing(s)}
+                  >
+                    Edit
+                  </Button>
+                  {s.isActive ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Deactivate ${s.name}`}
+                      onClick={() => setDeactivating(s)}
+                    >
+                      Deactivate
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Activate ${s.name}`}
+                      onClick={() => toggle(s, true)}
+                    >
+                      Activate
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+        <Pagination
+          page={services.data.meta.page}
+          totalPages={services.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
+
   return (
     <section className="grid gap-6">
       <PageHeader
@@ -93,86 +177,7 @@ export function ServicesAdmin() {
           setPage(1);
         }}
       />
-      {services.isPending ? (
-        <LoadingList label="Loading services" />
-      ) : services.error ? (
-        <ErrorState error={services.error} onRetry={() => void services.refetch()} />
-      ) : services.data.data.length === 0 ? (
-        <EmptyState
-          title="No services yet"
-          action={
-            <Button variant="outline" onClick={() => setEditing('new')}>
-              Add a service
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Duration</TableHead>
-                <TableHead>Price</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {services.data.data.map((s) => (
-                <TableRow key={s.id}>
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell>{categoryName(s.categoryId)}</TableCell>
-                  <TableCell>{formatMinutes(s.durationMin)}</TableCell>
-                  <TableCell>{formatMoney(s.price.amountMinor, s.price.currency)}</TableCell>
-                  <TableCell>
-                    <Badge variant={s.isActive ? 'success' : 'secondary'}>
-                      {s.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="flex justify-end gap-2">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      aria-label={`Edit ${s.name}`}
-                      onClick={() => setEditing(s)}
-                    >
-                      Edit
-                    </Button>
-                    {s.isActive ? (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Deactivate ${s.name}`}
-                        onClick={() => setDeactivating(s)}
-                      >
-                        Deactivate
-                      </Button>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        aria-label={`Activate ${s.name}`}
-                        onClick={() => toggle(s, true)}
-                      >
-                        Activate
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination
-            page={services.data.meta.page}
-            totalPages={services.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      {renderServices()}
       <Dialog open={editing !== null} onOpenChange={(open) => !open && setEditing(null)}>
         {editing ? (
           <DialogContent side="right">

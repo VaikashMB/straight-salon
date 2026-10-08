@@ -41,7 +41,7 @@ export function createStaffNotificationsConsumer(
     staffId: string,
     booking: BookingDoc,
     template: StaffTemplate,
-    extra: { previousWhen?: string; reason?: string | undefined } = {},
+    extra: { previousWhen?: string; reason?: string } = {},
   ): Promise<void> {
     const [brief] = await staff.briefs([staffId]);
     if (!brief) {

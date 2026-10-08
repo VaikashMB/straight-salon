@@ -1,0 +1,247 @@
+# CI pipeline (12-automation-and-ci §3). Everything a developer runs with `npm run validate`, plus
+# the security scans, SonarCloud, image builds and the Playwright e2e suite.
+name: CI
+
+on:
+  pull_request:
+    # `labeled` so that adding the "e2e" label runs the e2e job on a PR
+    types: [opened, synchronize, reopened, labeled]
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Runs e2e on main, and on PRs labelled "e2e" (10 §2)
+  RUN_E2E: ${{ github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'e2e') }}
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+
+  lint:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      - run: npm run lint
+      - run: npm run format:check
+      - run: npm run typecheck
+
+  security:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # gitleaks scans the whole history
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+      - name: npm audit (high and above, scripts/audit-allowlist.json)
+        run: npm run audit
+      - name: gitleaks (accepted findings in .gitleaksignore)
+        run: >
+          docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:v8.30.1
+          git /repo --redact --no-banner
+
+  test-backend:
+    needs: setup
+    runs-on: ubuntu-latest
+    services:
+      # BullMQ adapter and Redis 7 semantics tests (10 §2); Mongo is mongodb-memory-server
+      redis:
+        image: redis:7.4-alpine
+        ports: ['6379:6379']
+        options: >-
+          --health-cmd "redis-cli ping" --health-interval 5s --health-timeout 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      - name: Cache the mongod binary (downloaded on first test use, 10 §3)
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/mongodb-binaries
+          key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npm run test:coverage -w backend
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: backend-coverage
+          path: |
+            backend/coverage/lcov.info
+            backend/coverage/cobertura-coverage.xml
+            backend/reports/junit.xml
+          if-no-files-found: warn
+
+  test-frontend:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      - run: npm run test:coverage -w frontend
+      - if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: frontend-coverage
+          path: |
+            frontend/coverage/lcov.info
+            frontend/coverage/cobertura-coverage.xml
+            frontend/reports/junit.xml
+          if-no-files-found: warn
+
+  contract:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      - name: OpenAPI and generated client match the code (04 §2)
+        run: npm run contract:check
+
+  sonar:
+    needs: [test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+    steps:
+      - if: env.SONAR_TOKEN == ''
+        run: >
+          echo "::notice title=SonarCloud skipped::Add the SONAR_TOKEN secret and the
+          SONAR_ORGANIZATION variable to run the scan and quality gate (README, CI setup)."
+      - if: env.SONAR_TOKEN != ''
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # blame and new-code detection
+      - if: env.SONAR_TOKEN != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: backend-coverage
+          path: backend
+      - if: env.SONAR_TOKEN != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: frontend-coverage
+          path: frontend
+      - if: env.SONAR_TOKEN != ''
+        uses: SonarSource/sonarqube-scan-action@d209202bc7d53ff1cc128f7f907dac145c9d6ae9 # v8.3.0
+        env:
+          SONAR_HOST_URL: ${{ secrets.SONAR_HOST_URL || 'https://sonarcloud.io' }}
+        with:
+          # A red quality gate fails the job (10 §5.3)
+          args: >
+            -Dsonar.organization=${{ vars.SONAR_ORGANIZATION || github.repository_owner }}
+            -Dsonar.projectKey=${{ vars.SONAR_PROJECT_KEY || 'VaikashMB_straight-salon' }}
+            -Dsonar.qualitygate.wait=true
+
+  docker-build:
+    needs: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Build backend image (also the worker's)
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: backend/Dockerfile
+          target: runtime
+          tags: straight-salon/backend:local
+          load: true
+          push: false # no registry in v1 (12 §3)
+          build-args: |
+            APP_VERSION=0.0.0-ci
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=backend
+          cache-to: type=gha,mode=max,scope=backend
+      - name: Build frontend image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: frontend/Dockerfile
+          target: runtime
+          tags: straight-salon/frontend:local
+          load: true
+          push: false
+          build-args: |
+            APP_VERSION=0.0.0-ci
+            GIT_SHA=${{ github.sha }}
+          cache-from: type=gha,scope=frontend
+          cache-to: type=gha,mode=max,scope=frontend
+      - name: Trivy scan, backend (fail on fixable CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.75.0
+          image-ref: straight-salon/backend:local
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+      - name: Trivy scan, frontend (fail on fixable CRITICAL)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          version: v0.75.0
+          image-ref: straight-salon/frontend:local
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: '1'
+          skip-setup-trivy: true # installed by the previous step
+      - if: env.RUN_E2E == 'true'
+        name: Save images for the e2e job
+        run: docker save straight-salon/backend:local straight-salon/frontend:local | gzip > images.tar.gz
+      - if: env.RUN_E2E == 'true'
+        uses: actions/upload-artifact@v7
+        with:
+          name: images
+          path: images.tar.gz
+          retention-days: 1
+
+  e2e:
+    needs: docker-build
+    if: github.ref == 'refs/heads/main' || contains(github.event.pull_request.labels.*.name, 'e2e')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      - uses: actions/download-artifact@v8
+        with:
+          name: images
+      - name: Load the images built by docker-build
+        run: |
+          gunzip -c images.tar.gz | docker load
+          docker tag straight-salon/backend:local straight-salon/worker:local
+      - name: Start the stack with seed data (12 §4)
+        run: |
+          npm run env:init
+          docker compose -f docker-compose.yml up -d --no-build --wait
+          npm run db:seed
+      - name: Cache Playwright browsers
+        uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      - run: npx playwright install --with-deps chromium
+        working-directory: frontend
+      - run: npm run test:e2e
+      - if: failure()
+        name: Collect container logs
+        run: docker compose -f docker-compose.yml logs --no-color > compose.log
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+            frontend/reports/e2e-junit.xml
+            compose.log
+          retention-days: 7

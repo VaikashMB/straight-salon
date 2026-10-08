@@ -1,3 +1,5 @@
+import { compareStrings } from '../text/strings.js';
+
 // Deep comparison of plain objects producing a list of changed paths (07 §2.2), e.g.
 // ["status", "cancellation", "preferences.smsOptIn"]. Arrays are compared as a whole.
 
@@ -38,7 +40,7 @@ export function isEqual(a: unknown, b: unknown): boolean {
 
 export function diffPaths(before: unknown, after: unknown, prefix = ''): string[] {
   if (isPlainObject(before) && isPlainObject(after)) {
-    const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort();
+    const keys = [...new Set([...Object.keys(before), ...Object.keys(after)])].sort(compareStrings);
     return keys.flatMap((key) =>
       diffPaths(before[key], after[key], prefix ? `${prefix}.${key}` : key),
     );

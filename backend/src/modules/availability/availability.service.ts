@@ -2,6 +2,7 @@ import type { AuthContext } from '../../shared/auth/accessToken.js';
 import type { Cache } from '../../shared/cache/cache.js';
 import { cacheKeys, cacheTags } from '../../shared/cache/keys.js';
 import { BusinessRuleError, ValidationError } from '../../shared/errors/index.js';
+import { compareStrings } from '../../shared/text/strings.js';
 import type { Clock } from '../../shared/time/clock.js';
 import {
   mergeStaffSlots,
@@ -230,7 +231,7 @@ export function createAvailabilityService(deps: AvailabilityServiceDeps): Availa
         availableDates: Object.entries(latest)
           .filter(([, t]) => t !== null && t >= cutoff)
           .map(([date]) => date)
-          .sort(),
+          .sort(compareStrings),
       };
     },
 

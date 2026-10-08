@@ -29,19 +29,12 @@ export function BookingList({ scope }: { scope: Scope }) {
   const { data: settings } = usePublicSettings();
   const copy = COPY[scope];
 
-  return (
-    <section className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-semibold">{copy.title}</h1>
-        <Button asChild>
-          <Link href="/book">Book now</Link>
-        </Button>
-      </div>
-      {bookings.isPending || !settings ? (
-        <LoadingList label="Loading bookings" />
-      ) : bookings.error ? (
-        <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />
-      ) : bookings.data.data.length === 0 ? (
+  const renderBookings = () => {
+    if (bookings.isPending || !settings) return <LoadingList label="Loading bookings" />;
+    if (bookings.error)
+      return <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />;
+    if (bookings.data.data.length === 0)
+      return (
         <EmptyState
           title={copy.empty}
           description={copy.emptyHint}
@@ -51,20 +44,32 @@ export function BookingList({ scope }: { scope: Scope }) {
             </Button>
           }
         />
-      ) : (
-        <>
-          <div className="grid gap-3">
-            {bookings.data.data.map((booking) => (
-              <AccountBookingCard key={booking.id} booking={booking} timeZone={settings.timezone} />
-            ))}
-          </div>
-          <Pagination
-            page={bookings.data.meta.page}
-            totalPages={bookings.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      );
+    return (
+      <>
+        <div className="grid gap-3">
+          {bookings.data.data.map((booking) => (
+            <AccountBookingCard key={booking.id} booking={booking} timeZone={settings.timezone} />
+          ))}
+        </div>
+        <Pagination
+          page={bookings.data.meta.page}
+          totalPages={bookings.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
+
+  return (
+    <section className="grid gap-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="text-3xl font-semibold">{copy.title}</h1>
+        <Button asChild>
+          <Link href="/book">Book now</Link>
+        </Button>
+      </div>
+      {renderBookings()}
     </section>
   );
 }

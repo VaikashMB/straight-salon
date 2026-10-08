@@ -74,12 +74,13 @@ straight-salon/
 │   ├── tests/e2e/              # Playwright
 │   ├── Dockerfile
 │   ├── vitest.config.mts
+│   ├── playwright.config.ts    # e2e against the running stack (10 §4)
 │   └── package.json
 ├── infra/
 │   ├── docker/                 # mongo init (replica set), sonar config
 │   └── k8s/                    # EMPTY in v1 — reserved for the deployment phase
-├── scripts/                    # repo tooling (git-hook helpers, phase stubs)
-├── .github/                    # workflows (CI), PR/issue templates, CODEOWNERS, dependabot
+├── scripts/                    # repo tooling (git-hook helpers, env/contract/audit/sonar scripts)
+├── .github/                    # workflows (CI, release), setup-deps action, PR/issue templates, CODEOWNERS, dependabot
 ├── .husky/                     # git hooks (12 §1)
 ├── docker-compose.yml          # base stack (production-style images)
 ├── docker-compose.override.yml # dev overrides, auto-loaded: dev targets, hot reload, inspector
@@ -87,6 +88,8 @@ straight-salon/
 ├── docker-compose.sonar.yml
 ├── .dockerignore               # build context is the repo root
 ├── sonar-project.properties
+├── .releaserc.json             # semantic-release (manual release workflow, 12 §1)
+├── .gitleaksignore             # reviewed secret-scan findings (10 §6)
 ├── tsconfig.base.json          # shared strict compiler options
 ├── commitlint.config.mjs  .lintstagedrc.mjs  .prettierrc.json  .editorconfig
 ├── .nvmrc  .npmrc              # Node 24; engine-strict

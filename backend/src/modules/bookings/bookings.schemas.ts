@@ -190,10 +190,8 @@ const overrideFields = {
   }),
   reason: z.string().trim().min(1).max(500).optional(),
 };
-const reasonWithOverride = (body: {
-  override?: boolean | undefined;
-  reason?: string | undefined;
-}) => !body.override || Boolean(body.reason);
+const reasonWithOverride = (body: { override?: boolean; reason?: string }) =>
+  !body.override || Boolean(body.reason);
 
 export const RescheduleBodySchema = z
   .object({

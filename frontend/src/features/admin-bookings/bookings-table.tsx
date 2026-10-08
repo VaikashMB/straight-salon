@@ -34,6 +34,29 @@ import { NewBookingDialog } from './new-booking-dialog';
 
 const STATUSES = Object.keys(STATUS_LABEL) as BookingStatus[];
 
+type Sort = 'startAt' | '-startAt';
+
+// The API query for the current filters; empty filters are left out.
+function searchQuery(f: {
+  page: number;
+  sort: Sort;
+  date: string;
+  status: BookingStatus | '';
+  staffId: string;
+  q: string;
+}): BookingQuery {
+  const q = f.q.trim();
+  return {
+    page: f.page,
+    pageSize: 20,
+    sort: f.sort,
+    ...(f.date ? { date: f.date } : {}),
+    ...(f.status ? { status: f.status } : {}),
+    ...(f.staffId ? { staffId: f.staffId } : {}),
+    ...(q ? { q } : {}),
+  };
+}
+
 // Bookings table (05 §4.4, API-052): server-side filters, sort and pagination; "New walk-in"
 // (US-03) and "Record payment" on completed, unpaid bookings (FR-043).
 export function BookingsTable() {
@@ -47,28 +70,66 @@ function Bookings({ timeZone }: { timeZone: string }) {
   const [status, setStatus] = useState<BookingStatus | ''>('');
   const [staffId, setStaffId] = useState('');
   const [q, setQ] = useState('');
-  const [sort, setSort] = useState<'startAt' | '-startAt'>('startAt');
+  const [sort, setSort] = useState<Sort>('startAt');
   const [page, setPage] = useState(1);
   const [paying, setPaying] = useState<Booking | null>(null);
   const [creating, setCreating] = useState(false);
   const stylists = useStylists();
 
-  const query: BookingQuery = {
-    page,
-    pageSize: 20,
-    sort,
-    ...(date ? { date } : {}),
-    ...(status ? { status } : {}),
-    ...(staffId ? { staffId } : {}),
-    ...(q.trim() ? { q: q.trim() } : {}),
-  };
-  const bookings = useBookingSearch(query);
+  const bookings = useBookingSearch(searchQuery({ page, sort, date, status, staffId, q }));
   const filter =
     <T,>(setter: (value: T) => void) =>
     (value: T) => {
       setter(value);
       setPage(1);
     };
+
+  const renderBookings = () => {
+    if (bookings.isPending) return <LoadingList label="Loading bookings" />;
+    if (bookings.error)
+      return <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />;
+    if (bookings.data.data.length === 0)
+      return (
+        <EmptyState
+          title="No bookings match"
+          description="Try another date or clear the filters."
+          action={
+            <Button variant="outline" onClick={() => setCreating(true)}>
+              New walk-in
+            </Button>
+          }
+        />
+      );
+    return (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <WhenHeader sort={sort} onSortChange={setSort} />
+              <TableHead>Customer</TableHead>
+              <TableHead>Stylist</TableHead>
+              <TableHead>Services</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Payment</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {bookings.data.data.map((b) => (
+              <BookingRow key={b.id} booking={b} timeZone={timeZone} onPay={setPaying} />
+            ))}
+          </TableBody>
+        </Table>
+        <Pagination
+          page={bookings.data.meta.page}
+          totalPages={bookings.data.meta.totalPages}
+          onPageChange={setPage}
+        />
+      </>
+    );
+  };
 
   return (
     <section className="grid gap-6">
@@ -120,96 +181,77 @@ function Bookings({ timeZone }: { timeZone: string }) {
           onChange={(e) => filter(setQ)(e.target.value)}
         />
       </div>
-      {bookings.isPending ? (
-        <LoadingList label="Loading bookings" />
-      ) : bookings.error ? (
-        <ErrorState error={bookings.error} onRetry={() => void bookings.refetch()} />
-      ) : bookings.data.data.length === 0 ? (
-        <EmptyState
-          title="No bookings match"
-          description="Try another date or clear the filters."
-          action={
-            <Button variant="outline" onClick={() => setCreating(true)}>
-              New walk-in
-            </Button>
-          }
-        />
-      ) : (
-        <>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead aria-sort={sort === 'startAt' ? 'ascending' : 'descending'}>
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1"
-                    onClick={() => setSort(sort === 'startAt' ? '-startAt' : 'startAt')}
-                  >
-                    When
-                    {sort === 'startAt' ? (
-                      <ArrowUp aria-hidden className="size-3" />
-                    ) : (
-                      <ArrowDown aria-hidden className="size-3" />
-                    )}
-                    <span className="sr-only">(change sort order)</span>
-                  </button>
-                </TableHead>
-                <TableHead>Customer</TableHead>
-                <TableHead>Stylist</TableHead>
-                <TableHead>Services</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Payment</TableHead>
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {bookings.data.data.map((b) => (
-                <TableRow key={b.id}>
-                  <TableCell className="whitespace-nowrap">
-                    <Link href={`/admin/bookings/${b.id}`} className="font-medium hover:underline">
-                      {formatDateTime(b.startAt, timeZone)}
-                    </Link>
-                    <span className="block text-xs text-muted-foreground">{b.bookingRef}</span>
-                  </TableCell>
-                  <TableCell>
-                    {b.customer.name}
-                    <span className="block text-xs text-muted-foreground">{b.customer.phone}</span>
-                  </TableCell>
-                  <TableCell>{b.staff.displayName}</TableCell>
-                  <TableCell>{b.services.map((s) => s.name).join(', ')}</TableCell>
-                  <TableCell>
-                    <StatusBadge status={b.status} />
-                  </TableCell>
-                  <TableCell className="whitespace-nowrap">
-                    {formatMoney(b.total.amountMinor, b.total.currency)}{' '}
-                    <Badge variant={b.payment.status === 'PAID' ? 'success' : 'outline'}>
-                      {b.payment.status === 'PAID' ? 'Paid' : 'Unpaid'}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {b.status === 'COMPLETED' && b.payment.status === 'UNPAID' ? (
-                      <Button size="sm" variant="accent" onClick={() => setPaying(b)}>
-                        Record payment
-                      </Button>
-                    ) : null}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-          <Pagination
-            page={bookings.data.meta.page}
-            totalPages={bookings.data.meta.totalPages}
-            onPageChange={setPage}
-          />
-        </>
-      )}
+      {renderBookings()}
       {paying ? (
         <PaymentDialog booking={paying} open onOpenChange={(open) => !open && setPaying(null)} />
       ) : null}
       {creating ? <NewBookingDialog open onOpenChange={setCreating} /> : null}
     </section>
+  );
+}
+
+function WhenHeader({
+  sort,
+  onSortChange,
+}: Readonly<{ sort: Sort; onSortChange: (sort: Sort) => void }>) {
+  const ascending = sort === 'startAt';
+  return (
+    <TableHead aria-sort={ascending ? 'ascending' : 'descending'}>
+      <button
+        type="button"
+        className="inline-flex items-center gap-1"
+        onClick={() => onSortChange(ascending ? '-startAt' : 'startAt')}
+      >
+        When
+        {ascending ? (
+          <ArrowUp aria-hidden className="size-3" />
+        ) : (
+          <ArrowDown aria-hidden className="size-3" />
+        )}
+        <span className="sr-only">(change sort order)</span>
+      </button>
+    </TableHead>
+  );
+}
+
+function BookingRow({
+  booking,
+  timeZone,
+  onPay,
+}: Readonly<{
+  booking: Booking;
+  timeZone: string;
+  onPay: (booking: Booking) => void;
+}>) {
+  const paid = booking.payment.status === 'PAID';
+  return (
+    <TableRow>
+      <TableCell className="whitespace-nowrap">
+        <Link href={`/admin/bookings/${booking.id}`} className="font-medium hover:underline">
+          {formatDateTime(booking.startAt, timeZone)}
+        </Link>
+        <span className="block text-xs text-muted-foreground">{booking.bookingRef}</span>
+      </TableCell>
+      <TableCell>
+        {booking.customer.name}
+        <span className="block text-xs text-muted-foreground">{booking.customer.phone}</span>
+      </TableCell>
+      <TableCell>{booking.staff.displayName}</TableCell>
+      <TableCell>{booking.services.map((s) => s.name).join(', ')}</TableCell>
+      <TableCell>
+        <StatusBadge status={booking.status} />
+      </TableCell>
+      <TableCell className="whitespace-nowrap">
+        {formatMoney(booking.total.amountMinor, booking.total.currency)}{' '}
+        <Badge variant={paid ? 'success' : 'outline'}>{paid ? 'Paid' : 'Unpaid'}</Badge>
+      </TableCell>
+      <TableCell>
+        {booking.status === 'COMPLETED' && booking.payment.status === 'UNPAID' ? (
+          <Button size="sm" variant="accent" onClick={() => onPay(booking)}>
+            Record payment
+          </Button>
+        ) : null}
+      </TableCell>
+    </TableRow>
   );
 }

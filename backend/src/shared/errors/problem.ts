@@ -38,8 +38,8 @@ export function buildProblem(input: {
   code: string;
   detail: string;
   instance: string;
-  requestId?: string | undefined;
-  errors?: FieldError[] | undefined;
+  requestId?: string;
+  errors?: FieldError[];
 }): Problem {
   const problem: Problem = {
     type: problemType(input.code),

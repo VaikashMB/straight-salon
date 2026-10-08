@@ -9,7 +9,7 @@ import { configs as tsConfigs } from 'typescript-eslint';
 // 10-testing-and-quality §6: type-checked rules, no import cycles, security plugin,
 // no console, no floating promises, no explicit any.
 export default defineConfig([
-  globalIgnores(['dist/', 'coverage/']),
+  globalIgnores(['dist/', 'coverage/', 'reports/']),
   js.configs.recommended,
   tsConfigs.recommendedTypeChecked,
   importX.flatConfigs.recommended,
