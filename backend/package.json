@@ -30,7 +30,7 @@
     "bcrypt": "^6.0.0",
     "bullmq": "^6.3.11",
     "compression": "^1.8.2",
-    "cookie": "^1.1.1",
+    "cookie": "^2.0.1",
     "cors": "^2.8.6",
     "date-fns": "^4.4.0",
     "express": "^5.2.1",
