@@ -58,6 +58,7 @@ Build strictly in order. Each phase ends with the Definition of Done in `AGENTS.
 
 ## Phase 12 — Release v1.0
 Final pass: update README (setup, URLs, demo credentials, architecture diagram), tag `v1.0.0`.
+Decision 2026-10-09: the `v1.0.0` tag and its GitHub Release come from the manual Release workflow (12 §1), run on `main` once CI is green on the release commit. A tag created by hand would make semantic-release treat v1.0.0 as already released, so v1.0.0 would get no generated release notes.
 
 ---
 

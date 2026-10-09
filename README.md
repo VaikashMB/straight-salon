@@ -1,12 +1,49 @@
-# Straight Salon — Specification Pack
+# Straight Salon
 
 [![CI](https://github.com/VaikashMB/straight-salon/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/VaikashMB/straight-salon/actions/workflows/ci.yml)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=VaikashMB_straight-salon&metric=coverage)](https://sonarcloud.io/summary/overall?id=VaikashMB_straight-salon)
 [![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=VaikashMB_straight-salon&metric=alert_status)](https://sonarcloud.io/summary/overall?id=VaikashMB_straight-salon)
 
-Straight Salon is a salon appointment booking and management platform. Customers browse services, pick a stylist and time slot, and manage their bookings. Staff see their schedules. Admins (the salon owner/manager) manage services, staff, working hours, walk-ins, and view business analytics.
+Straight Salon is a booking and management app for a single-location hair and beauty salon. Customers browse services and stylists, book a time slot online, and reschedule, cancel or review their bookings. Stylists see their day and week and block personal time. The front desk handles walk-ins, phone bookings, check-ins and payments. The owner manages services, staff, working hours, holidays and settings, and sees the dashboard, revenue reports and the audit log.
 
-This repository starts with **specifications only**. The application is meant to be built by AI coding tools (Claude Code, Cursor, Copilot, etc.) by following these specs phase by phase.
+**v1.0** is feature-complete against the specifications in [`docs/specs/`](docs/specs/). It was built by AI coding tools following those specs one phase at a time (see [How to use this pack with an AI coding tool](#how-to-use-this-pack-with-an-ai-coding-tool)), so the specs remain the reference for how the app behaves.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  browser([Browser])
+
+  subgraph fe["frontend · Next.js :3000"]
+    pages["Pages<br/>public site · /account · /staff · /admin"]
+    proxy["proxy.ts<br/>/api/* proxy, route guard"]
+  end
+
+  subgraph be["backend image (one image, two processes)"]
+    api["api · Express :4000<br/>REST /api/v1 · Swagger · /health · /metrics"]
+    worker["worker<br/>outbox relay · queue consumers · scheduled jobs"]
+  end
+
+  mongo[("MongoDB replica set<br/>business data · audit_logs · outbox_events")]
+  redis[("Redis<br/>cache · rate limits · locks · BullMQ")]
+  mail["Mailpit :8025<br/>catch-all SMTP"]
+
+  browser --> pages
+  browser -- "/api/*" --> proxy --> api
+  pages -. "server-side catalogue reads" .-> api
+  api -- "one transaction:<br/>change + audit row + outbox event" --> mongo
+  api --> redis
+  worker -- "claims outbox events" --> mongo
+  worker -- "publishes and consumes jobs" --> redis
+  worker -- "email" --> mail
+```
+
+- **frontend** renders the public catalogue on the server and the signed-in areas in the browser. The browser talks only to the frontend origin. `proxy.ts` forwards `/api/*` to the API at request time, so the refresh cookie stays first-party.
+- **api** is a modular monolith: routes, then controllers, services, repositories and Mongoose models, with Zod schemas generating both validation and the OpenAPI document. Every business change commits together with its audit row and its domain event (transactional outbox) in one MongoDB transaction.
+- **worker** runs the outbox relay, which moves events into one BullMQ queue per consumer: notifications, staff notifications, cache invalidation, ratings and report stats. It also runs the scheduled jobs: reminders 24 h and 2 h ahead, auto no-show, stats reconcile and outbox cleanup. Delivery is at-least-once, so every consumer is idempotent.
+- **Redis** is never the source of truth. If it goes down, reads fall back to MongoDB and readiness reports `degraded`. Bookings stay double-booking-proof through a per-stylist-day guard document inside the transaction.
+
+Details: [01-architecture](docs/specs/01-architecture.md), [09-events-and-messaging](docs/specs/09-events-and-messaging.md), [11-docker-local-dev](docs/specs/11-docker-local-dev.md).
 
 ## Reference stack (v1)
 
@@ -50,7 +87,7 @@ The specs are written to be **stack-agnostic where possible**. Anything stack-sp
 
 ## Getting started (local development)
 
-Build status: **Phase 11** (quality hardening and CI) is complete. It added the Playwright e2e suite, SonarQube with the "Straight Salon Way" quality gate, the GitHub Actions CI pipeline and the manual release workflow. The app itself has been feature-complete since Phase 10. Next is Phase 12, release v1.0 (`docs/specs/13-build-plan.md`).
+Status: **v1.0**. Every phase of [`13-build-plan.md`](docs/specs/13-build-plan.md) is complete. Work after v1 is the deployment track listed at the end of that file.
 
 ### Prerequisites
 
@@ -69,10 +106,7 @@ npm run env:init            # creates .env (git-ignored) from .env.example with 
 
 ```bash
 npm run up                  # docker compose up -d --build (applies migrations on start)
-npm run seed                # settings, catalogue, staff, schedules, holidays, time-off and accounts (dev only):
-                            #   admin@ / reception@ / ravi@ / priya@ / arjun@ / meera@ / customer1..10@straightsalon.local
-                            #   all with password Password@123; ~60 bookings over the past 14 / next 7 days,
-                            #   a few reviews, and the ratings and report figures computed from them
+npm run seed                # demo data and accounts (see Demo accounts below)
 docker compose ps           # all services healthy; mongo-init "exited (0)"
 npm run logs                # follow backend + worker logs
 npm run down                # stop (npm run reset also wipes the data volumes)
@@ -85,17 +119,40 @@ docker compose up -d mongo mongo-init redis mailpit
 npm run dev                 # backend :4000, worker, frontend :3000
 ```
 
-Try the API in Swagger UI (http://localhost:4000/api/docs): `POST /api/v1/auth/login` with the seeded admin and the header `X-Requested-With: straight-salon-web`, then **Authorize** with the returned `accessToken`.
+Try the API in Swagger UI: `POST /api/v1/auth/login` with a demo account and the header `X-Requested-With: straight-salon-web`, then **Authorize** with the returned `accessToken`.
 
-Check it:
+### Local URLs
 
-- `curl http://localhost:4000/health/live` → `{"status":"ok"}`
-- `curl http://localhost:4000/health/ready` → `{"status":"ok","checks":{"mongo":{"status":"up"},"redis":{"status":"up"}}}`
-- App: http://localhost:3000 (sign in with a seeded account; each role lands in its area: customers `/account`, stylists `/staff`, reception and admin `/admin`) · Mailpit: http://localhost:8025 (emails from the Docker stack land here, including password-reset links)
-- Bull Board: http://localhost:4000/admin/queues (browser login with an ADMIN email and password, e.g. the seeded `admin@straightsalon.local` / `Password@123`) · retry dead-lettered jobs: `npm run queues:retry-failed -- --queue=notifications`
-- Reports: `GET /api/v1/reports/summary?from=…&to=…` (ADMIN) reads `daily_stats`, which the worker keeps current; rebuild it from bookings with `npm run stats:rebuild` (optionally `-- --from=YYYY-MM-DD --to=YYYY-MM-DD`)
-- Optional tools: `npm run tools` → Mongo Express http://localhost:8081, Redis Insight http://localhost:5540
-- Swagger UI (dev mode): http://localhost:4000/api/docs · raw spec: http://localhost:4000/api/docs/openapi.json · metrics: http://localhost:4000/metrics
+| What          | URL                                                                   | Notes                                                                                      |
+| ------------- | --------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| App           | http://localhost:3000                                                 | Each role lands in its own area after sign-in (see below)                                  |
+| API           | http://localhost:4000/api/v1                                          |                                                                                            |
+| Swagger UI    | http://localhost:4000/api/docs                                        | Raw spec at `/api/docs/openapi.json`. On while `SWAGGER_ENABLED=true` (the `.env` default) |
+| Health        | http://localhost:4000/health/live, http://localhost:4000/health/ready | Ready: `{"status":"ok","checks":{"mongo":{"status":"up"},"redis":{"status":"up"}}}`        |
+| Metrics       | http://localhost:4000/metrics                                         | Prometheus format                                                                          |
+| Bull Board    | http://localhost:4000/admin/queues                                    | The browser asks for an ADMIN email and password                                           |
+| Mailpit       | http://localhost:8025                                                 | Every email the Docker stack sends, including password-reset links                         |
+| Mongo Express | http://localhost:8081                                                 | `npm run tools`                                                                            |
+| Redis Insight | http://localhost:5540                                                 | `npm run tools`                                                                            |
+| SonarQube     | http://localhost:9000                                                 | `npm run sonar:up`, see below                                                              |
+
+### Demo accounts
+
+`npm run seed` creates these accounts. **All of them use the password `Password@123`.** They are for local development only: the seed refuses to run when `NODE_ENV=production`.
+
+| Role         | Email                                                    | Lands on   | Can do                                                                                                           |
+| ------------ | -------------------------------------------------------- | ---------- | ---------------------------------------------------------------------------------------------------------------- |
+| Admin        | `admin@straightsalon.local`                              | `/admin`   | Everything: catalogue, staff, schedules, settings and holidays, team accounts, reports, audit log, notifications |
+| Receptionist | `reception@straightsalon.local`                          | `/admin`   | Bookings, walk-ins, payments, customers, dashboard                                                               |
+| Stylist      | `ravi@`, `priya@`, `arjun@`, `meera@straightsalon.local` | `/staff`   | Own day and week, booking status, time off (Arjun is off on Mondays)                                             |
+| Customer     | `customer1@` … `customer10@straightsalon.local`          | `/account` | Book, reschedule, cancel, review, profile                                                                        |
+
+The seed also adds the salon settings, 4 categories with about 15 services, schedules, a holiday next month, a few time-off blocks, about 60 bookings over the past 14 and next 7 days (paid where completed), a few reviews, and the ratings and report figures computed from them. Re-running it is safe.
+
+### Useful commands
+
+- Retry dead-lettered queue jobs: `npm run queues:retry-failed -- --queue=notifications`
+- Rebuild the report read model (`daily_stats`) from bookings: `npm run stats:rebuild` (optionally `-- --from=YYYY-MM-DD --to=YYYY-MM-DD`)
 - Production-style images only: `docker compose -f docker-compose.yml up -d --build`
 - Mongo with authentication (enforces the append-only audit role): see `docker-compose.auth.yml`
 
@@ -160,7 +217,9 @@ Commits must follow Conventional Commits with a scope from `commitlint.config.mj
 
 ## How to use this pack with an AI coding tool
 
-1. Create an empty Git repository and copy this whole folder into it.
+This app was built this way, and the same specs can drive a rebuild in another stack (stack-specific parts are tagged `[Node]`, `[Next]` or `[Mongo]`). To start from the specs:
+
+1. Create an empty Git repository and copy `AGENTS.md`, `README.md` and `docs/specs/` into it.
 2. Open the repo in your AI tool and tell it: _"Read AGENTS.md and all files in docs/specs. Then implement Phase 0 from 13-build-plan.md only."_
 3. Review, run tests, commit. Then move to the next phase.
 4. Never ask the AI to "build the whole app" in one go. Phase-by-phase is what keeps AI builds correct.
@@ -184,6 +243,7 @@ Kubernetes, Helm, cloud deployment, managed databases, horizontal scaling, obser
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Specs touched                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | 2026-10-06 | Phase 0 review: resolved ambiguities and contradictions. Key changes: staff-day guard document so BR-004 holds under concurrency without relying on Redis; `ss_session` indicator cookie for frontend route protection; runtime `/api/*` proxy in `proxy.ts` (Next 16) instead of build-time rewrites; root-context Docker builds for the workspace lockfile; `directConnection=true` for host-mode Mongo; lead-time filter applied after the availability cache; walk-in `checkInNow`; 422 `ACTIVE_BOOKINGS_EXIST` + `force` semantics for holidays/time-off; new error codes; extended permission map; image upload endpoint API-027; `booking.reminder_due` event (EVT-017); outbox `PUBLISHING`/`claimedAt`; incremental seed; Sonar test exclusions; explicit commit scopes.                                                                                                    | AGENTS, 00, 01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13 |
+| 2026-10-09 | Phase 12, release v1.0: README rewritten for the finished app (overview, Mermaid architecture diagram, local URLs table, demo accounts); build plan marked complete. `v1.0.0` is created by the Release workflow (12 §1), not by hand.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | 13, README                                                 |
 | 2026-10-09 | Phase 11 fix: the CI e2e job (and the README's production-image e2e command) failed because `docker compose up --wait` exits 1 on a service without a healthcheck, and the worker has none. It now waits for `backend frontend mailpit` (with their dependencies), then starts the worker.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           | 12, README                                                 |
 | 2026-10-08 | Phase 11: Playwright e2e suite (one worker, Pixel 7 for the customer flow, rate-limit reset in global setup, browser clock for "My day"); CI pipeline with a cached-deps composite action, SonarCloud (skipped until `SONAR_TOKEN` is set), Trivy failing on fixable CRITICAL only, images passed from docker-build to e2e; manual semantic-release workflow (tag + GitHub Release, no commit back; first run = v1.0.0); `sonar:setup` script and the "Straight Salon Way" gate in MQR metrics; `npm run audit` with a reviewed, expiring allowlist (`braces` has no fix) and a `shell-quote` override; `.gitleaksignore` for test-only JWT secrets; lcov paths relative to the repo root; JUnit reporters in CI; all Blocker/High/Medium Sonar issues fixed. Fixed: `.gitignore`/`.dockerignore` `**/reports` patterns had kept the frontend reports page out of git and the image. | 01, 10, 11, 12, README                                     |
 | 2026-10-07 | Phase 10: walk-in dialog also books a later time (FR-037, source `PHONE`); holidays live on the Settings page, team accounts on Customers; reception sees an "admins only" page for ADMIN pages; day views read up to 100 bookings; dashboard "next 2 hours" includes late arrivals; `--chart-1` chart hue (validated) and a data table per chart; `recharts` added; welcome pages and "soon" nav items removed.                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | 05, README                                                 |
