@@ -1,10 +1,10 @@
 'use client';
 
 import { keepPreviousData, useMutation, useQuery } from '@tanstack/react-query';
-import { Download } from 'lucide-react';
+import { Ban, Banknote, CalendarDays, CircleCheck, Download, Gauge, UserX } from 'lucide-react';
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { KpiCard } from '@/components/kpi-card';
+import { describeTrend, KpiCard, type KpiTrend } from '@/components/kpi-card';
 import { TextField } from '@/components/form/text-field';
 import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingList } from '@/components/states/list-states';
@@ -21,6 +21,12 @@ import { BarFigure, LineFigure } from './charts';
 const MAX_DAYS = 366; // API-071
 
 const percent = (value: number) => `${(value * 100).toFixed(1)}%`;
+
+// A KPI's daily series as a sparkline with its direction in words; none for a single day.
+function trendOf(values: number[]): KpiTrend | undefined {
+  const label = describeTrend(values);
+  return label ? { values, label } : undefined;
+}
 
 // Why a range can't be requested, or null.
 export function rangeProblem(from: string, to: string): string | null {
@@ -80,20 +86,49 @@ function Reports({ timeZone }: { timeZone: string }) {
     if (data)
       return (
         <>
-          <dl className="grid grid-cols-2 gap-3 lg:grid-cols-6">
-            <KpiCard label="Revenue" value={money(data.totals.revenue.amountMinor)} />
-            <KpiCard label="Bookings" value={data.totals.bookings} />
-            <KpiCard label="Completed" value={data.totals.completed} />
-            <KpiCard label="Cancellations" value={data.totals.cancelled} />
+          <dl className="grid grid-cols-1 gap-3 min-[420px]:grid-cols-2 lg:grid-cols-3">
+            <KpiCard
+              label="Revenue"
+              value={money(data.totals.revenue.amountMinor)}
+              icon={Banknote}
+              trend={trendOf(data.byDay.map((d) => d.revenue.amountMinor))}
+            />
+            <KpiCard
+              label="Bookings"
+              value={data.totals.bookings}
+              icon={CalendarDays}
+              trend={trendOf(data.byDay.map((d) => d.bookings))}
+              delay={60}
+            />
+            <KpiCard
+              label="Completed"
+              value={data.totals.completed}
+              icon={CircleCheck}
+              trend={trendOf(data.byDay.map((d) => d.completed))}
+              delay={120}
+            />
+            <KpiCard
+              label="Cancellations"
+              value={data.totals.cancelled}
+              icon={Ban}
+              trend={trendOf(data.byDay.map((d) => d.cancelled))}
+              delay={180}
+            />
             <KpiCard
               label="No-show rate"
               value={percent(data.totals.noShowRate)}
               hint={`${data.totals.noShows} no-shows`}
+              icon={UserX}
+              trend={trendOf(data.byDay.map((d) => d.noShowRate))}
+              delay={240}
             />
             <KpiCard
               label="Utilisation"
               value={percent(data.totals.utilisation)}
               hint="Booked ÷ available time"
+              icon={Gauge}
+              trend={trendOf(data.byDay.map((d) => d.utilisation))}
+              delay={300}
             />
           </dl>
           <LineFigure
@@ -124,6 +159,7 @@ function Reports({ timeZone }: { timeZone: string }) {
   return (
     <section className="grid gap-6">
       <PageHeader
+        eyebrow="Insights"
         title="Reports"
         description="Totals by appointment date. Revenue counts payments recorded for completed bookings."
         actions={
@@ -136,7 +172,7 @@ function Reports({ timeZone }: { timeZone: string }) {
           </Button>
         }
       />
-      <div className="grid max-w-md gap-3 sm:grid-cols-2">
+      <div className="grid max-w-md animate-fade-up gap-3 rounded-2xl border bg-card p-4 shadow-soft [animation-delay:60ms] sm:grid-cols-2">
         <TextField
           label="From"
           type="date"

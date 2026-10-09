@@ -1,9 +1,19 @@
 /* Tailwind CSS v4 + shadcn/ui theme (05-frontend §2). Brand: near-black #111111, warm off-white
    #FAF7F2, brass #B08D57; success/warning/error from Tailwind defaults. Colours are CSS variables
-   with a light and a dark (prefers-color-scheme) set. */
+   with a light and a dark set. The dark set applies when <html data-theme="dark"> (the header
+   toggle), or with the system setting while no theme was chosen (lib/theme.ts). */
 @import 'tailwindcss';
 
-@custom-variant dark (@media (prefers-color-scheme: dark));
+@custom-variant dark {
+  &:where([data-theme='dark'], [data-theme='dark'] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme='light']), :root:not([data-theme='light']) *) {
+      @slot;
+    }
+  }
+}
 
 :root {
   --radius: 0.625rem;
@@ -27,12 +37,52 @@
   --border: #e2dbcf;
   --input: #d9d1c3;
   --ring: #b08d57;
+  /* Brass for text and icons on light surfaces: #b08d57 itself is 2.9:1 on the background, below
+     WCAG AA; this darker brass is 4.9:1 or more on every surface. */
+  --accent-ink: #7d5f2c;
+  --accent-soft: #f3eadb;
+  /* Signed-in areas: dark sidebar in both themes. */
+  --sidebar: #161412;
+  --sidebar-foreground: #ece6dc;
+  --sidebar-muted: #a59d90;
+  --sidebar-accent: #c4a272;
+  --sidebar-border: #2a2723;
+  --shadow-color: 30 20 5;
   /* Chart series (single hue, validated with the dataviz checks against --card). */
   --chart-1: #a06a1c;
 }
 
+:root[data-theme='dark'] {
+  --background: #111111;
+  --foreground: #faf7f2;
+  --card: #1b1a18;
+  --card-foreground: #faf7f2;
+  --popover: #1b1a18;
+  --popover-foreground: #faf7f2;
+  --primary: #faf7f2;
+  --primary-foreground: #111111;
+  --secondary: #26241f;
+  --secondary-foreground: #faf7f2;
+  --muted: #26241f;
+  --muted-foreground: #b5ada0;
+  --accent: #c4a272;
+  --accent-foreground: #111111;
+  --destructive: var(--color-red-400);
+  --success: var(--color-green-400);
+  --warning: var(--color-amber-400);
+  --border: #34312b;
+  --input: #3d3932;
+  --ring: #c4a272;
+  --accent-ink: #d4b483;
+  --accent-soft: #2b251b;
+  --sidebar: #0b0a09;
+  --sidebar-border: #24211d;
+  --shadow-color: 0 0 0;
+  --chart-1: #b8802a;
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme='light']) {
     --background: #111111;
     --foreground: #faf7f2;
     --card: #1b1a18;
@@ -53,6 +103,11 @@
     --border: #34312b;
     --input: #3d3932;
     --ring: #c4a272;
+    --accent-ink: #d4b483;
+    --accent-soft: #2b251b;
+    --sidebar: #0b0a09;
+    --sidebar-border: #24211d;
+    --shadow-color: 0 0 0;
     --chart-1: #b8802a;
   }
 }
@@ -74,6 +129,13 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-muted: var(--sidebar-muted);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-border: var(--sidebar-border);
   --color-destructive: var(--destructive);
   --color-success: var(--success);
   --color-warning: var(--warning);
@@ -85,6 +147,96 @@
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+
+  /* Elevation: warm-tinted shadows, softer than Tailwind's grey ones. */
+  --shadow-soft:
+    0 1px 2px rgb(var(--shadow-color) / 0.06), 0 2px 8px rgb(var(--shadow-color) / 0.05);
+  --shadow-lift:
+    0 4px 10px rgb(var(--shadow-color) / 0.08), 0 14px 32px rgb(var(--shadow-color) / 0.1);
+
+  /* Motion (05 §2). Everything is switched off under prefers-reduced-motion (base layer). */
+  --animate-fade-up: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-fade-in: fade-in 0.4s ease-out both;
+  --animate-pop: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  --animate-shimmer: shimmer 1.6s linear infinite;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+  @keyframes pop {
+    from {
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes shimmer {
+    from {
+      background-position: 200% 0;
+    }
+    to {
+      background-position: -200% 0;
+    }
+  }
+}
+
+/* Brass-tinted hero backdrop: two soft radial glows over the page colour. */
+@utility bg-hero {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(
+      60rem 30rem at 85% -10%,
+      color-mix(in oklab, var(--accent) 28%, transparent),
+      transparent 70%
+    ),
+    radial-gradient(
+      40rem 24rem at -10% 110%,
+      color-mix(in oklab, var(--accent) 16%, transparent),
+      transparent 70%
+    );
+}
+
+/* Fine film grain over a surface (decorative; place in an aria-hidden layer). */
+@utility bg-grain {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.5'/%3E%3C/svg%3E");
+  opacity: 0.07;
+  mix-blend-mode: multiply;
+  /* multiply vanishes on dark surfaces */
+  @variant dark {
+    opacity: 0.1;
+    mix-blend-mode: soft-light;
+  }
+}
+
+/* Thin brass rule used as a section divider or under headings. */
+@utility rule-brass {
+  height: 2px;
+  width: 3rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    90deg,
+    var(--accent),
+    color-mix(in oklab, var(--accent) 20%, transparent)
+  );
 }
 
 @layer base {
@@ -97,6 +249,30 @@
   h1,
   h2,
   h3 {
-    @apply font-heading tracking-tight;
+    @apply font-heading tracking-tight text-balance;
+  }
+  html {
+    color-scheme: light;
+  }
+  html[data-theme='dark'] {
+    color-scheme: dark;
+  }
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme='light']) {
+      color-scheme: dark;
+    }
+  }
+  ::selection {
+    background: color-mix(in oklab, var(--accent) 35%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }

@@ -90,36 +90,44 @@ export function UsersAdmin() {
     if (users.isPending) return <LoadingList label="Loading people" />;
     if (users.error) return <ErrorState error={users.error} onRetry={() => void users.refetch()} />;
     if (users.data.data.length === 0)
-      return <EmptyState title="Nobody matches" description="Try another search." />;
+      return (
+        <EmptyState
+          title="Nobody matches"
+          description="Try another search."
+          illustration="search"
+        />
+      );
     return (
       <>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Contact</TableHead>
-              <TableHead>Role</TableHead>
-              <TableHead>Status</TableHead>
-              {isAdmin ? (
-                <TableHead>
-                  <span className="sr-only">Actions</span>
-                </TableHead>
-              ) : null}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.data.data.map((u) => (
-              <UserRow
-                key={u.id}
-                user={u}
-                isAdmin={isAdmin}
-                isMe={u.id === me?.id}
-                pending={update.isPending}
-                onChange={(body) => update.mutate({ id: u.id, body })}
-              />
-            ))}
-          </TableBody>
-        </Table>
+        <div className="animate-fade-up rounded-lg shadow-soft">
+          <Table>
+            <TableHeader className="bg-muted/50 [&_th]:text-xs [&_th]:font-semibold [&_th]:tracking-wide [&_th]:uppercase">
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Contact</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Status</TableHead>
+                {isAdmin ? (
+                  <TableHead>
+                    <span className="sr-only">Actions</span>
+                  </TableHead>
+                ) : null}
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.data.data.map((u) => (
+                <UserRow
+                  key={u.id}
+                  user={u}
+                  isAdmin={isAdmin}
+                  isMe={u.id === me?.id}
+                  pending={update.isPending}
+                  onChange={(body) => update.mutate({ id: u.id, body })}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
         <Pagination
           page={users.data.meta.page}
           totalPages={users.data.meta.totalPages}

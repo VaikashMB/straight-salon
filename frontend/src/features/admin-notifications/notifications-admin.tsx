@@ -66,13 +66,14 @@ export function NotificationsAdmin() {
   const renderNotifications = () => {
     if (list.isPending || !settings) return <LoadingList label="Loading notifications" />;
     if (list.error) return <ErrorState error={list.error} onRetry={() => void list.refetch()} />;
-    if (list.data.data.length === 0) return <EmptyState title="No notifications match" />;
+    if (list.data.data.length === 0)
+      return <EmptyState title="No notifications match" illustration="search" />;
     return (
       <>
         <ul className="grid gap-2">
           {list.data.data.map((n) => (
             <li key={n.id}>
-              <details className="group rounded-lg border bg-card">
+              <details className="group rounded-xl border bg-card shadow-soft">
                 <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm">
                   <span>
                     <span className="font-medium">{n.template.replace(/_/g, ' ')}</span> ·{' '}

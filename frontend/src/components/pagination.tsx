@@ -1,3 +1,4 @@
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 // Pager for the API's paginated envelope (03 §8). Hidden when everything fits on one page.
@@ -19,9 +20,10 @@ export function Pagination({
         disabled={page <= 1}
         onClick={() => onPageChange(page - 1)}
       >
+        <ChevronLeft aria-hidden />
         Previous
       </Button>
-      <span aria-live="polite">
+      <span aria-live="polite" className="text-muted-foreground tabular-nums">
         Page {page} of {totalPages}
       </span>
       <Button
@@ -31,6 +33,7 @@ export function Pagination({
         onClick={() => onPageChange(page + 1)}
       >
         Next
+        <ChevronRight aria-hidden />
       </Button>
     </nav>
   );

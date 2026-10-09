@@ -77,65 +77,67 @@ export function CategoriesAdmin() {
         />
       );
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Order</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>
-              <span className="sr-only">Actions</span>
-            </TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {categories.data.map((c) => (
-            <TableRow key={c.id}>
-              <TableCell className="font-medium">
-                {c.name}
-                {c.description ? (
-                  <span className="block text-xs text-muted-foreground">{c.description}</span>
-                ) : null}
-              </TableCell>
-              <TableCell>{c.sortOrder}</TableCell>
-              <TableCell>
-                <Badge variant={c.isActive ? 'success' : 'secondary'}>
-                  {c.isActive ? 'Active' : 'Inactive'}
-                </Badge>
-              </TableCell>
-              <TableCell className="flex justify-end gap-2">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  aria-label={`Edit ${c.name}`}
-                  onClick={() => setEditing(c)}
-                >
-                  Edit
-                </Button>
-                {c.isActive ? (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Deactivate ${c.name}`}
-                    onClick={() => setDeactivating(c)}
-                  >
-                    Deactivate
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    aria-label={`Activate ${c.name}`}
-                    onClick={() => toggle(c, true)}
-                  >
-                    Activate
-                  </Button>
-                )}
-              </TableCell>
+      <div className="animate-fade-up rounded-lg shadow-soft">
+        <Table>
+          <TableHeader className="bg-muted/50 [&_th]:text-xs [&_th]:font-semibold [&_th]:tracking-wide [&_th]:uppercase">
+            <TableRow>
+              <TableHead>Name</TableHead>
+              <TableHead>Order</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>
+                <span className="sr-only">Actions</span>
+              </TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {categories.data.map((c) => (
+              <TableRow key={c.id}>
+                <TableCell className="font-medium">
+                  {c.name}
+                  {c.description ? (
+                    <span className="block text-xs text-muted-foreground">{c.description}</span>
+                  ) : null}
+                </TableCell>
+                <TableCell>{c.sortOrder}</TableCell>
+                <TableCell>
+                  <Badge variant={c.isActive ? 'success' : 'secondary'}>
+                    {c.isActive ? 'Active' : 'Inactive'}
+                  </Badge>
+                </TableCell>
+                <TableCell className="flex justify-end gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    aria-label={`Edit ${c.name}`}
+                    onClick={() => setEditing(c)}
+                  >
+                    Edit
+                  </Button>
+                  {c.isActive ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Deactivate ${c.name}`}
+                      onClick={() => setDeactivating(c)}
+                    >
+                      Deactivate
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-label={`Activate ${c.name}`}
+                      onClick={() => toggle(c, true)}
+                    >
+                      Activate
+                    </Button>
+                  )}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     );
   };
 

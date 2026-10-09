@@ -69,13 +69,14 @@ export function AuditAdmin() {
   const renderLogs = () => {
     if (logs.isPending || !settings) return <LoadingList label="Loading audit log" />;
     if (logs.error) return <ErrorState error={logs.error} onRetry={() => void logs.refetch()} />;
-    if (logs.data.data.length === 0) return <EmptyState title="No entries match" />;
+    if (logs.data.data.length === 0)
+      return <EmptyState title="No entries match" illustration="search" />;
     return (
       <>
         <ul className="grid gap-2">
           {logs.data.data.map((entry) => (
             <li key={entry.id}>
-              <details className="rounded-lg border bg-card">
+              <details className="rounded-xl border bg-card shadow-soft">
                 <summary className="flex cursor-pointer flex-wrap items-center justify-between gap-2 p-3 text-sm">
                   <span>
                     <span className="font-medium">{entry.action}</span> · {entry.entityType}{' '}

@@ -1,6 +1,6 @@
 'use client';
 
-import { Check, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import Link from 'next/link';
 import { ErrorState, LoadingList } from '@/components/states/list-states';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -9,6 +9,7 @@ import { formatMinutes } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useCategories, useServices, useStylists, type Service } from '../api';
 import { ANY, MAX_SERVICES } from '../params';
+import { CheckBadge, SELECTABLE_CARD } from './selectable';
 
 export function totals(services: Service[]) {
   return {
@@ -95,10 +96,7 @@ export function StepServices({
                   aria-pressed={isSelected}
                   disabled={!isSelected && full}
                   onClick={() => onToggle(service.id)}
-                  className={cn(
-                    'flex items-start justify-between gap-3 rounded-lg border bg-card p-4 text-left transition-colors outline-none hover:border-primary/40 focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50',
-                    isSelected && 'border-primary ring-1 ring-primary',
-                  )}
+                  className={cn(SELECTABLE_CARD, 'items-start justify-between')}
                 >
                   <span className="grid gap-1">
                     <span className="font-medium">{service.name}</span>
@@ -107,17 +105,9 @@ export function StepServices({
                       {formatMinutes(service.durationMin)}
                     </span>
                   </span>
-                  <span className="flex items-center gap-2 font-medium whitespace-nowrap">
+                  <span className="flex items-center gap-3 font-medium whitespace-nowrap tabular-nums">
                     {formatMoney(service.price.amountMinor, service.price.currency)}
-                    <span
-                      aria-hidden
-                      className={cn(
-                        'grid size-5 place-content-center rounded-full border',
-                        isSelected && 'border-primary bg-primary text-primary-foreground',
-                      )}
-                    >
-                      {isSelected ? <Check className="size-3" /> : null}
-                    </span>
+                    <CheckBadge selected={isSelected} />
                   </span>
                 </button>
               );

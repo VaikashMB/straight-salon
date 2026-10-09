@@ -76,7 +76,7 @@ export function ReviewsAdmin() {
       <>
         <ul className="grid gap-3">
           {reviews.data.data.map((r) => (
-            <li key={r.id} className="grid gap-2 rounded-lg border bg-card p-4">
+            <li key={r.id} className="grid gap-2 rounded-xl border bg-card p-4 shadow-soft">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span
                   className="inline-flex items-center gap-1 text-sm font-medium"

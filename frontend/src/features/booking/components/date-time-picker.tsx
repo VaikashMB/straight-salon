@@ -1,6 +1,7 @@
 'use client';
 
 import { format } from 'date-fns';
+import { Check, Moon, Sun, Sunrise, type LucideIcon } from 'lucide-react';
 import { useEffect, useMemo } from 'react';
 import { EmptyState, ErrorState } from '@/components/states/list-states';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -9,7 +10,7 @@ import { usePublicSettings } from '@/lib/settings';
 import { addDays, datesBetween, todayInZone, weekdayOf } from '@/lib/time';
 import { cn } from '@/lib/utils';
 import { useAvailability, useAvailableDays, type Slot } from '../api';
-import { groupSlots } from '../slots';
+import { groupSlots, type DayPart } from '../slots';
 
 // Step 3 of the wizard, also used to reschedule (05 §4.1, §4.2): a calendar of the next
 // `maxAdvanceDays` with unbookable days disabled (API-041), then start times grouped
@@ -25,6 +26,17 @@ export interface DateTimePickerProps {
 }
 
 const WEEKDAY_HEADINGS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+const PART_ICONS: Record<DayPart, LucideIcon> = { Morning: Sunrise, Afternoon: Sun, Evening: Moon };
+
+// Shared by day buttons and time chips: brass fill when chosen, soft brass on hover, a clear
+// focus ring, and struck-through grey when unavailable.
+const CHOICE = cn(
+  'transition-[background-color,border-color,color,box-shadow] duration-200 outline-none',
+  'focus-visible:ring-[3px] focus-visible:ring-ring/60 focus-visible:ring-offset-2 focus-visible:ring-offset-background',
+  'enabled:hover:bg-accent-soft disabled:cursor-not-allowed',
+  'aria-pressed:bg-accent aria-pressed:font-semibold aria-pressed:text-accent-foreground aria-pressed:shadow-soft enabled:aria-pressed:hover:bg-accent',
+);
 
 function toLocalDate(date: string): Date {
   const [y, m, d] = date.split('-').map(Number) as [number, number, number];
@@ -72,12 +84,15 @@ function Picker({
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,22rem)_1fr]">
-      <div className="grid content-start gap-4" aria-busy={days.isPending}>
+      <div
+        className="grid content-start gap-4 sm:rounded-2xl sm:border sm:bg-card sm:p-4 sm:shadow-soft"
+        aria-busy={days.isPending}
+      >
         {months.map(([month, monthDates]) => {
           const leading = (weekdayOf(monthDates[0]!) + 6) % 7; // Monday-first grid
           return (
             <fieldset key={month} className="grid gap-2">
-              <legend className="mb-2 font-medium">
+              <legend className="mb-2 font-heading text-lg font-semibold">
                 {format(toLocalDate(`${month}-01`), 'MMMM yyyy')}
               </legend>
               <div
@@ -88,28 +103,38 @@ function Picker({
                   <span key={d}>{d}</span>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1">
+              <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
                 {Array.from({ length: leading }, (_, i) => (
                   <span key={`blank-${i}`} />
                 ))}
                 {monthDates.map((d) => {
                   const available = days.availableDates.has(d);
                   const selected = d === date;
+                  const isToday = d === today;
                   return (
                     <button
                       key={d}
                       type="button"
                       disabled={days.isPending || !available}
                       aria-pressed={selected}
+                      aria-current={isToday ? 'date' : undefined}
                       aria-label={format(toLocalDate(d), 'EEEE d MMMM yyyy')}
                       onClick={() => onDateChange(d)}
                       className={cn(
-                        'aspect-square rounded-md text-sm transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                        available ? 'hover:bg-secondary' : 'text-muted-foreground/50 line-through',
-                        selected && 'bg-primary text-primary-foreground hover:bg-primary',
+                        CHOICE,
+                        'relative aspect-square min-h-10 rounded-full text-sm tabular-nums',
+                        !available && 'text-muted-foreground/50 line-through',
+                        isToday && 'font-semibold ring-1 ring-accent/60 ring-inset',
                       )}
                     >
                       {Number(d.slice(8))}
+                      {isToday ? (
+                        // "Today" dot; the button itself says so with aria-current="date".
+                        <span
+                          aria-hidden
+                          className="absolute bottom-1 left-1/2 size-1 -translate-x-1/2 rounded-full bg-current"
+                        />
+                      ) : null}
                     </button>
                   );
                 })}
@@ -118,7 +143,7 @@ function Picker({
           );
         })}
       </div>
-      <div className="grid content-start gap-4">
+      <div key={date ?? 'none'} className="grid animate-fade-in content-start gap-5">
         {date ? (
           <Slots
             serviceIds={serviceIds}
@@ -152,7 +177,9 @@ function Slots({
   timeZone: string;
 }) {
   const availability = useAvailability(serviceIds, staffId, date);
-  const heading = <h3 className="font-medium">{formatCalendarDate(date)}</h3>;
+  const heading = (
+    <h3 className="font-heading text-lg font-semibold">{formatCalendarDate(date)}</h3>
+  );
   if (availability.isPending) {
     return (
       <>
@@ -171,31 +198,37 @@ function Slots({
       {groups.length === 0 ? (
         <EmptyState title="No times left on this day" description="Please pick another date." />
       ) : (
-        groups.map(({ part, slots }) => (
-          <fieldset key={part} aria-label={part} className="m-0 grid min-w-0 gap-2 border-0 p-0">
-            <p className="text-sm text-muted-foreground">{part}</p>
-            <div className="flex flex-wrap gap-2">
-              {slots.map((slot) => {
-                const selected = slot.startAt === value;
-                return (
-                  <button
-                    key={slot.startAt}
-                    type="button"
-                    aria-pressed={selected}
-                    onClick={() => onSelect(slot)}
-                    className={cn(
-                      'min-w-20 rounded-md border px-3 py-2 text-sm transition-colors outline-none hover:bg-secondary focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                      selected &&
-                        'border-primary bg-primary text-primary-foreground hover:bg-primary',
-                    )}
-                  >
-                    {formatTime(slot.startAt, timeZone)}
-                  </button>
-                );
-              })}
-            </div>
-          </fieldset>
-        ))
+        groups.map(({ part, slots }) => {
+          const Icon = PART_ICONS[part];
+          return (
+            <fieldset key={part} className="m-0 grid min-w-0 gap-3 border-0 p-0">
+              <legend className="mb-3 flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <Icon aria-hidden className="size-4 text-accent" />
+                {part}
+              </legend>
+              <div className="flex flex-wrap gap-2">
+                {slots.map((slot) => {
+                  const selected = slot.startAt === value;
+                  return (
+                    <button
+                      key={slot.startAt}
+                      type="button"
+                      aria-pressed={selected}
+                      onClick={() => onSelect(slot)}
+                      className={cn(
+                        CHOICE,
+                        'inline-flex min-h-11 min-w-22 items-center justify-center gap-1.5 rounded-full border bg-card px-4 text-sm tabular-nums enabled:hover:border-accent/60 aria-pressed:border-accent sm:min-h-10',
+                      )}
+                    >
+                      {selected ? <Check aria-hidden className="size-3.5" strokeWidth={3} /> : null}
+                      {formatTime(slot.startAt, timeZone)}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
+          );
+        })
       )}
     </>
   );
@@ -216,7 +249,7 @@ function SlotSkeleton() {
   return (
     <output className="flex flex-wrap gap-2" aria-label="Loading times">
       {Array.from({ length: 8 }, (_, i) => (
-        <Skeleton key={i} className="h-9 w-20" />
+        <Skeleton key={i} className="h-11 w-22 rounded-full sm:h-10" />
       ))}
     </output>
   );

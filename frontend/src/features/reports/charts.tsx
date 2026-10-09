@@ -47,8 +47,11 @@ function Figure({
 }) {
   const id = useId();
   return (
-    <figure aria-labelledby={id} className="grid gap-3 rounded-lg border bg-card p-4">
-      <figcaption id={id} className="font-medium">
+    <figure
+      aria-labelledby={id}
+      className="grid animate-fade-up gap-3 rounded-2xl border bg-card p-5 shadow-soft"
+    >
+      <figcaption id={id} className="font-heading text-base font-semibold">
         {title}
       </figcaption>
       {points.length === 0 ? (
@@ -65,16 +68,21 @@ function Figure({
             </ResponsiveContainer>
           </div>
           <details className="text-sm">
-            <summary className="cursor-pointer text-muted-foreground">Show data</summary>
-            <table className="mt-2 w-full">
+            <summary className="w-fit cursor-pointer rounded-sm text-muted-foreground transition-colors outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50">
+              Show data
+            </summary>
+            <table className="mt-3 w-full">
               <caption className="sr-only">{title}</caption>
               <tbody>
                 {points.map((p) => (
-                  <tr key={p.label} className="border-b last:border-0">
-                    <th scope="row" className="py-1 text-left font-normal">
+                  <tr
+                    key={p.label}
+                    className="border-b transition-colors last:border-0 hover:bg-muted/50"
+                  >
+                    <th scope="row" className="px-2 py-1.5 text-left font-normal">
                       {p.label}
                     </th>
-                    <td className="py-1 text-right">{format(p.value)}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums">{format(p.value)}</td>
                   </tr>
                 ))}
               </tbody>

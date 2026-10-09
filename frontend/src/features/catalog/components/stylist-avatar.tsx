@@ -36,7 +36,7 @@ export function StylistAvatar({
     <span
       aria-hidden
       className={cn(
-        'grid shrink-0 place-content-center rounded-full bg-secondary font-heading font-semibold',
+        'grid shrink-0 place-content-center rounded-full bg-accent-soft font-heading font-semibold text-accent-ink',
         className,
       )}
       style={{ width: size, height: size, fontSize: size / 2.8 }}

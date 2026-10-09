@@ -123,7 +123,7 @@ function DayRow({
     onChange((d) => ({ ...d, breaks: [...d.breaks, withKey({ start: '13:00', end: '13:30' })] }));
 
   return (
-    <fieldset className="grid gap-2 rounded-lg border bg-card p-3 sm:grid-cols-[8rem_1fr]">
+    <fieldset className="grid gap-2 rounded-xl border bg-card p-3 shadow-soft sm:grid-cols-[8rem_1fr]">
       <legend className="sr-only">{name}</legend>
       <label className="flex items-center gap-2 text-sm font-medium">
         <input

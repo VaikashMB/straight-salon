@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { connection } from 'next/server';
+import { PageHeader } from '@/components/page-header';
 import { loadCatalogue } from '@/features/catalog/api';
 import { CatalogueUnavailable } from '@/features/catalog/components/catalogue-unavailable';
+import { PageBand } from '@/features/catalog/components/page-band';
 import { ServiceCatalogue } from '@/features/catalog/components/service-catalogue';
 
 export const metadata: Metadata = {
@@ -15,14 +17,20 @@ export default async function ServicesPage() {
   const catalogue = await loadCatalogue();
   if (!catalogue) return <CatalogueUnavailable />;
   return (
-    <section className="mx-auto grid max-w-6xl gap-8 px-4 py-12">
-      <div className="grid gap-2">
-        <h1 className="text-3xl font-semibold sm:text-4xl">Services &amp; prices</h1>
-        <p className="text-muted-foreground">
-          Choose one or more services and book them in a single appointment.
-        </p>
-      </div>
-      <ServiceCatalogue categories={catalogue.categories} services={catalogue.services} />
-    </section>
+    <>
+      <PageBand>
+        <PageHeader
+          eyebrow="Our menu"
+          title="Services & prices"
+          description="Choose one or more services and book them in a single appointment."
+        />
+      </PageBand>
+      <section
+        aria-label="Service list"
+        className="mx-auto max-w-6xl animate-fade-up px-4 py-12 [animation-delay:100ms] sm:py-16"
+      >
+        <ServiceCatalogue categories={catalogue.categories} services={catalogue.services} />
+      </section>
+    </>
   );
 }

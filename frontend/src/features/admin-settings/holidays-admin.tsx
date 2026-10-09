@@ -90,13 +90,14 @@ export function HolidaysAdmin() {
     if (holidays.isPending) return <LoadingList rows={2} label="Loading holidays" />;
     if (holidays.error)
       return <ErrorState error={holidays.error} onRetry={() => void holidays.refetch()} />;
-    if (holidays.data.length === 0) return <EmptyState title="No upcoming holidays" />;
+    if (holidays.data.length === 0)
+      return <EmptyState title="No upcoming holidays" illustration="calendar" />;
     return (
       <ul className="grid gap-2">
         {holidays.data.map((h) => (
           <li
             key={h.id}
-            className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm"
+            className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3 text-sm shadow-soft"
           >
             <span>
               <span className="font-medium">{formatCalendarDate(h.date)}</span> · {h.name}

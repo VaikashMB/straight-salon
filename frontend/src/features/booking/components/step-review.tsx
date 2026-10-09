@@ -17,6 +17,7 @@ import { newIdempotencyKey, type Booking, type Service, type Stylist } from '../
 import { ANY } from '../params';
 import { totals } from './step-services';
 import { InlineSignIn } from './inline-sign-in';
+import { SummaryBar } from './summary-bar';
 
 const MAX_NOTES = 300;
 
@@ -86,11 +87,14 @@ export function StepReview({
     <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
       <section
         aria-labelledby="summary"
-        className="grid content-start gap-4 rounded-lg border bg-card p-5"
+        className="grid content-start gap-4 rounded-2xl border bg-card p-5 shadow-soft sm:p-6"
       >
-        <h2 id="summary" className="text-lg font-semibold">
-          Your appointment
-        </h2>
+        <div className="grid gap-2">
+          <h2 id="summary" className="text-lg font-semibold">
+            Your appointment
+          </h2>
+          <div aria-hidden className="rule-brass" />
+        </div>
         <dl className="grid gap-3 text-sm">
           <div className="grid gap-0.5">
             <dt className="text-muted-foreground">When</dt>
@@ -111,7 +115,9 @@ export function StepReview({
                     <span>
                       {s.name} · {formatMinutes(s.durationMin)}
                     </span>
-                    <span>{formatMoney(s.price.amountMinor, s.price.currency)}</span>
+                    <span className="tabular-nums">
+                      {formatMoney(s.price.amountMinor, s.price.currency)}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -119,7 +125,7 @@ export function StepReview({
           </div>
           <div className="flex justify-between gap-3 border-t pt-3 text-base font-semibold">
             <dt>Total · {formatMinutes(sum.durationMin)}</dt>
-            <dd>{formatMoney(sum.priceMinor, sum.currency)}</dd>
+            <dd className="tabular-nums">{formatMoney(sum.priceMinor, sum.currency)}</dd>
           </div>
         </dl>
         <p className="text-xs text-muted-foreground">Pay at the salon after your appointment.</p>
@@ -152,9 +158,21 @@ export function StepReview({
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
             />
-            <Button type="submit" size="lg" disabled={create.isPending}>
-              {create.isPending ? 'Booking…' : 'Confirm booking'}
-            </Button>
+            {/* Pinned to the bottom on phones, in place under the notes from `sm` up. */}
+            <SummaryBar
+              services={services}
+              layout="inline"
+              action={
+                <Button
+                  type="submit"
+                  size="lg"
+                  className="min-w-40 sm:w-full"
+                  disabled={create.isPending}
+                >
+                  {create.isPending ? 'Booking…' : 'Confirm booking'}
+                </Button>
+              }
+            />
           </form>
         ) : null}
       </div>

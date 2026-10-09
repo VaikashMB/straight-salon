@@ -103,13 +103,14 @@ function Manager({
     if (blocks.isPending) return <LoadingList rows={2} label="Loading time off" />;
     if (blocks.error)
       return <ErrorState error={blocks.error} onRetry={() => void blocks.refetch()} />;
-    if (blocks.data.length === 0) return <EmptyState title="No time off planned" />;
+    if (blocks.data.length === 0)
+      return <EmptyState title="No time off planned" illustration="calendar" />;
     return (
       <ul className="grid gap-2">
         {blocks.data.map((block) => (
           <li
             key={block.id}
-            className="flex items-center justify-between gap-3 rounded-lg border bg-card p-3 text-sm"
+            className="flex items-center justify-between gap-3 rounded-xl border bg-card p-3 text-sm shadow-soft"
           >
             <span>
               <span className="font-medium">
@@ -137,7 +138,7 @@ function Manager({
     <div className="grid gap-8">
       <form
         onSubmit={submit}
-        className="grid gap-4 rounded-lg border bg-card p-5"
+        className="grid gap-4 rounded-xl border bg-card p-5 shadow-soft"
         aria-labelledby="add-time-off"
       >
         <h2 id="add-time-off" className="text-lg font-semibold">

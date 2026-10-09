@@ -8,6 +8,7 @@ import { StylistAvatar } from '@/features/catalog/components/stylist-avatar';
 import { cn } from '@/lib/utils';
 import { qualifiedFor, useStylists } from '../api';
 import { ANY } from '../params';
+import { CheckBadge, SELECTABLE_CARD } from './selectable';
 
 // Step 2: "Any available" (default) or a stylist qualified for all chosen services (05 §4.1).
 export function StepStylist({
@@ -32,12 +33,10 @@ export function StepStylist({
       role="radio"
       aria-checked={staff === id}
       onClick={() => onChoose(id)}
-      className={cn(
-        'flex items-center gap-4 rounded-lg border bg-card p-4 text-left transition-colors outline-none hover:border-primary/40 focus-visible:ring-[3px] focus-visible:ring-ring/50',
-        staff === id && 'border-primary ring-1 ring-primary',
-      )}
+      className={cn(SELECTABLE_CARD, 'items-center')}
     >
       {content}
+      <CheckBadge selected={staff === id} className="ml-auto" />
     </button>
   );
 
@@ -46,7 +45,7 @@ export function StepStylist({
       {option(
         ANY,
         <>
-          <span className="grid size-16 shrink-0 place-content-center rounded-full bg-secondary">
+          <span className="grid size-16 shrink-0 place-content-center rounded-full bg-accent-soft text-accent-ink ring-1 ring-accent/25">
             <Users aria-hidden className="size-6" />
           </span>
           <span className="grid gap-1">

@@ -20,6 +20,13 @@
 - Palette: near-black `#111111` primary, warm off-white `#FAF7F2` background, accent brass `#B08D57`, success/warning/error from Tailwind defaults. Define as CSS variables for light/dark themes.
 - Charts use one series hue, `--chart-1` (a more saturated brass: `#A06A1C` light, `#B8802A` dark), because the brand brass is too low in chroma to read as a colour against the card surface; both values pass the dataviz palette checks (lightness band, chroma floor, ≥ 3:1 contrast) against `--card` (decision 2026-10-07).
 - Typography: a geometric sans for headings (e.g. "Outfit"), a neutral sans for body (e.g. "Inter"), via `next/font`.
+- Visual pass (decision 2026-10-09), all in `styles/globals.css`:
+  - **Brass as text** uses `--accent-ink` (`#7D5F2C` light, `#D4B483` dark, ≥ 4.9:1 on every surface). The brand brass `#B08D57` is only 2.9:1 on the background, so it is kept for fills, borders, rings and icons. `--accent-soft` is the brass tint for selected and highlighted surfaces.
+  - **Sidebar tokens** (`--sidebar*`) stay dark in both themes for the signed-in areas' sidebar.
+  - **Elevation:** warm-tinted shadows `shadow-soft` (cards) and `shadow-lift` (hover, dialogs, auth card).
+  - **Decoration:** the `bg-hero` utility (two soft brass radial glows) and `bg-grain` (film grain, decorative layer only); `rule-brass` is the short divider under headings.
+  - **Motion:** `animate-fade-up`, `animate-fade-in`, `animate-pop` (success check), `animate-shimmer` (skeletons). Everything is switched off under `prefers-reduced-motion`; no JS-driven animation.
+  - **Theme toggle:** one button in the public header and the area shell cycles system → light → dark (`lib/theme.ts`). A pinned choice is `<html data-theme>` plus `localStorage` (`ss-theme`, a per-browser convenience; access is guarded). "System" removes both and follows `prefers-color-scheme`. An inline script in `<head>` applies a pinned theme before the first paint, and other open tabs follow a change.
 - Mobile-first. Booking flow must be comfortably usable one-handed on a phone.
 
 ## 3. Folder structure
@@ -94,6 +101,11 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
 4. **Review & confirm** — summary, optional notes. If not logged in, inline login/register then return here. Confirm sends API-050 with a generated `Idempotency-Key`.
 5. **Success** — booking ref, add-to-calendar (.ics download generated client-side), link to "My bookings".
 - On 409 `SLOT_UNAVAILABLE`: toast + automatically refetch slots and return to step 3 keeping other selections.
+- Visual pass (decision 2026-10-09):
+  - **Stepper:** numbered steps (an ordered list with `aria-current="step"`) with a "Step N of 4" eyebrow over the step title.
+  - **Selection:** selected cards and chips are marked by the brass ring, a check and their existing `aria-pressed` / `aria-checked` state, with the styling keyed off those attributes. Time chips are grouped under Morning / Afternoon / Evening; today's calendar day has `aria-current="date"`.
+  - **Mobile summary bar:** on phones a bottom bar shows the running total (service count, duration, price) and the step's primary action: Continue on step 1, Confirm on step 4. From `sm` up, Continue is a sticky card and Confirm sits inline in the review form. Each action is rendered once.
+  - **Success:** the booking reference is shown as a ticket stub.
 - URL parameters (decision 2026-10-07): `services`, `staff` (omitted = any), `date`, `start` (the chosen slot, UTC), `step` (`stylist`, `time`, `review`, `done`; omitted = services) and `booking` (the created booking's id on `done`, read back with API-053 so a refresh still shows the confirmation). Invalid values are dropped, and a step whose earlier choices are missing falls back to the first incomplete one. Moving between steps pushes a history entry; changes within a step replace it. Step 3 opens on the first bookable day. Arriving with `staff` (from a stylist's page) lists only that stylist's services. The Idempotency-Key is generated once per distinct request body, so a retried or double-clicked confirm reuses it. Notes are kept in component state, not the URL. Salon accounts that open the wizard are pointed to the admin area (API-050 needs a `customerId` for them).
 
 ### 4.2 Customer account
@@ -122,6 +134,24 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
   - Dashboard "Next 2 hours" lists `BOOKED`/`CHECKED_IN` bookings starting from 15 minutes ago (late arrivals) to 2 hours ahead, measured from the time the dashboard was last fetched (it refetches every minute).
   - Staff Week shows the next seven days with the stylist's working hours from API-033.
   - Each report chart has a "Show data" table with the same numbers (05 §7, NFR-006), and the CSV is downloaded through the authenticated client as a blob.
+
+- Public site visual pass (decision 2026-10-09):
+  - **Header:** sticky, with a blurred backdrop. The current link gets a brass underline plus `aria-current="page"`, and sub-pages count (`/services/haircut` marks Services).
+  - **Mobile menu:** below `md` the nav collapses into a disclosure menu: a 44 px "Menu" / "Close menu" button with `aria-expanded`, holding the links, the session actions and the theme toggle. Focus moves to the first link. It closes on Escape (focus returns to the button), on a link click and on a route change. It is not modal.
+  - **Footer:** static, and dark in both themes (sidebar tokens).
+  - **Category styling:** icons and tints live in `features/catalog/category-style.ts`, keyed by slug, then name. Categories that admins add get a brass fallback.
+  - **Specialities:** a stylist's specialities are the categories of the services they perform.
+  - **Detail pages:** service and stylist detail pages also read `/categories` (cached like the other public reads).
+  - **Images:** service images and stylist photos show when uploaded, with a tinted category placeholder otherwise.
+- Signed-in areas visual pass (decision 2026-10-09):
+  - **Layout from `lg` up:** a fixed dark sidebar holding the brand, the icon nav (brass bar plus `aria-current="page"` on the current item) and a profile block (initials, name, role, sign-out, theme toggle).
+  - **Layout below `lg`:** a dark top bar with a row of nav pills that scrolls sideways. The same single `nav aria-label="Section"` is restyled with CSS.
+  - **Skip link:** a "Skip to content" link jumps to `#main`.
+  - **Now markers:** today's My day, admin calendar and dashboard mini-timelines show a decorative "now" marker (salon timezone, today only, refreshed every minute).
+  - **Calendar blocks:** a status-coloured left edge as well as the status icon and text.
+  - **Status badges:** every status badge has an icon next to its text.
+  - **Reports KPI cards:** a daily sparkline plus a text trend comparing the second half of the range with the first. A one-day range shows none.
+  - **Empty states:** line-art illustrations (inbox, calendar, search).
 
 ## 5. Authentication on the frontend
 - Access token kept **in memory only** (React context), never in localStorage.

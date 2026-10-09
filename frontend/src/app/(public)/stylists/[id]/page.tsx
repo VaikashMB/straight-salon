@@ -1,3 +1,4 @@
+import { ArrowLeft } from 'lucide-react';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -6,7 +7,11 @@ import { Rating } from '@/components/rating';
 import { Button } from '@/components/ui/button';
 import { loadReviews } from '@/features/catalog/api';
 import { CatalogueUnavailable } from '@/features/catalog/components/catalogue-unavailable';
+import { stylistSpecialities } from '@/features/catalog/category-style';
+import { PageBand } from '@/features/catalog/components/page-band';
 import { ReviewList } from '@/features/catalog/components/review-list';
+import { SectionHeading } from '@/features/catalog/components/section-heading';
+import { SpecialityChips } from '@/features/catalog/components/speciality-chips';
 import { ServiceCard } from '@/features/catalog/components/service-card';
 import { StylistAvatar } from '@/features/catalog/components/stylist-avatar';
 import { loadPublic } from '@/lib/api/server';
@@ -32,47 +37,67 @@ export default async function StylistPage({ params }: Props) {
     return <CatalogueUnavailable />;
   }
   const s = stylist.data;
-  const [settings, reviews] = await Promise.all([
+  const [settings, categoryList, reviews] = await Promise.all([
     loadPublic((api) => api.GET('/api/v1/settings/public')),
+    loadPublic((api) => api.GET('/api/v1/categories')),
     loadReviews({ staffId: s.id }),
   ]);
+  const categories = categoryList.data ?? [];
+  const categoryById = new Map(categories.map((c) => [c.id, c]));
+  const specialities = stylistSpecialities(s, s.services, categories);
 
   return (
-    <article className="mx-auto grid max-w-5xl gap-10 px-4 py-12">
-      <header className="flex flex-col gap-6 sm:flex-row sm:items-center">
-        <StylistAvatar name={s.displayName} photoUrl={s.photoUrl} size={112} />
-        <div className="grid gap-3">
-          <Link href="/stylists" className="text-sm text-muted-foreground underline">
-            All stylists
-          </Link>
-          <h1 className="text-3xl font-semibold sm:text-4xl">{s.displayName}</h1>
-          <Rating value={s.ratingAvg} count={s.ratingCount} />
-          {s.bio ? <p className="max-w-2xl">{s.bio}</p> : null}
-          <div>
-            <Button asChild size="lg">
-              <Link href={`/book?staff=${s.id}`}>Book with {s.displayName}</Link>
-            </Button>
+    <article>
+      <PageBand innerClassName="max-w-5xl">
+        <header className="flex animate-fade-up flex-col gap-8 sm:flex-row sm:items-center">
+          <StylistAvatar
+            name={s.displayName}
+            photoUrl={s.photoUrl}
+            size={144}
+            className="shadow-lift ring-2 ring-accent ring-offset-4 ring-offset-background"
+          />
+          <div className="grid gap-4">
+            <Link
+              href="/stylists"
+              className="inline-flex min-h-11 items-center gap-1.5 justify-self-start text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              <ArrowLeft aria-hidden className="size-4" /> All stylists
+            </Link>
+            <h1 className="text-4xl leading-tight font-semibold tracking-tighter sm:text-5xl">
+              {s.displayName}
+            </h1>
+            <div aria-hidden className="rule-brass" />
+            <Rating value={s.ratingAvg} count={s.ratingCount} />
+            <SpecialityChips names={specialities} />
+            {s.bio ? <p className="max-w-2xl text-lg">{s.bio}</p> : null}
+            <div className="pt-2">
+              <Button asChild size="lg" className="shadow-soft">
+                <Link href={`/book?staff=${s.id}`}>Book with {s.displayName}</Link>
+              </Button>
+            </div>
           </div>
-        </div>
-      </header>
+        </header>
+      </PageBand>
 
-      <section aria-labelledby="offers" className="grid gap-4">
-        <h2 id="offers" className="text-xl font-semibold">
-          Services
-        </h2>
-        <div className="grid gap-4 sm:grid-cols-2">
-          {s.services.map((service) => (
-            <ServiceCard key={service.id} service={service} />
-          ))}
-        </div>
-      </section>
+      <div className="mx-auto grid max-w-5xl gap-16 px-4 py-16">
+        <section aria-labelledby="offers" className="grid gap-6">
+          <SectionHeading id="offers" eyebrow="Menu" title="Services" />
+          <div className="grid gap-6 sm:grid-cols-2">
+            {s.services.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                category={categoryById.get(service.categoryId)}
+              />
+            ))}
+          </div>
+        </section>
 
-      <section aria-labelledby="reviews" className="grid gap-4">
-        <h2 id="reviews" className="text-xl font-semibold">
-          Reviews
-        </h2>
-        <ReviewList reviews={reviews} timeZone={settings.data?.timezone ?? 'UTC'} />
-      </section>
+        <section aria-labelledby="reviews" className="grid gap-6">
+          <SectionHeading id="reviews" eyebrow="What clients say" title="Reviews" />
+          <ReviewList reviews={reviews} timeZone={settings.data?.timezone ?? 'UTC'} />
+        </section>
+      </div>
     </article>
   );
 }

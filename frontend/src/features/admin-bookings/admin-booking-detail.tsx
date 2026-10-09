@@ -2,6 +2,8 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingList } from '@/components/states/list-states';
 import { Button } from '@/components/ui/button';
 import { useBooking, type Booking } from '@/features/booking/api';
@@ -53,20 +55,23 @@ export function AdminBookingDetail({ id }: { id: string }) {
 
   return (
     <article className="grid gap-6">
-      <div className="grid gap-2">
-        <Link href="/admin/bookings" className="text-sm text-muted-foreground underline">
+      <div className="grid gap-3">
+        <Link
+          href="/admin/bookings"
+          className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft aria-hidden className="size-4" />
           Bookings
         </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold">{b.bookingRef}</h1>
-          <StatusBadge status={b.status} />
-        </div>
-        <p className="text-muted-foreground">
-          {formatDateTime(b.startAt, tz)} with {b.staff.displayName} · {SOURCE[b.source]}
-        </p>
+        <PageHeader
+          eyebrow="Booking"
+          title={b.bookingRef}
+          description={`${formatDateTime(b.startAt, tz)} with ${b.staff.displayName} · ${SOURCE[b.source]}`}
+          actions={<StatusBadge status={b.status} className="px-3 py-1 text-sm" />}
+        />
       </div>
       <BookingActions booking={b} timeZone={tz} />
-      <dl className="grid gap-4 rounded-lg border bg-card p-5 text-sm sm:grid-cols-2">
+      <dl className="grid gap-4 rounded-xl border bg-card p-5 text-sm shadow-soft sm:grid-cols-2">
         <div className="grid gap-0.5">
           <dt className="text-muted-foreground">Customer</dt>
           <dd className="font-medium">
@@ -136,7 +141,7 @@ function BookingHistory({
   if (history.error)
     return <ErrorState error={history.error} onRetry={() => void history.refetch()} />;
   return (
-    <ol className="grid gap-2 border-l pl-4 text-sm">
+    <ol className="grid gap-2.5 border-l-2 pl-4 text-sm">
       {history.data.statusHistory.map((h) => (
         <li key={`${h.status}-${h.at}`}>
           <span className="font-medium">{STATUS_LABEL[h.status]}</span> ·{' '}

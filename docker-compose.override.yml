@@ -33,6 +33,11 @@ services:
     image: straight-salon/frontend:dev
     environment:
       NODE_ENV: development
+    # `next dev` compiles routes in memory and outgrows the 512m runtime limit (OOM-killed after
+    # visiting most pages); the production server stays on the base file's limit.
+    deploy:
+      resources:
+        limits: { cpus: '2.0', memory: 2g }
     volumes:
       - ./frontend/src:/app/frontend/src
       - ./frontend/public:/app/frontend/public

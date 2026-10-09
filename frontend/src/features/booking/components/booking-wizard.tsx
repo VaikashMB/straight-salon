@@ -1,14 +1,12 @@
 'use client';
 
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { formatMoney } from '@/lib/format';
 import { usePublicSettings } from '@/lib/settings';
-import { formatMinutes } from '@/lib/time';
-import { qualifiedFor, useServices, useStylists, type Service, type Stylist } from '../api';
+import { qualifiedFor, useServices, useStylists, type Stylist } from '../api';
 import {
   ANY,
   effectiveStep,
@@ -20,10 +18,11 @@ import {
 } from '../params';
 import { DateTimePicker } from './date-time-picker';
 import { StepReview } from './step-review';
-import { StepServices, totals } from './step-services';
+import { StepServices } from './step-services';
 import { StepStylist } from './step-stylist';
 import { StepSuccess } from './step-success';
-import { WizardProgress } from './wizard-progress';
+import { SummaryBar } from './summary-bar';
+import { STEPS, WizardProgress } from './wizard-progress';
 
 const TITLES: Record<Step, string> = {
   services: 'Choose your services',
@@ -117,25 +116,9 @@ export function BookingWizard() {
       );
   }
 
-  return (
-    <div className="mx-auto grid max-w-5xl gap-8 px-4 py-8 pb-28 sm:py-12">
-      {step !== 'done' ? <WizardProgress current={step} /> : null}
-      <div className="flex items-center gap-3">
-        {PREVIOUS[step] ? (
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Back"
-            onClick={() => go({ step: PREVIOUS[step] }, 'push')}
-          >
-            <ArrowLeft aria-hidden />
-          </Button>
-        ) : null}
-        <h1 ref={heading} tabIndex={-1} className="text-2xl font-semibold outline-none sm:text-3xl">
-          {TITLES[step]}
-        </h1>
-      </div>
-
+  const position = STEPS.findIndex((l) => l.step === step);
+  const content = (
+    <>
       {step === 'services' ? (
         <StepServices
           selected={state.serviceIds}
@@ -163,33 +146,62 @@ export function BookingWizard() {
       ) : null}
       {review}
       {step === 'done' && state.bookingId ? <StepSuccess bookingId={state.bookingId} /> : null}
-
-      {step === 'services' && chosen.length > 0 ? (
-        <ContinueBar services={chosen} onContinue={() => go({ step: 'stylist' }, 'push')} />
-      ) : null}
-    </div>
+    </>
   );
-}
 
-// The sticky summary under the services step: count, duration, price and Continue.
-function ContinueBar({
-  services,
-  onContinue,
-}: Readonly<{ services: Service[]; onContinue: () => void }>) {
-  const sum = totals(services);
   return (
-    <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
-        <p className="text-sm" aria-live="polite">
-          <span className="font-medium">
-            {services.length} {services.length === 1 ? 'service' : 'services'}
-          </span>{' '}
-          · {formatMinutes(sum.durationMin)} · {formatMoney(sum.priceMinor, sum.currency)}
-        </p>
-        <Button size="lg" onClick={onContinue}>
-          Continue
-        </Button>
+    <div className="mx-auto grid max-w-5xl gap-8 px-4 pt-8 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:pt-12 sm:pb-16">
+      {step !== 'done' ? <WizardProgress current={step} /> : null}
+      <div className="flex items-start gap-3">
+        {PREVIOUS[step] ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back"
+            className="mt-5 size-11 shrink-0 rounded-full sm:size-10"
+            onClick={() => go({ step: PREVIOUS[step] }, 'push')}
+          >
+            <ArrowLeft aria-hidden />
+          </Button>
+        ) : null}
+        <div className="grid gap-2">
+          {position >= 0 ? (
+            <p className="text-xs font-semibold tracking-[0.18em] text-accent-ink uppercase">
+              Step {position + 1} of {STEPS.length}
+            </p>
+          ) : null}
+          <h1
+            ref={heading}
+            tabIndex={-1}
+            className="text-2xl font-semibold outline-none sm:text-3xl"
+          >
+            {TITLES[step]}
+          </h1>
+          <div aria-hidden className="rule-brass" />
+        </div>
       </div>
+
+      {/* Keyed by step so each step fades in as it appears. */}
+      <div key={step} className="grid animate-fade-up gap-8">
+        {content}
+      </div>
+
+      {/* Running total on phones; on the services step it also carries Continue. The review
+          step renders its own bar, with the Confirm button inside its form. */}
+      {step === 'services' && chosen.length > 0 ? (
+        <SummaryBar
+          services={chosen}
+          layout="sticky"
+          action={
+            <Button size="lg" className="min-w-32" onClick={() => go({ step: 'stylist' }, 'push')}>
+              Continue <ArrowRight aria-hidden />
+            </Button>
+          }
+        />
+      ) : null}
+      {(step === 'stylist' || step === 'time') && chosen.length > 0 ? (
+        <SummaryBar services={chosen} layout="mobile" />
+      ) : null}
     </div>
   );
 }

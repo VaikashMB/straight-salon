@@ -53,40 +53,42 @@ export function StaffAdmin() {
         />
       );
     return (
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Stylist</TableHead>
-            <TableHead>Services</TableHead>
-            <TableHead>Rating</TableHead>
-            <TableHead>Status</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {staff.data.map((s) => (
-            <TableRow key={s.id}>
-              <TableCell>
-                <Link
-                  href={`/admin/staff/${s.id}`}
-                  className="flex items-center gap-3 font-medium hover:underline"
-                >
-                  <StylistAvatar name={s.displayName} photoUrl={s.photoUrl} size={36} />
-                  {s.displayName}
-                </Link>
-              </TableCell>
-              <TableCell>{s.serviceIds.length}</TableCell>
-              <TableCell>
-                <Rating value={s.ratingAvg} count={s.ratingCount} />
-              </TableCell>
-              <TableCell>
-                <Badge variant={s.isActive === false ? 'secondary' : 'success'}>
-                  {s.isActive === false ? 'Inactive' : 'Active'}
-                </Badge>
-              </TableCell>
+      <div className="animate-fade-up rounded-lg shadow-soft">
+        <Table>
+          <TableHeader className="bg-muted/50 [&_th]:text-xs [&_th]:font-semibold [&_th]:tracking-wide [&_th]:uppercase">
+            <TableRow>
+              <TableHead>Stylist</TableHead>
+              <TableHead>Services</TableHead>
+              <TableHead>Rating</TableHead>
+              <TableHead>Status</TableHead>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {staff.data.map((s) => (
+              <TableRow key={s.id}>
+                <TableCell>
+                  <Link
+                    href={`/admin/staff/${s.id}`}
+                    className="flex items-center gap-3 font-medium hover:underline"
+                  >
+                    <StylistAvatar name={s.displayName} photoUrl={s.photoUrl} size={36} />
+                    {s.displayName}
+                  </Link>
+                </TableCell>
+                <TableCell>{s.serviceIds.length}</TableCell>
+                <TableCell>
+                  <Rating value={s.ratingAvg} count={s.ratingCount} />
+                </TableCell>
+                <TableCell>
+                  <Badge variant={s.isActive === false ? 'secondary' : 'success'}>
+                    {s.isActive === false ? 'Inactive' : 'Active'}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     );
   };
 

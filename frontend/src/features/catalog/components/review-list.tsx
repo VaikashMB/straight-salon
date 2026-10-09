@@ -1,4 +1,4 @@
-import { Star } from 'lucide-react';
+import { Quote, Star } from 'lucide-react';
 import { formatDate } from '@/lib/format';
 import type { Review } from '../api';
 
@@ -8,9 +8,13 @@ export function ReviewList({ reviews, timeZone }: { reviews: Review[]; timeZone:
     return <p className="text-sm text-muted-foreground">No reviews yet.</p>;
   }
   return (
-    <ul className="grid gap-4">
+    <ul className="grid gap-4 md:grid-cols-2">
       {reviews.map((review) => (
-        <li key={review.id} className="grid gap-2 rounded-lg border bg-card p-4">
+        <li
+          key={review.id}
+          className="relative grid content-start gap-3 rounded-2xl border bg-card p-5 shadow-soft"
+        >
+          <Quote aria-hidden className="absolute top-4 right-4 size-6 text-accent/40" />
           <div className="flex flex-wrap items-center justify-between gap-2">
             <span
               className="inline-flex items-center gap-1"
@@ -26,11 +30,12 @@ export function ReviewList({ reviews, timeZone }: { reviews: Review[]; timeZone:
                 />
               ))}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {review.customer.name} · {formatDate(review.createdAt, timeZone)}
+            <span className="pr-8 text-xs text-muted-foreground">
+              <span className="font-medium text-foreground">{review.customer.name}</span> ·{' '}
+              {formatDate(review.createdAt, timeZone)}
             </span>
           </div>
-          {review.comment ? <p className="text-sm">{review.comment}</p> : null}
+          {review.comment ? <p className="text-base leading-relaxed">{review.comment}</p> : null}
           <p className="text-xs text-muted-foreground">
             {review.services.map((s) => s.name).join(', ')} with {review.staff.displayName}
           </p>

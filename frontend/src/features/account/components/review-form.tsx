@@ -33,7 +33,11 @@ export function ReviewForm({ bookingId }: { bookingId: string }) {
   };
 
   return (
-    <form id="review" onSubmit={submit} className="grid gap-4 rounded-lg border bg-card p-5">
+    <form
+      id="review"
+      onSubmit={submit}
+      className="grid gap-4 rounded-xl border bg-card p-5 shadow-soft"
+    >
       <h2 className="text-lg font-semibold">How was your visit?</h2>
       <FormError>{error}</FormError>
       <fieldset className="grid gap-2">

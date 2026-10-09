@@ -1,5 +1,5 @@
 import type { Schemas } from '@/lib/api/client';
-import { dateInZone, hhmmToMinutes, minutesInZone, weekdayOf } from '@/lib/time';
+import { dateInZone, hhmmToMinutes, minutesInZone, todayInZone, weekdayOf } from '@/lib/time';
 
 // Geometry of the admin day calendar (05 §4.4): rows are slot-granularity steps across the
 // salon's opening hours; bookings, breaks and time-off become row spans per stylist column.
@@ -88,4 +88,18 @@ export function blockedRanges(
       ranges.push({ ...span, label: block.reason ? `Time off: ${block.reason}` : 'Time off' });
   }
   return ranges;
+}
+
+// Where the "now" line falls: minutes since the window opens, or null when `date` is not today
+// in the salon's timezone or the time is outside the window.
+export function nowOffset(
+  window: DayWindow,
+  date: string,
+  timeZone: string,
+  now: Date = new Date(),
+): number | null {
+  if (todayInZone(timeZone, now) !== date) return null;
+  const minutes = minutesInZone(now, timeZone);
+  if (minutes < window.open || minutes > window.close) return null;
+  return minutes - window.open;
 }

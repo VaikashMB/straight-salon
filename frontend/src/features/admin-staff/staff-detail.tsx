@@ -1,5 +1,6 @@
 'use client';
 
+import { ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
@@ -8,6 +9,7 @@ import { CheckboxField } from '@/components/form/checkbox-field';
 import { FormError } from '@/components/form/form-error';
 import { TextField } from '@/components/form/text-field';
 import { TextareaField } from '@/components/form/textarea-field';
+import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingList } from '@/components/states/list-states';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -39,16 +41,26 @@ export function StaffDetail({ id }: { id: string }) {
   const s = profile.data;
   return (
     <section className="grid gap-6">
-      <div className="grid gap-2">
-        <Link href="/admin/staff" className="text-sm text-muted-foreground underline">
+      <div className="grid gap-3">
+        <Link
+          href="/admin/staff"
+          className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft aria-hidden className="size-4" />
           Stylists
         </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold">{s.displayName}</h1>
-          <Badge variant={s.isActive === false ? 'secondary' : 'success'}>
-            {s.isActive === false ? 'Inactive' : 'Active'}
-          </Badge>
-        </div>
+        <PageHeader
+          eyebrow="Stylist"
+          title={s.displayName}
+          actions={
+            <Badge
+              variant={s.isActive === false ? 'secondary' : 'success'}
+              className="rounded-full px-3 py-1 text-sm"
+            >
+              {s.isActive === false ? 'Inactive' : 'Active'}
+            </Badge>
+          }
+        />
       </div>
       <Tabs defaultValue="profile">
         <TabsList>

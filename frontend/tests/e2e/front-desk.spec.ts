@@ -19,8 +19,8 @@ async function openReport(page: Page, date: string): Promise<void> {
   await page.goto('/admin/reports');
   await expect(page.getByRole('heading', { name: 'Reports' })).toBeVisible();
   // To first: From may not be after To, and To defaults to today.
-  await page.getByLabel('To').fill(date);
-  await page.getByLabel('From').fill(date);
+  await page.getByLabel('To', { exact: true }).fill(date);
+  await page.getByLabel('From', { exact: true }).fill(date);
 }
 
 async function revenue(page: Page): Promise<number> {

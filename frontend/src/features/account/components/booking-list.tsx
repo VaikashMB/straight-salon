@@ -1,7 +1,9 @@
 'use client';
 
+import { Plus } from 'lucide-react';
 import Link from 'next/link';
 import { useState } from 'react';
+import { PageHeader } from '@/components/page-header';
 import { Pagination } from '@/components/pagination';
 import { EmptyState, ErrorState, LoadingList } from '@/components/states/list-states';
 import { Button } from '@/components/ui/button';
@@ -9,14 +11,19 @@ import { usePublicSettings } from '@/lib/settings';
 import { useMyBookings, type Scope } from '../api';
 import { AccountBookingCard } from './account-booking-card';
 
-const COPY: Record<Scope, { title: string; empty: string; emptyHint: string }> = {
+const COPY: Record<
+  Scope,
+  { title: string; description: string; empty: string; emptyHint: string }
+> = {
   upcoming: {
     title: 'Upcoming bookings',
+    description: 'Your next visits, soonest first.',
     empty: 'No upcoming bookings',
     emptyHint: 'Book your next visit in under a minute.',
   },
   past: {
     title: 'Booking history',
+    description: 'Past visits, latest first.',
     empty: 'No past bookings yet',
     emptyHint: 'Your completed and cancelled bookings will show up here.',
   },
@@ -36,6 +43,7 @@ export function BookingList({ scope }: { scope: Scope }) {
     if (bookings.data.data.length === 0)
       return (
         <EmptyState
+          illustration="calendar"
           title={copy.empty}
           description={copy.emptyHint}
           action={
@@ -48,8 +56,13 @@ export function BookingList({ scope }: { scope: Scope }) {
     return (
       <>
         <div className="grid gap-3">
-          {bookings.data.data.map((booking) => (
-            <AccountBookingCard key={booking.id} booking={booking} timeZone={settings.timezone} />
+          {bookings.data.data.map((booking, i) => (
+            <AccountBookingCard
+              key={booking.id}
+              booking={booking}
+              timeZone={settings.timezone}
+              index={i}
+            />
           ))}
         </div>
         <Pagination
@@ -63,12 +76,19 @@ export function BookingList({ scope }: { scope: Scope }) {
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-3xl font-semibold">{copy.title}</h1>
-        <Button asChild>
-          <Link href="/book">Book now</Link>
-        </Button>
-      </div>
+      <PageHeader
+        eyebrow="My account"
+        title={copy.title}
+        description={copy.description}
+        actions={
+          <Button asChild>
+            <Link href="/book">
+              <Plus aria-hidden />
+              Book now
+            </Link>
+          </Button>
+        }
+      />
       {renderBookings()}
     </section>
   );

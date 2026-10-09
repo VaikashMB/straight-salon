@@ -18,26 +18,22 @@ import { Input } from '@/components/ui/input';
 import { useBookingSearch, useStylists, type Booking } from '@/features/booking/api';
 import { BookingActions } from '@/features/booking/components/booking-actions';
 import { StatusBadge } from '@/features/booking/components/status-badge';
-import { STATUS_LABEL, type BookingStatus } from '@/features/booking/status';
+import { STATUS_EDGE, STATUS_TINT, STATUS_ICON, STATUS_LABEL } from '@/features/booking/status';
 import { unwrap } from '@/lib/api/client';
 import { useAuth } from '@/lib/auth/AuthProvider';
 import { formatCalendarDate, formatMoney, formatTime } from '@/lib/format';
 import { usePublicSettings, type PublicSettings } from '@/lib/settings';
 import { addDays, minutesToHhmm, todayInZone, weekdayOf } from '@/lib/time';
 import { cn } from '@/lib/utils';
-import { blockedRanges, minutesOnDate, rowCount, rowSpan, salonWindow } from './layout';
+import { blockedRanges, minutesOnDate, nowOffset, rowCount, rowSpan, salonWindow } from './layout';
+import { useNow } from './use-now';
 
-const BLOCK_STYLE: Record<BookingStatus, string> = {
-  BOOKED: 'border-sky-600/40 bg-sky-600/15',
-  CHECKED_IN: 'border-accent/60 bg-accent/25',
-  IN_SERVICE: 'border-warning/50 bg-warning/20',
-  COMPLETED: 'border-success/40 bg-success/15',
-  CANCELLED: 'border-border bg-muted',
-  NO_SHOW: 'border-destructive/40 bg-destructive/15',
-};
-
+// Soft diagonal hatching for breaks, time off and hours outside the stylist's day.
 const HATCH =
-  'bg-[repeating-linear-gradient(135deg,var(--muted)_0,var(--muted)_6px,transparent_6px,transparent_12px)]';
+  'repeating-linear-gradient(135deg, color-mix(in oklab, var(--muted-foreground) 14%, transparent) 0 1.5px, transparent 1.5px 9px)';
+
+const ROW_REM = 1.75;
+const HEADER_REM = 2.5;
 
 // Day timeline by stylist (05 §4.4): columns are stylists, rows slot-sized steps; bookings
 // coloured by status (with their status in text), breaks and time-off hatched. Clicking a
@@ -54,6 +50,7 @@ function Calendar({ settings }: { settings: PublicSettings }) {
   const step = settings.slotGranularityMin;
   const [date, setDate] = useState(() => todayInZone(timeZone));
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const now = useNow();
   const stylists = useStylists();
   const bookings = useBookingSearch({ date, pageSize: 100, sort: 'startAt' });
   const staff = stylists.data ?? [];
@@ -145,30 +142,34 @@ function Calendar({ settings }: { settings: PublicSettings }) {
     return (
       <section className="grid gap-6">
         {header}
-        <EmptyState title="The salon is closed on this day" />
+        <EmptyState title="The salon is closed on this day" illustration="calendar" />
       </section>
     );
   }
 
   const rows = rowCount(window, step);
   const columns = `4rem repeat(${staff.length}, minmax(9rem, 1fr))`;
+  const nowAt = staff.length > 0 ? nowOffset(window, date, timeZone, now) : null;
 
   return (
     <section className="grid gap-6">
       {header}
-      <div className="overflow-x-auto rounded-lg border bg-card">
+      <div className="animate-fade-up overflow-x-auto rounded-2xl border bg-card shadow-soft">
         <div
           className="relative grid min-w-fit"
           style={{
             gridTemplateColumns: columns,
-            gridTemplateRows: `2.5rem repeat(${rows}, 1.75rem)`,
+            gridTemplateRows: `${HEADER_REM}rem repeat(${rows}, ${ROW_REM}rem)`,
           }}
         >
-          <div className="sticky left-0 z-20 border-b bg-card" />
+          <div
+            className="sticky left-0 z-20 border-b bg-card"
+            style={{ gridColumn: 1, gridRow: 1 }}
+          />
           {staff.map((s, i) => (
             <div
               key={s.id}
-              className="border-b border-l px-2 py-2 text-sm font-medium"
+              className="truncate border-b border-l bg-muted/40 px-3 py-2.5 text-sm font-medium"
               style={{ gridColumn: i + 2, gridRow: 1 }}
             >
               {s.displayName}
@@ -206,11 +207,12 @@ function Calendar({ settings }: { settings: PublicSettings }) {
                   <div
                     key={`b-${s.id}-${range.start}-${range.label}`}
                     title={`${s.displayName}: ${range.label} ${minutesToHhmm(range.start)}–${minutesToHhmm(Math.min(range.end, 24 * 60 - 1))}`}
-                    className={cn(
-                      'pointer-events-none m-0.5 rounded-sm px-1 text-[0.65rem] text-muted-foreground',
-                      HATCH,
-                    )}
-                    style={{ gridColumn: i + 2, gridRow: `${span.rowStart} / ${span.rowEnd}` }}
+                    className="pointer-events-none m-0.5 rounded-md bg-muted/40 px-1.5 py-0.5 text-[0.65rem] text-muted-foreground"
+                    style={{
+                      gridColumn: i + 2,
+                      gridRow: `${span.rowStart} / ${span.rowEnd}`,
+                      backgroundImage: HATCH,
+                    }}
                   >
                     {range.label}
                   </div>
@@ -223,6 +225,7 @@ function Calendar({ settings }: { settings: PublicSettings }) {
             const minutes = minutesOnDate(b.startAt, b.endAt, date, timeZone);
             const span = minutes && rowSpan(minutes.start, minutes.end, window, step);
             if (column < 0 || !span) return null;
+            const Icon = STATUS_ICON[b.status];
             return (
               <button
                 key={b.id}
@@ -230,8 +233,9 @@ function Calendar({ settings }: { settings: PublicSettings }) {
                 onClick={() => setSelectedId(b.id)}
                 aria-label={`${formatTime(b.startAt, timeZone)}–${formatTime(b.endAt, timeZone)} ${b.customer.name}, ${b.services.map((s) => s.name).join(', ')}, ${STATUS_LABEL[b.status]}`}
                 className={cn(
-                  'relative z-10 m-0.5 grid content-start overflow-hidden rounded-md border px-2 py-1 text-left text-xs outline-none hover:brightness-95 focus-visible:ring-[3px] focus-visible:ring-ring/50',
-                  BLOCK_STYLE[b.status],
+                  'relative z-10 m-0.5 grid content-start gap-0.5 overflow-hidden rounded-lg border border-l-4 px-2 py-1 text-left text-xs shadow-xs transition-[box-shadow,translate] outline-none hover:z-20 hover:-translate-y-px hover:shadow-lift focus-visible:z-20 focus-visible:ring-[3px] focus-visible:ring-ring/60',
+                  STATUS_TINT[b.status],
+                  STATUS_EDGE[b.status],
                 )}
                 style={{ gridColumn: column + 2, gridRow: `${span.rowStart} / ${span.rowEnd}` }}
               >
@@ -239,10 +243,23 @@ function Calendar({ settings }: { settings: PublicSettings }) {
                   {formatTime(b.startAt, timeZone)} {b.customer.name}
                 </span>
                 <span className="truncate">{b.services.map((s) => s.name).join(', ')}</span>
-                <span className="text-[0.65rem] uppercase">{STATUS_LABEL[b.status]}</span>
+                <span className="flex items-center gap-1 text-[0.65rem] font-medium tracking-wide text-muted-foreground uppercase">
+                  <Icon aria-hidden className="size-3 shrink-0" />
+                  {STATUS_LABEL[b.status]}
+                </span>
               </button>
             );
           })}
+          {nowAt !== null ? (
+            <div
+              aria-hidden
+              data-testid="now-line"
+              className="pointer-events-none absolute right-0 left-16 z-30 border-t-2 border-destructive"
+              style={{ top: `calc(${HEADER_REM}rem + ${(nowAt / step) * ROW_REM}rem)` }}
+            >
+              <span className="absolute -top-[5px] -left-[5px] size-2 rounded-full bg-destructive" />
+            </div>
+          ) : null}
         </div>
       </div>
       {staff.length === 0 ? <EmptyState title="No active stylists" /> : null}

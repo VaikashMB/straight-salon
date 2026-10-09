@@ -1,15 +1,19 @@
 'use client';
 
 import Link from 'next/link';
+import { ChevronLeft } from 'lucide-react';
+import { PageHeader } from '@/components/page-header';
 import { ErrorState, LoadingList } from '@/components/states/list-states';
 import { Button } from '@/components/ui/button';
 import { useBooking } from '@/features/booking/api';
 import { ChangeActions } from '@/features/booking/components/change-actions';
 import { StatusBadge } from '@/features/booking/components/status-badge';
+import { STATUS_EDGE } from '@/features/booking/status';
 import { ApiError } from '@/lib/errors';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { usePublicSettings } from '@/lib/settings';
 import { formatMinutes } from '@/lib/time';
+import { cn } from '@/lib/utils';
 import { ReviewForm } from './review-form';
 
 // A customer's booking (API-053): details, reschedule, cancel, review (05 §4.2).
@@ -36,18 +40,28 @@ export function CustomerBookingDetail({ id }: { id: string }) {
   const tz = settings.timezone;
   return (
     <article className="grid gap-6">
-      <div className="grid gap-2">
-        <Link href="/account" className="text-sm text-muted-foreground underline">
+      <div className="grid gap-3">
+        <Link
+          href="/account"
+          className="inline-flex w-fit items-center gap-1 rounded-sm text-sm text-muted-foreground transition-colors hover:text-foreground"
+        >
+          <ChevronLeft aria-hidden className="size-4" />
           My bookings
         </Link>
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="text-3xl font-semibold">{formatDateTime(b.startAt, tz)}</h1>
-          <StatusBadge status={b.status} />
-        </div>
-        <p className="text-muted-foreground">Reference {b.bookingRef}</p>
+        <PageHeader
+          eyebrow="Booking"
+          title={formatDateTime(b.startAt, tz)}
+          description={`Reference ${b.bookingRef}`}
+          actions={<StatusBadge status={b.status} className="px-3 py-1 text-sm" />}
+        />
       </div>
 
-      <dl className="grid gap-4 rounded-lg border bg-card p-5 text-sm sm:grid-cols-2">
+      <dl
+        className={cn(
+          'grid animate-fade-up gap-4 rounded-2xl border border-l-4 bg-card p-5 text-sm shadow-soft [animation-delay:80ms] sm:grid-cols-2',
+          STATUS_EDGE[b.status],
+        )}
+      >
         <div className="grid gap-0.5">
           <dt className="text-muted-foreground">Stylist</dt>
           <dd className="font-medium">{b.staff.displayName}</dd>

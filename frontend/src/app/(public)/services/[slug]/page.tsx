@@ -1,6 +1,5 @@
-import { Clock } from 'lucide-react';
+import { ArrowLeft, Clock } from 'lucide-react';
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { connection } from 'next/server';
@@ -8,7 +7,11 @@ import { Rating } from '@/components/rating';
 import { Button } from '@/components/ui/button';
 import { loadReviews } from '@/features/catalog/api';
 import { CatalogueUnavailable } from '@/features/catalog/components/catalogue-unavailable';
+import { PageBand } from '@/features/catalog/components/page-band';
+import { PricePill } from '@/features/catalog/components/price-pill';
 import { ReviewList } from '@/features/catalog/components/review-list';
+import { SectionHeading } from '@/features/catalog/components/section-heading';
+import { ServiceImage } from '@/features/catalog/components/service-image';
 import { StylistAvatar } from '@/features/catalog/components/stylist-avatar';
 import { loadPublic } from '@/lib/api/server';
 import { formatMoney } from '@/lib/format';
@@ -36,79 +39,98 @@ export default async function ServicePage({ params }: Props) {
     if (service.notFound) notFound();
     return <CatalogueUnavailable />;
   }
-  const settings = await loadPublic((api) => api.GET('/api/v1/settings/public'));
   const s = service.data;
-  const reviews = await loadReviews({ serviceId: s.id });
+  const [settings, categories, reviews] = await Promise.all([
+    loadPublic((api) => api.GET('/api/v1/settings/public')),
+    loadPublic((api) => api.GET('/api/v1/categories')),
+    loadReviews({ serviceId: s.id }),
+  ]);
   const timeZone = settings.data?.timezone ?? 'UTC';
+  const category = categories.data?.find((c) => c.id === s.categoryId);
 
   return (
-    <article className="mx-auto grid max-w-4xl gap-10 px-4 py-12">
-      <header className="grid gap-6 sm:grid-cols-[1fr_auto] sm:items-start">
-        <div className="grid gap-3">
-          <Link href="/services" className="text-sm text-muted-foreground underline">
-            All services
-          </Link>
-          <h1 className="text-3xl font-semibold sm:text-4xl">{s.name}</h1>
-          <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
-            <span className="text-xl font-medium text-foreground">
-              {formatMoney(s.price.amountMinor, s.price.currency)}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Clock aria-hidden className="size-4" /> {formatMinutes(s.durationMin)}
-            </span>
-            <Rating value={s.ratingAvg} count={s.ratingCount} />
+    <article>
+      <PageBand innerClassName="max-w-5xl">
+        <header className="grid animate-fade-up gap-8 md:grid-cols-[1fr_20rem] md:items-center">
+          <div className="grid gap-4">
+            <Link
+              href="/services"
+              className="inline-flex min-h-11 items-center gap-1.5 justify-self-start text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground"
+            >
+              <ArrowLeft aria-hidden className="size-4" /> All services
+            </Link>
+            {category ? (
+              <p className="text-xs font-semibold tracking-[0.18em] text-accent-ink uppercase">
+                {category.name}
+              </p>
+            ) : null}
+            <h1 className="text-4xl leading-tight font-semibold tracking-tighter sm:text-5xl">
+              {s.name}
+            </h1>
+            <div aria-hidden className="rule-brass" />
+            <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
+              <PricePill size="lg">{formatMoney(s.price.amountMinor, s.price.currency)}</PricePill>
+              <span className="inline-flex items-center gap-1">
+                <Clock aria-hidden className="size-4" /> {formatMinutes(s.durationMin)}
+              </span>
+              <Rating value={s.ratingAvg} count={s.ratingCount} />
+            </div>
+            {s.description ? <p className="max-w-2xl text-lg">{s.description}</p> : null}
+            <div className="pt-2">
+              <Button asChild size="lg" className="shadow-soft">
+                <Link href={`/book?services=${s.id}`}>Book {s.name}</Link>
+              </Button>
+            </div>
           </div>
-          {s.description ? <p className="max-w-2xl">{s.description}</p> : null}
-          <div>
-            <Button asChild size="lg">
-              <Link href={`/book?services=${s.id}`}>Book {s.name}</Link>
-            </Button>
-          </div>
-        </div>
-        {s.imageUrl ? (
-          <Image
-            src={s.imageUrl}
-            alt=""
-            width={280}
-            height={280}
-            unoptimized
-            className="rounded-xl object-cover"
+          <ServiceImage
+            imageUrl={s.imageUrl}
+            category={category}
+            sizes="(min-width: 768px) 20rem, 100vw"
+            className="aspect-[4/3] rounded-2xl border shadow-lift"
           />
-        ) : null}
-      </header>
+        </header>
+      </PageBand>
 
-      <section aria-labelledby="who" className="grid gap-4">
-        <h2 id="who" className="text-xl font-semibold">
-          Who offers it
-        </h2>
-        {s.stylists.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No stylist offers this service right now.</p>
-        ) : (
-          <ul className="grid gap-3 sm:grid-cols-2">
-            {s.stylists.map((stylist) => (
-              <li
-                key={stylist.id}
-                className="flex items-center gap-3 rounded-lg border bg-card p-3"
-              >
-                <StylistAvatar name={stylist.displayName} photoUrl={stylist.photoUrl} size={48} />
-                <div className="grid gap-0.5">
-                  <Link href={`/stylists/${stylist.id}`} className="font-medium hover:underline">
-                    {stylist.displayName}
-                  </Link>
-                  <Rating value={stylist.ratingAvg} count={stylist.ratingCount} />
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <div className="mx-auto grid max-w-5xl gap-16 px-4 py-16">
+        <section aria-labelledby="who" className="grid gap-6">
+          <SectionHeading id="who" eyebrow="Stylists" title="Who offers it" />
+          {s.stylists.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No stylist offers this service right now.
+            </p>
+          ) : (
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {s.stylists.map((stylist) => (
+                <li
+                  key={stylist.id}
+                  className="flex items-center gap-4 rounded-2xl border bg-card p-4 shadow-soft transition duration-300 hover:-translate-y-0.5 hover:border-accent/60 hover:shadow-lift"
+                >
+                  <StylistAvatar
+                    name={stylist.displayName}
+                    photoUrl={stylist.photoUrl}
+                    size={56}
+                    className="ring-2 ring-accent ring-offset-2 ring-offset-card"
+                  />
+                  <div className="grid gap-0.5">
+                    <Link
+                      href={`/stylists/${stylist.id}`}
+                      className="font-heading text-lg font-semibold decoration-accent underline-offset-4 hover:underline"
+                    >
+                      {stylist.displayName}
+                    </Link>
+                    <Rating value={stylist.ratingAvg} count={stylist.ratingCount} />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
 
-      <section aria-labelledby="reviews" className="grid gap-4">
-        <h2 id="reviews" className="text-xl font-semibold">
-          Reviews
-        </h2>
-        <ReviewList reviews={reviews} timeZone={timeZone} />
-      </section>
+        <section aria-labelledby="reviews" className="grid gap-6">
+          <SectionHeading id="reviews" eyebrow="What clients say" title="Reviews" />
+          <ReviewList reviews={reviews} timeZone={timeZone} />
+        </section>
+      </div>
     </article>
   );
 }

@@ -16,8 +16,8 @@ export function Rating({
   }
   return (
     <span className={cn('inline-flex items-center gap-1 text-sm', className)}>
-      <Star aria-hidden className="size-4 fill-accent text-accent" />
-      <span>
+      <Star aria-hidden className="size-4 shrink-0 fill-accent text-accent" />
+      <span className="whitespace-nowrap">
         {value.toFixed(1)}
         <span className="text-muted-foreground">
           {' '}

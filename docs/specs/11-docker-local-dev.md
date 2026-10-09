@@ -35,7 +35,7 @@ Image tags are pinned to a major/minor line (never `latest`), so `docker compose
 ## 3. Development mode
 `docker-compose.override.yml` (auto-loaded) for hot reload:
 - backend/worker: target `dev` stage (image tag `straight-salon/backend:dev`), mount `./backend/src`, command `npx tsx watch src/server.ts` / `src/worker.ts`. Node inspector on 127.0.0.1:9229 for backend.
-- frontend: target `dev`, mount `./frontend/src` and `./frontend/public`, `next dev --hostname 0.0.0.0`.
+- frontend: target `dev`, mount `./frontend/src` and `./frontend/public`, `next dev --hostname 0.0.0.0`. Memory limit 2 GB (decision 2026-10-09): `next dev` compiles routes in memory and was OOM-killed at the 512 MB runtime limit after visiting most pages.
 - Production-style images only: `docker compose -f docker-compose.yml up --build`.
 Alternative: run only infra in Docker (`docker compose up mongo mongo-init redis mailpit`) and run apps on the host with `npm run dev`. Both must work.
 Host mode needs `directConnection=true` in `MONGO_URI` (as in `.env.example`). The replica-set member is advertised as `mongo:27017`, a name the host cannot resolve; without it the driver would try to reconnect to that name and fail. Transactions and change streams still work on a single-node replica set with a direct connection.

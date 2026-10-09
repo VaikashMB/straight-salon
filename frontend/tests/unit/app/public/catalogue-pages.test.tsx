@@ -145,8 +145,71 @@ describe('public catalogue pages (05 §3, §6)', () => {
     );
     render(await StylistsPage());
     expect(screen.getByText('Our team is being updated')).toBeInTheDocument();
+    render(await HomePage());
+    expect(screen.queryByRole('region', { name: 'Meet the team' })).not.toBeInTheDocument();
     render(await StylistPage(params({ id: ids.ravi })));
     render(await ServicePage(params({ slug: 'haircut' })));
     expect(screen.getAllByRole('heading', { name: "We'll be right back" })).toHaveLength(2);
+  });
+
+  it('home: a three-step "How it works" strip and stylists with speciality chips', async () => {
+    useBackend();
+    render(await HomePage());
+    const how = screen.getByRole('region', { name: 'Booked in three steps' });
+    expect(
+      within(how)
+        .getAllByRole('heading', { level: 3 })
+        .map((h) => h.textContent),
+    ).toEqual(['Step 1: Pick your services', 'Step 2: Choose a stylist', 'Step 3: Pick a time']);
+    const team = screen.getByRole('region', { name: 'Meet the team' });
+    const [ravi] = within(team).getAllByRole('list', { name: 'Specialities' });
+    expect(
+      within(ravi!)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Hair', 'Beard & Grooming']);
+  });
+
+  it('service detail: the uploaded image, or the category placeholder without one', async () => {
+    useBackend();
+    const detail = (imageUrl?: string) =>
+      HttpResponse.json({ ...makeService(imageUrl ? { imageUrl } : {}), stylists: [] });
+    server.use(http.get(backend('/services/:slug'), () => detail('http://x.test/a.webp')));
+    const withImage = render(await ServicePage(params({ slug: 'haircut' })));
+    expect(withImage.container.querySelector('img')).toHaveAttribute('src', 'http://x.test/a.webp');
+    expect(screen.getByText('Hair', { selector: 'p' })).toBeInTheDocument();
+    withImage.unmount();
+
+    server.use(http.get(backend('/services/:slug'), () => detail()));
+    const { container } = render(await ServicePage(params({ slug: 'haircut' })));
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('[data-slot="service-placeholder"]')).toBeInTheDocument();
+    expect(screen.getByText('No stylist offers this service right now.')).toBeInTheDocument();
+  });
+
+  it('stylist profile: speciality chips from their services, without categories if those fail', async () => {
+    useBackend();
+    server.use(
+      http.get(backend('/staff/:id'), () =>
+        HttpResponse.json({
+          ...makeStylist({ photoUrl: 'http://x.test/r.webp' }),
+          services: services.slice(0, 2),
+        }),
+      ),
+    );
+    const first = render(await StylistPage(params({ id: ids.ravi })));
+    const chips = screen.getByRole('list', { name: 'Specialities' });
+    expect(
+      within(chips)
+        .getAllByRole('listitem')
+        .map((li) => li.textContent),
+    ).toEqual(['Hair', 'Beard & Grooming']);
+    expect(first.container.querySelector('img')).toHaveAttribute('src', 'http://x.test/r.webp');
+    first.unmount();
+
+    server.use(http.get(backend('/categories'), () => problem(500, 'INTERNAL_ERROR')));
+    render(await StylistPage(params({ id: ids.ravi })));
+    expect(screen.getByRole('heading', { level: 1, name: 'Ravi' })).toBeInTheDocument();
+    expect(screen.queryByRole('list', { name: 'Specialities' })).not.toBeInTheDocument();
   });
 });

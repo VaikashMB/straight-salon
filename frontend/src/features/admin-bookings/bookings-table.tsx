@@ -91,6 +91,7 @@ function Bookings({ timeZone }: { timeZone: string }) {
     if (bookings.data.data.length === 0)
       return (
         <EmptyState
+          illustration="search"
           title="No bookings match"
           description="Try another date or clear the filters."
           action={
@@ -102,26 +103,28 @@ function Bookings({ timeZone }: { timeZone: string }) {
       );
     return (
       <>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <WhenHeader sort={sort} onSortChange={setSort} />
-              <TableHead>Customer</TableHead>
-              <TableHead>Stylist</TableHead>
-              <TableHead>Services</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Payment</TableHead>
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {bookings.data.data.map((b) => (
-              <BookingRow key={b.id} booking={b} timeZone={timeZone} onPay={setPaying} />
-            ))}
-          </TableBody>
-        </Table>
+        <div className="animate-fade-up rounded-lg shadow-soft">
+          <Table>
+            <TableHeader className="bg-muted/50 [&_th]:text-xs [&_th]:font-semibold [&_th]:tracking-wide [&_th]:uppercase">
+              <TableRow>
+                <WhenHeader sort={sort} onSortChange={setSort} />
+                <TableHead>Customer</TableHead>
+                <TableHead>Stylist</TableHead>
+                <TableHead>Services</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Payment</TableHead>
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {bookings.data.data.map((b) => (
+                <BookingRow key={b.id} booking={b} timeZone={timeZone} onPay={setPaying} />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
         <Pagination
           page={bookings.data.meta.page}
           totalPages={bookings.data.meta.totalPages}
@@ -199,7 +202,7 @@ function WhenHeader({
     <TableHead aria-sort={ascending ? 'ascending' : 'descending'}>
       <button
         type="button"
-        className="inline-flex items-center gap-1"
+        className="inline-flex items-center gap-1 rounded-sm uppercase outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
         onClick={() => onSortChange(ascending ? '-startAt' : 'startAt')}
       >
         When

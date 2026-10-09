@@ -25,4 +25,10 @@ describe('area navigation by role (05 §3, §4.4)', () => {
     expect(activeHref(items, '/account/history/2026')).toBe('/account/history');
     expect(activeHref(items, '/elsewhere')).toBeNull();
   });
+
+  it('every area item has an icon for the sidebar', () => {
+    for (const items of Object.values(AREA_NAV)) {
+      for (const item of items) expect(item.icon).toBeTruthy();
+    }
+  });
 });

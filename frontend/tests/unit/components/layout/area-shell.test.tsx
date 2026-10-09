@@ -9,6 +9,7 @@ import AccountLayout from '@/app/(customer)/account/layout';
 import AccountPage from '@/app/(customer)/account/page';
 import StaffLayout from '@/app/(staff)/staff/layout';
 import StaffPage from '@/app/(staff)/staff/page';
+import { initials } from '@/components/layout/area-shell';
 import { api, makeUser, problem, server, signedInAs } from '../../helpers/api';
 import { router, setLocation } from '../../helpers/next-navigation';
 import { renderWithProviders } from '../../helpers/render';
@@ -39,7 +40,39 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
     );
     expect(within(nav).getByText('Bookings')).toBeInTheDocument();
     expect(within(nav).queryByText('Reports')).not.toBeInTheDocument();
-    expect(screen.getByText('Front Desk · Reception')).toBeInTheDocument();
+    // Profile block: name and role label on separate lines (sidebar layout, 2026-10-09).
+    expect(screen.getByText('Front Desk')).toBeInTheDocument();
+    expect(screen.getByText('Reception')).toBeInTheDocument();
+    expect(screen.getByText('FD')).toHaveAttribute('aria-hidden');
+  });
+
+  it('marks the current item with aria-current and a brass bar; every item has an icon', async () => {
+    signedInAs(makeUser({ name: 'Front Desk', role: 'RECEPTIONIST' }));
+    server.use(http.get(api('/reports/dashboard'), () => problem(500, 'INTERNAL_ERROR')));
+    setLocation('/admin/bookings/123');
+    renderWithProviders(admin);
+    const nav = await screen.findByRole('navigation', { name: 'Section' });
+    expect(screen.getAllByRole('navigation', { name: 'Section' })).toHaveLength(1);
+    const links = within(nav).getAllByRole('link');
+    expect(links).toHaveLength(4);
+    for (const link of links) {
+      expect(link.querySelector('svg[aria-hidden="true"]')).not.toBeNull();
+    }
+    const current = within(nav).getByRole('link', { name: 'Bookings' });
+    expect(current).toHaveAttribute('aria-current', 'page');
+    expect(current.querySelector('span[aria-hidden]')).not.toBeNull();
+    const other = within(nav).getByRole('link', { name: 'Dashboard' });
+    expect(other).not.toHaveAttribute('aria-current');
+    expect(other.querySelector('span[aria-hidden]')).toBeNull();
+    expect(screen.getByRole('link', { name: 'Skip to content' })).toHaveAttribute('href', '#main');
+    expect(screen.getByRole('button', { name: /theme/i })).toBeInTheDocument();
+  });
+
+  it('initials for the avatar', () => {
+    expect(initials('Ananya Rao')).toBe('AR');
+    expect(initials('  ravi  ')).toBe('R');
+    expect(initials('Mary Jane Watson')).toBe('MW');
+    expect(initials('')).toBe('?');
   });
 
   it('admin sees the ADMIN-only items as links', async () => {
