@@ -222,7 +222,10 @@ jobs:
       - name: Start the stack with seed data (12 §4)
         run: |
           npm run env:init
-          docker compose -f docker-compose.yml up -d --no-build --wait
+          # --wait fails on a service without a healthcheck, and the worker has none (no HTTP
+          # server), so wait for the others (their dependencies included), then start the worker.
+          docker compose -f docker-compose.yml up -d --no-build --wait backend frontend mailpit
+          docker compose -f docker-compose.yml up -d --no-build worker
           npm run db:seed
       - name: Cache Playwright browsers
         uses: actions/cache@v6
