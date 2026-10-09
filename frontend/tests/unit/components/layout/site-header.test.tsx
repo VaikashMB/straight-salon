@@ -43,6 +43,10 @@ describe('public layout and header', () => {
     renderWithProviders(home);
     expect(await screen.findByRole('link', { name: label })).toHaveAttribute('href', href);
     expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    // Who is signed in: announced in full, first name shown next to the avatar.
+    expect(screen.getByText('Signed in as Ananya Rao')).toBeInTheDocument();
+    expect(screen.getByText('Ananya')).toBeInTheDocument();
+    expect(screen.getByText('AR')).toHaveAttribute('aria-hidden');
   });
 
   it('marks the current section with aria-current, including its sub-pages', () => {
@@ -129,5 +133,8 @@ describe('mobile menu', () => {
       '/account',
     );
     expect(within(panel).getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
+    expect(within(panel).getByText('Signed in as')).toBeInTheDocument();
+    expect(within(panel).getByText('Ananya Rao')).toBeInTheDocument();
+    expect(within(panel).getByText(/· Customer/)).toBeInTheDocument();
   });
 });

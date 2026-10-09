@@ -1,11 +1,14 @@
 'use client';
 
+import { House } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import type { ReactNode } from 'react';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { buttonVariants } from '@/components/ui/button';
+import { UserAvatar } from '@/components/user-avatar';
 import { useAuth } from '@/lib/auth/AuthProvider';
-import { landingFor, type Area, type Role } from '@/lib/auth/roles';
+import { ROLE_LABEL, type Area } from '@/lib/auth/roles';
 import { cn } from '@/lib/utils';
 import { Brand } from './brand';
 import { activeHref, navFor } from './nav';
@@ -24,26 +27,11 @@ export function AreaShell({ area, children }: { area: Area; children: ReactNode 
   );
 }
 
-const ROLE_LABEL: Record<Role, string> = {
-  CUSTOMER: 'Customer',
-  STAFF: 'Stylist',
-  RECEPTIONIST: 'Reception',
-  ADMIN: 'Admin',
-};
-
 const AREA_TITLE: Record<Area, string> = {
   account: 'My account',
   staff: 'Staff',
   admin: 'Salon admin',
 };
-
-// Up to two initials for the avatar: first and last word of the name.
-export function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  const first = words[0]?.[0] ?? '';
-  const last = words.length > 1 ? (words.at(-1)?.[0] ?? '') : '';
-  return (first + last).toUpperCase() || '?';
-}
 
 // Controls on the always-dark sidebar: light text, a subtle hover and a brass focus ring.
 const SIDEBAR_CONTROL =
@@ -65,20 +53,29 @@ function AreaFrame({ area, children }: { area: Area; children: ReactNode }) {
       </a>
       <aside className="flex flex-wrap items-center gap-x-2 border-b border-sidebar-border bg-sidebar px-4 text-sidebar-foreground lg:fixed lg:inset-y-0 lg:left-0 lg:z-40 lg:w-64 lg:flex-col lg:flex-nowrap lg:items-stretch lg:gap-0 lg:border-r lg:border-b-0 lg:px-0">
         <div className="flex h-14 min-w-0 flex-1 flex-col justify-center lg:h-auto lg:flex-none lg:px-6 lg:pt-7 lg:pb-5 [&_a]:rounded-sm [&_a]:outline-none [&_a]:focus-visible:ring-2 [&_a]:focus-visible:ring-sidebar-accent">
-          <Brand href={landingFor(user.role)} />
+          <Brand />
           <p className="hidden text-[0.7rem] font-semibold tracking-[0.18em] text-sidebar-muted uppercase lg:block">
             {AREA_TITLE[area]}
           </p>
         </div>
 
+        {/* Back to the public site (home, services, stylists); the brand links there too. Right
+            under the brand: in the top bar row below lg, above the nav on the sidebar. */}
+        <Link
+          href="/"
+          className={cn(
+            buttonVariants({ variant: 'ghost', size: 'sm' }),
+            SIDEBAR_CONTROL,
+            'order-1 lg:mx-3 lg:mb-1 lg:justify-start lg:ring-1 lg:ring-sidebar-border lg:ring-inset',
+          )}
+        >
+          <House aria-hidden />
+          <span className="sr-only sm:not-sr-only">Main site</span>
+        </Link>
+
         <div className="order-2 flex items-center gap-1 lg:order-3 lg:grid lg:gap-3 lg:border-t lg:border-sidebar-border lg:p-4">
           <div className="hidden items-center gap-3 lg:flex">
-            <span
-              aria-hidden
-              className="grid size-9 shrink-0 place-content-center rounded-full bg-sidebar-accent/15 text-sm font-semibold text-sidebar-accent ring-1 ring-sidebar-accent/40"
-            >
-              {initials(user.name)}
-            </span>
+            <UserAvatar name={user.name} tone="sidebar" />
             <div className="grid min-w-0">
               <p className="truncate text-sm font-medium">{user.name}</p>
               <p className="truncate text-xs text-sidebar-muted">{ROLE_LABEL[user.role]}</p>

@@ -21,6 +21,14 @@ const LANDING: Record<Role, string> = {
 
 export const landingFor = (role: Role): string => LANDING[role];
 
+// How a role is named next to the signed-in user (public header, area sidebar).
+export const ROLE_LABEL: Record<Role, string> = {
+  CUSTOMER: 'Customer',
+  STAFF: 'Stylist',
+  RECEPTIONIST: 'Reception',
+  ADMIN: 'Admin',
+};
+
 export function areaOf(pathname: string): Area | null {
   const first = pathname.split('/')[1];
   return first === 'account' || first === 'staff' || first === 'admin' ? first : null;

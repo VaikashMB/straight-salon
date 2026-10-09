@@ -139,6 +139,8 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
   - **Header:** sticky, with a blurred backdrop. The current link gets a brass underline plus `aria-current="page"`, and sub-pages count (`/services/haircut` marks Services).
   - **Mobile menu:** below `md` the nav collapses into a disclosure menu: a 44 px "Menu" / "Close menu" button with `aria-expanded`, holding the links, the session actions and the theme toggle. Focus moves to the first link. It closes on Escape (focus returns to the button), on a link click and on a route change. It is not modal.
   - **Footer:** static, and dark in both themes (sidebar tokens).
+  - **Signed-in identity** (decision 2026-10-09, user feedback): signed-in visitors see who they are: an initials avatar with their first name from `lg` up (the full "Signed in as …" is always announced to screen readers), and in the mobile menu "Signed in as" with their name and role, above the area link and sign out.
+  - **Opening hours** use a 12-hour clock ("9:30 AM – 8:30 PM", `formatClock12` in `features/catalog/hours.ts`). Booking times elsewhere keep the 24-hour format.
   - **Category styling:** icons and tints live in `features/catalog/category-style.ts`, keyed by slug, then name. Categories that admins add get a brass fallback.
   - **Specialities:** a stylist's specialities are the categories of the services they perform.
   - **Detail pages:** service and stylist detail pages also read `/categories` (cached like the other public reads).
@@ -147,6 +149,7 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
   - **Layout from `lg` up:** a fixed dark sidebar holding the brand, the icon nav (brass bar plus `aria-current="page"` on the current item) and a profile block (initials, name, role, sign-out, theme toggle).
   - **Layout below `lg`:** a dark top bar with a row of nav pills that scrolls sideways. The same single `nav aria-label="Section"` is restyled with CSS.
   - **Skip link:** a "Skip to content" link jumps to `#main`.
+  - **Way back to the public site** (decision 2026-10-09, user feedback): a "Main site" link (house icon) right under the brand (in the top bar below `lg`, an icon with a screen-reader label), and the brand itself links to `/` instead of the role's landing page.
   - **Now markers:** today's My day, admin calendar and dashboard mini-timelines show a decorative "now" marker (salon timezone, today only, refreshed every minute).
   - **Calendar blocks:** a status-coloured left edge as well as the status icon and text.
   - **Status badges:** every status badge has an icon next to its text.

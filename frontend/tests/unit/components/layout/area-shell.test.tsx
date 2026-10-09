@@ -9,7 +9,7 @@ import AccountLayout from '@/app/(customer)/account/layout';
 import AccountPage from '@/app/(customer)/account/page';
 import StaffLayout from '@/app/(staff)/staff/layout';
 import StaffPage from '@/app/(staff)/staff/page';
-import { initials } from '@/components/layout/area-shell';
+import { initials } from '@/components/user-avatar';
 import { api, makeUser, problem, server, signedInAs } from '../../helpers/api';
 import { router, setLocation } from '../../helpers/next-navigation';
 import { renderWithProviders } from '../../helpers/render';
@@ -120,6 +120,9 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Upcoming bookings' })).toBeInTheDocument();
     expect(await screen.findByText('No upcoming bookings')).toBeInTheDocument();
+    // A way back to the public site: the "Main site" link and the brand both go home.
+    expect(screen.getByRole('link', { name: 'Main site' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: /Straight Salon/ })).toHaveAttribute('href', '/');
   });
 
   it('stylists see their day page', async () => {

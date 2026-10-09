@@ -49,7 +49,7 @@ describe('public catalogue pages (05 §3, §6)', () => {
       `/book?staff=${ids.ravi}`,
     );
     expect(screen.getByText('12 MG Road, Bengaluru')).toBeInTheDocument();
-    expect(screen.getAllByText('09:30 – 20:30')).toHaveLength(7);
+    expect(screen.getAllByText('9:30 AM – 8:30 PM')).toHaveLength(7);
   });
 
   it('shows a friendly fallback when the API is down', async () => {
