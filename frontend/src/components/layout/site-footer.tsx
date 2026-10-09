@@ -10,6 +10,7 @@ const LINKS = [
     items: [
       { href: '/services', label: 'Services & prices' },
       { href: '/stylists', label: 'Our stylists' },
+      { href: '/location', label: 'Location & hours' },
       { href: '/book', label: 'Book an appointment' },
     ],
   },

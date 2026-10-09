@@ -1,9 +1,10 @@
-import { act, screen, within } from '@testing-library/react';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
 import { describe, expect, it } from 'vitest';
 import PublicLayout from '@/app/(public)/layout';
-import { makeUser, signedInAs } from '../../helpers/api';
-import { setLocation } from '../../helpers/next-navigation';
+import { api, makeUser, server, signedInAs } from '../../helpers/api';
+import { router, setLocation } from '../../helpers/next-navigation';
 import { renderWithProviders } from '../../helpers/render';
 
 const home = (
@@ -38,15 +39,42 @@ describe('public layout and header', () => {
     ['CUSTOMER', 'My bookings', '/account'],
     ['STAFF', 'My day', '/staff'],
     ['RECEPTIONIST', 'Dashboard', '/admin'],
-  ] as const)('signed in as %s: a link to their area and sign out', async (role, label, href) => {
-    signedInAs(makeUser({ role }));
+  ] as const)(
+    'signed in as %s: the profile menu holds who is signed in, their area and sign out',
+    async (role, label, href) => {
+      signedInAs(makeUser({ role }));
+      const user = userEvent.setup();
+      renderWithProviders(home);
+      const trigger = await screen.findByRole('button', { name: 'Account menu for Ananya Rao' });
+      expect(within(trigger).getByText('Ananya')).toBeInTheDocument();
+      expect(within(trigger).getByText('AR')).toHaveAttribute('aria-hidden');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+      await user.click(trigger);
+      const menu = await screen.findByRole('menu');
+      expect(within(menu).getByText('ananya@example.com')).toBeInTheDocument();
+      expect(within(menu).getByRole('menuitem', { name: label })).toHaveAttribute('href', href);
+      expect(within(menu).getByRole('menuitem', { name: 'Sign out' })).toBeInTheDocument();
+      await user.keyboard('{Escape}');
+      expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    },
+  );
+
+  it('signing out from the profile menu ends the session (API-004)', async () => {
+    let loggedOut = false;
+    signedInAs(makeUser({ role: 'CUSTOMER' }));
+    server.use(
+      http.post(api('/auth/logout'), () => {
+        loggedOut = true;
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+    const user = userEvent.setup();
     renderWithProviders(home);
-    expect(await screen.findByRole('link', { name: label })).toHaveAttribute('href', href);
-    expect(screen.getByRole('button', { name: 'Sign out' })).toBeInTheDocument();
-    // Who is signed in: announced in full, first name shown next to the avatar.
-    expect(screen.getByText('Signed in as Ananya Rao')).toBeInTheDocument();
-    expect(screen.getByText('Ananya')).toBeInTheDocument();
-    expect(screen.getByText('AR')).toHaveAttribute('aria-hidden');
+    await user.click(await screen.findByRole('button', { name: /Account menu/ }));
+    await user.click(await screen.findByRole('menuitem', { name: 'Sign out' }));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
+    expect(loggedOut).toBe(true);
   });
 
   it('marks the current section with aria-current, including its sub-pages', () => {
@@ -125,7 +153,7 @@ describe('mobile menu', () => {
     signedInAs(makeUser({ role: 'CUSTOMER' }));
     const user = userEvent.setup();
     renderWithProviders(home);
-    await screen.findByRole('link', { name: 'My bookings' });
+    await screen.findByRole('button', { name: /Account menu/ });
     await user.click(menuButton());
     const panel = document.getElementById('mobile-menu')!;
     expect(within(panel).getByRole('link', { name: 'My bookings' })).toHaveAttribute(

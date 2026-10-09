@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { loadCatalogue } from '@/features/catalog/api';
 import { stylistSpecialities } from '@/features/catalog/category-style';
 import { CatalogueUnavailable } from '@/features/catalog/components/catalogue-unavailable';
-import { HeroArt } from '@/features/catalog/components/hero-art';
+import { BrandMarquee } from '@/features/catalog/components/brand-marquee';
+import { LooksCarousel } from '@/features/catalog/components/looks-carousel';
 import { GrainLayer } from '@/features/catalog/components/page-band';
 import { SectionHeading, sectionLinkClass } from '@/features/catalog/components/section-heading';
 import { ServiceCard } from '@/features/catalog/components/service-card';
@@ -50,12 +51,12 @@ export default async function HomePage() {
     <>
       <section className="relative isolate overflow-hidden border-b bg-hero">
         <GrainLayer />
-        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:py-24 md:grid-cols-[1.25fr_0.75fr] lg:py-28">
+        <div className="mx-auto grid max-w-6xl items-center gap-10 px-4 py-16 sm:py-24 md:grid-cols-[1.1fr_0.9fr] lg:py-24">
           <div className="grid animate-fade-up gap-6">
             <p className="text-xs font-semibold tracking-[0.22em] text-accent-ink uppercase sm:text-sm">
               Hair · Beard · Skin · Nails
             </p>
-            <h1 className="max-w-3xl text-[2.6rem] leading-[1.04] font-semibold tracking-tighter sm:text-6xl lg:text-7xl">
+            <h1 className="max-w-3xl text-[2.6rem] leading-[1.04] font-semibold tracking-tighter sm:text-6xl xl:text-7xl">
               Look sharp. <span className="text-accent-ink">Book in under a minute.</span>
             </h1>
             <div aria-hidden className="rule-brass w-16" />
@@ -74,7 +75,10 @@ export default async function HomePage() {
               </Button>
             </div>
           </div>
-          <HeroArt className="hidden w-full max-w-sm animate-fade-in justify-self-end [animation-delay:200ms] md:block" />
+          <LooksCarousel
+            services={services}
+            className="w-full max-w-md animate-fade-in justify-self-center [animation-delay:200ms] md:justify-self-end"
+          />
         </div>
       </section>
 
@@ -106,6 +110,13 @@ export default async function HomePage() {
             ))}
           </ol>
         </div>
+      </section>
+
+      <section aria-labelledby="brands" className="border-b py-14 sm:py-16">
+        <div className="mx-auto grid max-w-6xl gap-8 px-4">
+          <SectionHeading id="brands" eyebrow="In the chair" title="Products we trust" />
+        </div>
+        <BrandMarquee className="mt-8" />
       </section>
 
       <section
@@ -187,10 +198,15 @@ export default async function HomePage() {
                 </a>
               </p>
             ) : null}
-            <div className="pt-2">
+            <div className="flex flex-wrap gap-3 pt-2">
               <Button asChild>
                 <Link href="/book">
                   Book a visit <ArrowRight aria-hidden />
+                </Link>
+              </Button>
+              <Button asChild variant="outline">
+                <Link href="/location">
+                  <MapPin aria-hidden /> Map &amp; directions
                 </Link>
               </Button>
             </div>

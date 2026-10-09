@@ -39,6 +39,7 @@ const ADMIN_ONLY = ['ADMIN'] as const;
 export const PUBLIC_NAV: NavItem[] = [
   { href: '/services', label: 'Services' },
   { href: '/stylists', label: 'Stylists' },
+  { href: '/location', label: 'Location' },
   { href: '/book', label: 'Book now' },
 ];
 

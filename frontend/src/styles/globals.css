@@ -160,6 +160,7 @@
   --animate-fade-in: fade-in 0.4s ease-out both;
   --animate-pop: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-shimmer: shimmer 1.6s linear infinite;
+  --animate-marquee: marquee 40s linear infinite;
 
   @keyframes fade-up {
     from {
@@ -187,6 +188,15 @@
     to {
       opacity: 1;
       transform: none;
+    }
+  }
+  /* Two identical lists side by side: moving by half the track loops seamlessly. */
+  @keyframes marquee {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(-50%);
     }
   }
   @keyframes shimmer {

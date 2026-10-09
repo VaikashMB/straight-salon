@@ -120,8 +120,8 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
     );
     expect(await screen.findByRole('heading', { name: 'Upcoming bookings' })).toBeInTheDocument();
     expect(await screen.findByText('No upcoming bookings')).toBeInTheDocument();
-    // A way back to the public site: the "Main site" link and the brand both go home.
-    expect(screen.getByRole('link', { name: 'Main site' })).toHaveAttribute('href', '/');
+    // A way back to the public site: the back arrow and the brand both go home.
+    expect(screen.getByRole('link', { name: 'Back to main site' })).toHaveAttribute('href', '/');
     expect(screen.getByRole('link', { name: /Straight Salon/ })).toHaveAttribute('href', '/');
   });
 

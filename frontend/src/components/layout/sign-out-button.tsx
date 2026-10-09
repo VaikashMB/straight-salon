@@ -7,15 +7,9 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth/AuthProvider';
 
-// API-004: ends this device's session and returns to the home page. `className` lets a
-// surface restyle it (e.g. the dark sidebar).
-export function SignOutButton({
-  variant = 'ghost',
-  className,
-}: {
-  variant?: 'ghost' | 'outline';
-  className?: string;
-}) {
+// API-004: ends this device's session and returns to the home page. Shared by the button and
+// the public header's profile menu.
+export function useSignOut() {
   const { logout } = useAuth();
   const router = useRouter();
   const [pending, setPending] = useState(false);
@@ -25,6 +19,18 @@ export function SignOutButton({
     toast.success('You have been signed out.');
     router.replace('/');
   };
+  return { signOut, pending };
+}
+
+// `className` lets a surface restyle it (e.g. the dark sidebar).
+export function SignOutButton({
+  variant = 'ghost',
+  className,
+}: {
+  variant?: 'ghost' | 'outline';
+  className?: string;
+}) {
+  const { signOut, pending } = useSignOut();
   return (
     <Button
       variant={variant}
