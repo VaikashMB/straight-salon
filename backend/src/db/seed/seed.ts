@@ -214,26 +214,26 @@ const STAFF = [
   {
     user: 'ravi',
     displayName: 'Ravi',
-    bio: 'Precision cuts and beard styling, 8 years behind the chair.',
+    bio: 'Precision cuts and beard styling, 8 years behind the chair. Ravi trained in Mumbai and loves a sharp taper, a soft texture on top and a beard line you could set a ruler by.',
     services: [...HAIR, ...BEARD],
   },
   {
     user: 'priya',
     displayName: 'Priya',
-    bio: 'Colour specialist who also loves a good facial.',
+    bio: 'Colour specialist who also loves a good facial. Priya mixes every shade by hand, from lived-in balayage to a bold global colour, and ends each visit with a skin ritual.',
     services: [...HAIR, ...SKIN],
   },
   {
     user: 'arjun',
     displayName: 'Arjun',
-    bio: 'Classic barbering: fades, shaves and hot towels.',
+    bio: 'Classic barbering: fades, shaves and hot towels. Arjun keeps the old craft alive with a straight razor, warm lather and an eye for clean, timeless shapes.',
     services: ['haircut', 'kids-haircut', ...BEARD],
     offOnMonday: true,
   },
   {
     user: 'meera',
     displayName: 'Meera',
-    bio: 'Skin and nail care with a calm touch.',
+    bio: 'Skin and nail care with a calm touch. Meera builds facials around your skin on the day and finishes hands and feet with gel colour that lasts.',
     services: [...SKIN, ...NAILS],
   },
 ];
@@ -269,10 +269,14 @@ export async function seedDatabase({
   logger,
   bcryptCost,
   clock = systemClock,
+  photoBaseUrl,
 }: {
   logger: Logger;
   bcryptCost: number;
   clock?: Clock;
+  // Where the demo photos are served (the frontend's public/demo folder, 02 §3). Services get
+  // `{base}/services/{slug}.webp`, stylists `{base}/staff/{user}.webp`. Omit for no photos.
+  photoBaseUrl?: string;
 }): Promise<void> {
   const log = logger.child({ component: 'seed' });
   const hasher = createPasswordHasher(bcryptCost);
@@ -285,8 +289,8 @@ export async function seedDatabase({
   const tz = settings.timezone;
   const userIds = await seedUsers(await hasher.hash(SEED_PASSWORD), count);
   const categoryIds = await seedCategories(count);
-  const serviceIds = await seedServices(categoryIds, count);
-  const staffIds = await seedStaff(settings, userIds, serviceIds, count);
+  const serviceIds = await seedServices(categoryIds, photoBaseUrl, count);
+  const staffIds = await seedStaff(settings, userIds, serviceIds, photoBaseUrl, count);
   const today = toZonedDate(clock.now(), tz);
   await seedHoliday(today, count);
   await seedTimeOff(today, tz, staffIds, userIds.get('admin')!, count);
@@ -343,9 +347,16 @@ async function seedCategories(count: Count): Promise<Ids> {
   return categoryIds;
 }
 
-async function seedServices(categoryIds: Ids, count: Count): Promise<Ids> {
+// Services, each with its demo photo. A service seeded before photos existed, and still without
+// an image, gets one; an image an admin uploaded is left alone.
+async function seedServices(
+  categoryIds: Ids,
+  photoBaseUrl: string | undefined,
+  count: Count,
+): Promise<Ids> {
   const serviceIds: Ids = new Map();
   for (const service of SERVICES) {
+    const imageUrl = photoBaseUrl ? `${photoBaseUrl}/services/${service.slug}.webp` : undefined;
     let existing = await catalogRepository.findServiceBySlug(service.slug);
     if (!existing) {
       existing = await catalogRepository.createService({
@@ -356,24 +367,30 @@ async function seedServices(categoryIds: Ids, count: Count): Promise<Ids> {
         priceMinor: service.priceMinor,
         isActive: true,
         ...(service.description ? { description: service.description } : {}),
+        ...(imageUrl ? { imageUrl } : {}),
       });
       count('services');
+    } else if (imageUrl && !existing.imageUrl) {
+      existing = await catalogRepository.updateService(existing._id, existing.__v, { imageUrl });
+      count('photos');
     }
     serviceIds.set(service.slug, existing._id);
   }
   return serviceIds;
 }
 
-// Staff profiles, each followed by its weekly schedule.
+// Staff profiles (with their demo photo, as for services), each followed by its weekly schedule.
 async function seedStaff(
   settings: SettingsFields,
   userIds: Ids,
   serviceIds: Ids,
+  photoBaseUrl: string | undefined,
   count: Count,
 ): Promise<Ids> {
   const staffIds: Ids = new Map();
   for (const member of STAFF) {
     const userId = userIds.get(member.user)!;
+    const photoUrl = photoBaseUrl ? `${photoBaseUrl}/staff/${member.user}.webp` : undefined;
     let existing = await staffRepository.findByUserId(userId);
     if (!existing) {
       existing = await staffRepository.create({
@@ -381,8 +398,12 @@ async function seedStaff(
         displayName: member.displayName,
         bio: member.bio,
         serviceIds: member.services.map((slug) => serviceIds.get(slug)!),
+        ...(photoUrl ? { photoUrl } : {}),
       });
       count('staff');
+    } else if (photoUrl && !existing.photoUrl) {
+      existing = await staffRepository.update(existing._id, existing.__v, { photoUrl });
+      count('photos');
     }
     staffIds.set(member.user, existing._id);
     await seedSchedule(existing._id, member, settings, count);

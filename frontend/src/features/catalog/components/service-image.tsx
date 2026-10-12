@@ -1,4 +1,5 @@
 import Image from 'next/image';
+import { ViewTransition } from 'react';
 import { cn } from '@/lib/utils';
 import type { Category } from '../api';
 import { categoryStyle } from '../category-style';
@@ -6,20 +7,24 @@ import { categoryStyle } from '../category-style';
 // A service's uploaded image (API-027), or a tinted placeholder with its category's icon. Both
 // are decorative: the service name is the heading next to it. Uploaded images come from the
 // API's storage URL, so Next's optimiser is bypassed for them (like the stylist avatar).
+// With a `transitionName`, the same name on a card and on the detail page morphs one into the
+// other on navigation (React <ViewTransition>, 05 §2).
 export function ServiceImage({
   imageUrl,
   category,
   sizes,
   className,
+  transitionName,
 }: {
   imageUrl?: string;
   category?: Pick<Category, 'slug' | 'name'>;
   sizes: string;
   className?: string;
+  transitionName?: string;
 }) {
   const style = categoryStyle(category);
   const Icon = style.icon;
-  return (
+  const image = (
     <div
       aria-hidden
       data-slot={imageUrl ? 'service-image' : 'service-placeholder'}
@@ -32,7 +37,7 @@ export function ServiceImage({
           fill
           sizes={sizes}
           unoptimized
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+          className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.06]"
         />
       ) : (
         <>
@@ -59,4 +64,5 @@ export function ServiceImage({
       )}
     </div>
   );
+  return transitionName ? <ViewTransition name={transitionName}>{image}</ViewTransition> : image;
 }

@@ -21,10 +21,17 @@ type Dashboard = Schemas['Dashboard'];
 
 const SOON_MS = 2 * 60 * 60_000;
 
-// Today at a glance (FR-070, 05 §4.4, API-070): KPI cards, a mini-timeline per stylist and the
+// "Good morning" etc. for a time of day in minutes since midnight (salon time).
+export function greetingFor(minutes: number): string {
+  if (minutes < 12 * 60) return 'Good morning';
+  if (minutes < 17 * 60) return 'Good afternoon';
+  return 'Good evening';
+}
+
+// Today at a glance (FR-070, 05 §4.4, API-070): a greeting for whoever is on the desk, KPI cards, a mini-timeline per stylist and the
 // bookings due in the next two hours. Refreshes every minute.
 export function AdminDashboard() {
-  const { api } = useAuth();
+  const { api, user } = useAuth();
   const { data: settings } = usePublicSettings();
   const dashboard = useQuery({
     queryKey: ['dashboard', 'today'],
@@ -36,12 +43,14 @@ export function AdminDashboard() {
   if (dashboard.error)
     return <ErrorState error={dashboard.error} onRetry={() => void dashboard.refetch()} />;
   const d = dashboard.data;
+  const firstName = user?.name.trim().split(/\s+/)[0];
+  const greeting = greetingFor(minutesInZone(dashboard.dataUpdatedAt, settings.timezone));
   return (
     <section className="grid gap-8">
       <PageHeader
-        eyebrow="Front desk"
-        title="Today"
-        description={formatCalendarDate(d.date)}
+        eyebrow="Front desk · Today"
+        title={firstName ? `${greeting}, ${firstName}` : greeting}
+        description={`${formatCalendarDate(d.date)} · ${d.totals.bookings} ${d.totals.bookings === 1 ? 'booking' : 'bookings'} on the books`}
         actions={
           <>
             <Button asChild variant="outline">

@@ -155,7 +155,7 @@ describe('booking wizard (05 §4.1, US-01)', () => {
     const click = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     await u.click(screen.getByRole('button', { name: 'Add to calendar' }));
     expect(click).toHaveBeenCalledOnce();
-  });
+  }, 15_000); // The whole flow; it nears the 5 s default when the coverage run is busy.
 
   it('409 SLOT_UNAVAILABLE: toast, refreshed slots, back to step 3 keeping the rest (US-01)', async () => {
     catalogue();

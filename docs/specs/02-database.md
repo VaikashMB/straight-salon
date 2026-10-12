@@ -197,6 +197,6 @@ Idempotent seed for local dev and e2e tests. It grows with the build plan: each 
 - Settings singleton with defaults above.
 - Users: 1 admin (`admin@straightsalon.local`, phone `+919000000001`; seeded from Phase 3), 1 receptionist, 4 staff, 10 customers. The seed writes directly (no audit rows; seed data is not a business action) and runs pending migrations first. Password for all: `Password@123` (dev only; seed refuses to run when `NODE_ENV=production`).
 - Categories: Hair, Beard & Grooming, Skin, Nails.
-- ~15 services across categories with realistic durations (15–120 min) and prices.
+- ~15 services across categories with realistic durations (15–120 min) and prices. Each service gets a demo photo and each stylist a portrait (decision 2026-10-12): `imageUrl` / `photoUrl` point at the frontend's `public/demo/` folder (`{APP_BASE_URL}/demo/services/{slug}.webp`, `{APP_BASE_URL}/demo/staff/{user}.webp`), so the host, container and CI seeds all use the same files. A record seeded earlier without one gets it on the next run; an image an admin uploaded is never replaced.
 - Staff schedules (one stylist off on Mondays), one holiday next month, a few time-off blocks.
 - ~60 bookings spread over past 14 days and next 7 days across all statuses, with payments on completed ones, and a handful of reviews.

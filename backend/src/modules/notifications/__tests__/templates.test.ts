@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clampSms, escapeHtml, formatMoney, SMS_MAX_LENGTH } from '../templates/layout.js';
+import { clampSms, escapeHtml, formatMoney, render, SMS_MAX_LENGTH } from '../templates/layout.js';
 import {
   renderMessage,
   TEMPLATE_NAMES,
@@ -126,6 +126,26 @@ describe('notification templates (09 §8)', () => {
     expect(rendered.email.text).toContain('https://salon.example/reset-password?token=abc');
     expect(rendered.sms.text).not.toContain('token');
     expect(renderMessage(SAMPLES[2]!).secrets).toEqual([]);
+  });
+
+  it('brands the HTML email: wordmark header, brass button, inbox preview', () => {
+    const { email } = renderMessage({ template: 'booking_confirmed', data: base });
+    expect(email.html).toContain('Straight Salon<span style="color:#B08D57">.</span>');
+    expect(email.html).toMatch(/<a href="[^"]+" style="[^"]*background:#B08D57/);
+    // The hidden preheader repeats the first paragraph for the inbox preview.
+    expect(email.html).toMatch(/<div style="display:none[^"]*">[^<]+<\/div>/);
+  });
+
+  it('leaves the header out when a message has no brand', () => {
+    const { email } = render({
+      subject: 'S',
+      greeting: 'Hi,',
+      paragraphs: [],
+      footer: 'F',
+      sms: 'S',
+    });
+    expect(email.html).not.toContain('#161412');
+    expect(email.html).not.toContain('display:none');
   });
 
   it('escapes user-controlled text in HTML', () => {

@@ -80,6 +80,7 @@ function customerMessage(
     details: bookingDetails(d.booking),
     action: { label: parts.action ?? 'View booking', url: d.booking.link },
     footer: signOff(d.salon),
+    brand: d.salon.name,
     sms: `${d.salon.name}: ${parts.sms}`,
   };
 }
@@ -95,6 +96,7 @@ function staffMessage(
     details: staffDetails(d.booking, d.customer),
     action: { label: 'Open my schedule', url: d.booking.link },
     footer: signOff(d.salon),
+    brand: d.salon.name,
     sms: `${d.salon.name}: ${parts.sms}`,
   };
 }
@@ -108,6 +110,7 @@ const TEMPLATES: { [K in TemplateName]: (data: TemplateData[K]) => MessageSpec }
     ],
     action: { label: 'Book an appointment', url: d.link },
     footer: signOff(d.salon),
+    brand: d.salon.name,
     sms: `${d.salon.name}: welcome! Your account is ready. Book online any time.`,
   }),
 
@@ -120,6 +123,7 @@ const TEMPLATES: { [K in TemplateName]: (data: TemplateData[K]) => MessageSpec }
     ],
     action: { label: 'Choose a new password', url: d.resetUrl },
     footer: signOff(d.salon),
+    brand: d.salon.name,
     sms: `${d.salon.name}: use the link we emailed you to reset your password. It expires in ${d.validMinutes} minutes.`,
     secrets: [d.resetUrl],
   }),
