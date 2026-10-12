@@ -19,13 +19,25 @@
 - Name: **Straight Salon**. Tone: clean, modern, confident.
 - Palette: near-black `#111111` primary, warm off-white `#FAF7F2` background, accent brass `#B08D57`, success/warning/error from Tailwind defaults. Define as CSS variables for light/dark themes.
 - Charts use one series hue, `--chart-1` (a more saturated brass: `#A06A1C` light, `#B8802A` dark), because the brand brass is too low in chroma to read as a colour against the card surface; both values pass the dataviz palette checks (lightness band, chroma floor, ≥ 3:1 contrast) against `--card` (decision 2026-10-07).
-- Typography: a geometric sans for headings (e.g. "Outfit"), a neutral sans for body (e.g. "Inter"), via `next/font`.
+- Typography: an editorial serif ("Fraunces", with italics) for `h1`, `h2` and the wordmark, a geometric sans ("Outfit") for `h3`, figures and small headings, a neutral sans ("Inter") for body, all via `next/font` (serif added in the editorial pass, decision 2026-10-12).
 - Visual pass (decision 2026-10-09), all in `styles/globals.css`:
   - **Brass as text** uses `--accent-ink` (`#7D5F2C` light, `#D4B483` dark, ≥ 4.9:1 on every surface). The brand brass `#B08D57` is only 2.9:1 on the background, so it is kept for fills, borders, rings and icons. `--accent-soft` is the brass tint for selected and highlighted surfaces.
   - **Sidebar tokens** (`--sidebar*`) stay dark in both themes for the signed-in areas' sidebar.
   - **Elevation:** warm-tinted shadows `shadow-soft` (cards) and `shadow-lift` (hover, dialogs, auth card).
   - **Decoration:** the `bg-hero` utility (two soft brass radial glows) and `bg-grain` (film grain, decorative layer only); `rule-brass` is the short divider under headings.
   - **Motion:** `animate-fade-up`, `animate-fade-in`, `animate-pop` (success check), `animate-shimmer` (skeletons). Everything is switched off under `prefers-reduced-motion`; no JS-driven animation.
+- Editorial pass (decision 2026-10-12, all motion still CSS-only and off under `prefers-reduced-motion`):
+  - **Photography:** licensed Unsplash stock with one warm colour grade, in `public/demo/` (seeded as every service's `imageUrl` and stylist's `photoUrl`, 02 §3), `public/salon/` (interiors) and `public/gallery/` (lookbook). Credits in `public/PHOTO-CREDITS.md`. They are illustrative, not the salon's own work; replace them with real photos when available.
+  - **Home:** a full-bleed photo hero (slow push-in) with the salon's live figures (average rating and review count from the stylists' aggregates, number of services and stylists, counting up in CSS), then How it works, Signature looks (the carousel next to its intro), Products we trust, Popular services, an editorial "studio" collage, the team as portrait cards, testimonials (the newest four- and five-star reviews with a comment, API-061), a gift-card band (copy only: gift cards are sold at the front desk, not online) and Visit us.
+  - **Gallery** (`/gallery`, in the header and footer): a masonry lookbook (`features/gallery/looks.ts`) filtered by `?category=` links (no JavaScript needed), each look opening in a lightbox dialog with previous/next (buttons and arrow keys) and "Book this look". There is no before/after slider: stock photos have no honest before/after pairs.
+  - **Stylist profile:** a large portrait, the bio in the serif, "Book with <name>", and Signature looks from the gallery in the categories they work in.
+  - **Motion utilities** in `styles/globals.css`: `reveal` (rise and fade in as a section scrolls into view, CSS scroll-driven animation), `parallax`, `header-scroll` (the public header tightens and gains a shadow on scroll), `shine` (light sweep on hover and focus), `count-up` (`CountUp` component; the real number is in screen-reader text), `animate-ken-burns`, `animate-burst` (sparkles around the booking success check). Browsers without scroll-driven animations show everything in place.
+  - **Page transitions:** public pages sit in React `<ViewTransition>` (no Next config needed), so routes crossfade, and a service's photo and a stylist's portrait morph from their card to their detail page (names `service-{id}` and `stylist-{id}`; each appears at most once per page).
+  - **Brand:** a monogram (serif "S" in a brass ring) before the wordmark and as the favicon (`app/icon.svg`); the salon's own line icons for the categories (`components/brand-icons.tsx`: shears, razor, droplet-leaf, polish, sparkle), usable anywhere a Lucide icon is.
+  - **Announcement bar** above the public header (one static line), and a **richer footer**: a "From the studio" strip of six looks, the serif sign-off "See you in the chair.", a "Visit the studio" photo card to `/location`.
+  - **Location page:** the map embed is tinted to the palette (`map-tint`, dimmed in dark mode), followed by studio photos.
+  - **Loading:** `(public)/loading.tsx` is a skeleton in the shape of a page (title band and image cards).
+  - **Admin dashboard:** the title greets whoever is signed in by the salon's time of day ("Good morning, Priya") and the description counts today's bookings.
   - **Theme toggle:** one button in the public header and the area shell cycles system → light → dark (`lib/theme.ts`). A pinned choice is `<html data-theme>` plus `localStorage` (`ss-theme`, a per-browser convenience; access is guarded). "System" removes both and follows `prefers-color-scheme`. An inline script in `<head>` applies a pinned theme before the first paint, and other open tabs follow a change.
 - Mobile-first. Booking flow must be comfortably usable one-handed on a phone.
 
@@ -34,12 +46,14 @@
 frontend/src/
 ├── app/
 │   ├── (public)/
-│   │   ├── page.tsx                    # Home: hero, featured services, stylists, CTA
+│   │   ├── page.tsx                    # Home: photo hero, looks, services, studio, team, testimonials
 │   │   ├── services/page.tsx           # Catalogue with category tabs + search
 │   │   ├── services/[slug]/page.tsx
 │   │   ├── stylists/page.tsx
 │   │   ├── stylists/[id]/page.tsx      # Profile + reviews
 │   │   ├── location/page.tsx           # Address, contact, hours, directions, map (single location)
+│   │   ├── gallery/page.tsx            # Lookbook: masonry grid, category filter, lightbox
+│   │   ├── loading.tsx                 # Page-shaped skeleton while a public page loads
 │   │   ├── book/page.tsx               # Booking wizard (requires login at confirm step)
 │   │   ├── login/page.tsx
 │   │   ├── register/page.tsx
@@ -74,7 +88,7 @@ frontend/src/
 │   └── error.tsx
 ├── components/ui/                      # shadcn primitives
 ├── components/layout/                  # headers, sidebars, footers per area
-├── features/                           # auth, booking, catalog, staff, admin-*, reports
+├── features/                           # auth, booking, catalog, gallery, staff, admin-*, reports
 │   └── booking/{components,hooks,api.ts,schemas.ts}
 ├── lib/
 │   ├── api/client.ts                   # openapi-fetch instance + auth interceptor
@@ -139,7 +153,7 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
 - Public site visual pass (decision 2026-10-09):
   - **Header:** sticky, with a blurred backdrop. The current link gets a brass underline plus `aria-current="page"`, and sub-pages count (`/services/haircut` marks Services).
   - **Mobile menu:** below `md` the nav collapses into a disclosure menu: a 44 px "Menu" / "Close menu" button with `aria-expanded`, holding the links, the session actions and the theme toggle. Focus moves to the first link. It closes on Escape (focus returns to the button), on a link click and on a route change. It is not modal.
-  - **Footer:** static, and dark in both themes (sidebar tokens).
+  - **Footer:** static, and dark in both themes (sidebar tokens). Since 2026-10-12 it also carries a strip of gallery looks and a "Visit the studio" card.
   - **Signed-in identity and profile menu** (decision 2026-10-09, user feedback): in the header a signed-in visitor sees their initials avatar, and their first name from `lg` up. This is the trigger of a profile menu ("Account menu for <name>", a Radix dropdown) showing their name and email, a link to their area ("My bookings" / "My day" / "Dashboard") and Sign out. In the mobile menu the same appears inline: "Signed in as" with name and role, then the area link and sign out.
   - **Home hero carousel** ("Signature looks", inspired by straight-studio.com): model photos, each tied to a service by slug, showing that service's live price and a "Book this look" link (to the catalogue if the service no longer exists). The photos are royalty-free Unsplash stock bundled in `public/looks/` (credits in `CREDITS.md`); they are illustrative, not the salon's own work. Follows the WAI-ARIA carousel pattern: labelled region, one visible slide (the others inert), previous/next, a dot per slide, swipe on touch, and a pause button (WCAG 2.2.2). It rotates every 5 s, but not while hovered or focused, after pausing, or under `prefers-reduced-motion`.
   - **"Products we trust"** strip: an auto-scrolling marquee of product-brand wordmarks. The brands are fictional and the marks are drawn in code (no third-party logos), so there is nothing to license; replace them with real partners when the salon has any. It is read once by assistive technology (the loop copy is hidden), pauses on hover, and stays still under reduced motion.
@@ -148,7 +162,7 @@ Steps shown as a progress bar; state kept in URL search params so refresh/back w
   - **Category styling:** icons and tints live in `features/catalog/category-style.ts`, keyed by slug, then name. Categories that admins add get a brass fallback.
   - **Specialities:** a stylist's specialities are the categories of the services they perform.
   - **Detail pages:** service and stylist detail pages also read `/categories` (cached like the other public reads).
-  - **Images:** service images and stylist photos show when uploaded, with a tinted category placeholder otherwise.
+  - **Images:** service images and stylist photos show when set (uploaded, or the seeded demo photos), with a tinted category placeholder or initials otherwise.
 - Signed-in areas visual pass (decision 2026-10-09):
   - **Layout from `lg` up:** a fixed dark sidebar holding the brand, the icon nav (brass bar plus `aria-current="page"` on the current item) and a profile block (initials, name, role, sign-out, theme toggle).
   - **Layout below `lg`:** a dark top bar with a row of nav pills that scrolls sideways. The same single `nav aria-label="Section"` is restyled with CSS.

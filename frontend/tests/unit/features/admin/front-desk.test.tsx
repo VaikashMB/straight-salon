@@ -7,6 +7,7 @@ import BookingDetailPage from '@/app/(admin)/admin/bookings/[id]/page';
 import BookingsPage from '@/app/(admin)/admin/bookings/page';
 import CalendarPage from '@/app/(admin)/admin/calendar/page';
 import DashboardPage from '@/app/(admin)/admin/page';
+import { greetingFor } from '@/features/admin-dashboard/dashboard';
 import { addDays, todayInZone } from '@/lib/time';
 import { api, makeUser, problem, server, signedInAs } from '../../helpers/api';
 import { ids, makeBooking, page, services, stylists } from '../../helpers/fixtures';
@@ -26,6 +27,13 @@ const weekly = [0, 1, 2, 3, 4, 5, 6].map((dayOfWeek) => ({
 }));
 
 describe('admin dashboard (FR-070, API-070)', () => {
+  it('greets by the time of day in the salon', () => {
+    expect(greetingFor(0)).toBe('Good morning');
+    expect(greetingFor(11 * 60 + 59)).toBe('Good morning');
+    expect(greetingFor(12 * 60)).toBe('Good afternoon');
+    expect(greetingFor(17 * 60)).toBe('Good evening');
+  });
+
   it('KPI cards, per-stylist timeline and the next two hours', async () => {
     reception();
     const soon = new Date(Date.now() + 30 * 60_000).toISOString();
@@ -78,6 +86,10 @@ describe('admin dashboard (FR-070, API-070)', () => {
     expect(await screen.findByText("Today's bookings")).toBeInTheDocument();
     expect(screen.getByText('11')).toBeInTheDocument();
     expect(screen.getByText('₹12,500.00')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(
+      /^Good (morning|afternoon|evening), Front$/,
+    );
+    expect(screen.getByText(/· 11 bookings on the books$/)).toBeInTheDocument();
     const timeline = screen.getByRole('region', { name: 'By stylist' });
     expect(
       within(timeline).getByRole('link', { name: /Kiran, Beard Trim, Completed/ }),

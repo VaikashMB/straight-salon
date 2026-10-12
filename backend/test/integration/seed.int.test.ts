@@ -137,4 +137,28 @@ describe('db:seed (02 §3)', () => {
     );
     expect(revenue).toBe(paid);
   });
+
+  it('adds demo photos to services and stylists that have none, and keeps uploaded ones', async () => {
+    const clock = createManualClock('2026-10-06T06:00:00Z');
+    const { logger, lines } = captureLogger();
+    const base = 'http://localhost:3000/demo';
+    // The first test seeded without photos; an admin has since uploaded one image.
+    const uploaded = 'http://localhost:4000/uploads/images/own.webp';
+    await ServiceModel.updateOne({ slug: 'haircut' }, { $set: { imageUrl: uploaded } });
+
+    await seedDatabase({ logger, bcryptCost: 4, clock, photoBaseUrl: base });
+
+    const services = await ServiceModel.find().lean();
+    expect(services.find((s) => s.slug === 'haircut')!.imageUrl).toBe(uploaded);
+    expect(services.find((s) => s.slug === 'manicure')!.imageUrl).toBe(
+      `${base}/services/manicure.webp`,
+    );
+    expect(services.every((s) => s.imageUrl)).toBe(true);
+    const staff = await StaffModel.find().lean();
+    expect(staff.map((s) => s.photoUrl).sort()).toEqual(
+      ['arjun', 'meera', 'priya', 'ravi'].map((key) => `${base}/staff/${key}.webp`),
+    );
+    const summary = lines().find((l) => String(l.msg).startsWith('Seed complete'));
+    expect(summary?.created).toEqual({ photos: SEED_SERVICE_COUNT - 1 + 4 });
+  });
 });

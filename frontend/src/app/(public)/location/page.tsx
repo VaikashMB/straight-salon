@@ -1,5 +1,6 @@
 import { ArrowRight, Clock, Mail, MapPin, Navigation, Phone } from 'lucide-react';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import Link from 'next/link';
 import { connection } from 'next/server';
 import { IconTile } from '@/components/icon-tile';
@@ -17,7 +18,15 @@ export const metadata: Metadata = {
 };
 
 // The salon's one location (multiple branches are out of scope for v1, 00 §3): address, contact,
-// opening hours, directions and a map, from the public settings (API-016).
+// opening hours, directions and a map (tinted to the palette), from the public settings
+// (API-016), then a few photos of the studio.
+// Stock photos of salon interiors (public/PHOTO-CREDITS.md), illustrating the feel of the studio.
+const STUDIO_PHOTOS = [
+  { src: '/salon/d.webp', alt: 'Styling chairs facing round mirrors on a dark wall' },
+  { src: '/salon/e.webp', alt: 'A bright reception desk with shelves of hair products' },
+  { src: '/salon/b.webp', alt: 'Barbers at work in a modern, softly lit studio' },
+] as const;
+
 export default async function LocationPage() {
   await connection();
   const catalogue = await loadCatalogue();
@@ -107,17 +116,40 @@ export default async function LocationPage() {
           </section>
         </div>
         {settings.address ? (
-          <div className="min-h-80 animate-fade-up overflow-hidden rounded-2xl border bg-muted shadow-soft [animation-delay:160ms] lg:min-h-full">
+          <div className="min-h-80 animate-fade-up overflow-hidden rounded-[1.75rem] border bg-muted shadow-lift ring-1 ring-accent/30 [animation-delay:160ms] lg:min-h-full">
             <iframe
               title={`Map showing ${settings.name}`}
               src={mapEmbedUrl(settings.address)}
               loading="lazy"
               referrerPolicy="no-referrer-when-downgrade"
-              className="size-full min-h-80 border-0"
+              className="size-full min-h-80 border-0 map-tint"
             />
           </div>
         ) : null}
       </div>
+      <section aria-labelledby="inside" className="mx-auto grid max-w-6xl gap-6 px-4 pb-16">
+        <h2 id="inside" className="sr-only">
+          Inside the studio
+        </h2>
+        <div className="grid reveal gap-4 sm:grid-cols-3">
+          {STUDIO_PHOTOS.map((photo, i) => (
+            <div
+              key={photo.src}
+              className={`relative overflow-hidden rounded-2xl shadow-soft ring-1 ring-border ${i === 0 ? 'aspect-[4/3] sm:col-span-2 sm:aspect-auto' : 'aspect-[4/3]'}`}
+            >
+              <Image
+                src={photo.src}
+                alt={photo.alt}
+                fill
+                sizes={
+                  i === 0 ? '(min-width: 640px) 48rem, 100vw' : '(min-width: 640px) 24rem, 100vw'
+                }
+                className="object-cover transition duration-700 hover:scale-105"
+              />
+            </div>
+          ))}
+        </div>
+      </section>
     </>
   );
 }

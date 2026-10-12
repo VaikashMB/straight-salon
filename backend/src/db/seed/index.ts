@@ -23,7 +23,13 @@ if (env.NODE_ENV === 'production') {
 try {
   await runMigrations(env.MONGO_URI, logger);
   const connection = await connectMongo(env.MONGO_URI, logger);
-  await seedDatabase({ logger, bcryptCost: env.BCRYPT_COST });
+  // Demo photos ship with the frontend (public/demo), so every way of running the seed (host,
+  // container, CI) points at the same files.
+  await seedDatabase({
+    logger,
+    bcryptCost: env.BCRYPT_COST,
+    photoBaseUrl: `${env.APP_BASE_URL}/demo`,
+  });
   // Redis only for clearing caches the recompute touches; a Redis outage does not stop it.
   const redis = createRedisClient(env.REDIS_URL, logger);
   const services = buildServices({

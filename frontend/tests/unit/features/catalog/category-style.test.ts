@@ -1,4 +1,10 @@
-import { Brush, Droplets, Hand, Scissors, Sparkles } from 'lucide-react';
+import {
+  DropletLeafIcon,
+  PolishIcon,
+  RazorIcon,
+  ShearsIcon,
+  SparkleIcon,
+} from '@/components/brand-icons';
 import { describe, expect, it } from 'vitest';
 import {
   categoryStyle,
@@ -9,10 +15,10 @@ import { categories, ids, makeCategory, services } from '../../helpers/fixtures'
 
 describe('category style (decorative identity per category)', () => {
   it.each([
-    ['hair', 'Hair', Scissors],
-    ['beard-grooming', 'Beard & Grooming', Brush],
-    ['skin', 'Skin', Droplets],
-    ['nails', 'Nails', Hand],
+    ['hair', 'Hair', ShearsIcon],
+    ['beard-grooming', 'Beard & Grooming', RazorIcon],
+    ['skin', 'Skin', DropletLeafIcon],
+    ['nails', 'Nails', PolishIcon],
   ])('the seeded category %s gets its own icon and tint', (slug, name, icon) => {
     const style = categoryStyle({ slug, name });
     expect(style.icon).toBe(icon);
@@ -20,14 +26,14 @@ describe('category style (decorative identity per category)', () => {
   });
 
   it('falls back to the name when the slug was changed', () => {
-    expect(categoryStyle({ slug: 'cat-7', name: 'Hair & Colour' }).icon).toBe(Scissors);
-    expect(categoryStyle({ slug: 'nails-2', name: 'Manicure' }).icon).toBe(Hand);
+    expect(categoryStyle({ slug: 'cat-7', name: 'Hair & Colour' }).icon).toBe(ShearsIcon);
+    expect(categoryStyle({ slug: 'nails-2', name: 'Manicure' }).icon).toBe(PolishIcon);
   });
 
   it('categories added by admins, and a missing category, get the brass fallback', () => {
     expect(categoryStyle({ slug: 'massage', name: 'Massage' })).toBe(FALLBACK_CATEGORY_STYLE);
     expect(categoryStyle(undefined)).toBe(FALLBACK_CATEGORY_STYLE);
-    expect(FALLBACK_CATEGORY_STYLE.icon).toBe(Sparkles);
+    expect(FALLBACK_CATEGORY_STYLE.icon).toBe(SparkleIcon);
   });
 });
 

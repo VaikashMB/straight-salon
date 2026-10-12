@@ -115,6 +115,7 @@
 @theme inline {
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-heading: var(--font-display), var(--font-body), ui-sans-serif, sans-serif;
+  --font-serif: var(--font-fraunces), Georgia, 'Times New Roman', serif;
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -161,6 +162,8 @@
   --animate-pop: pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   --animate-shimmer: shimmer 1.6s linear infinite;
   --animate-marquee: marquee 40s linear infinite;
+  --animate-ken-burns: ken-burns 18s ease-out both;
+  --animate-burst: burst 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
 
   @keyframes fade-up {
     from {
@@ -197,6 +200,29 @@
     }
     to {
       transform: translateX(-50%);
+    }
+  }
+  /* Slow push-in on the hero photo. */
+  @keyframes ken-burns {
+    from {
+      transform: scale(1.08);
+    }
+    to {
+      transform: scale(1);
+    }
+  }
+  /* A sparkle flying out from the centre along its own angle (--a) and distance (--d). */
+  @keyframes burst {
+    0% {
+      opacity: 0;
+      transform: rotate(var(--a)) translateY(0) scale(0.3);
+    }
+    20% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: rotate(var(--a)) translateY(calc(var(--d) * -1)) scale(1);
     }
   }
   @keyframes shimmer {
@@ -237,6 +263,144 @@
   }
 }
 
+/* Scroll reveal (05 §2): the element rises and fades in as it scrolls into view. Pure CSS
+   scroll-driven animation; browsers without it, and reduced motion, show it straight away. */
+@utility reveal {
+  @supports (animation-timeline: view()) {
+    animation: reveal-up linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 22%;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes reveal-up {
+  from {
+    opacity: 0;
+    transform: translateY(32px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Parallax drift for a decorative image inside an overflow-hidden frame (scroll-driven). */
+@utility parallax {
+  @supports (animation-timeline: view()) {
+    animation: parallax-drift linear both;
+    animation-timeline: view();
+  }
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+}
+
+@keyframes parallax-drift {
+  from {
+    transform: translateY(-6%) scale(1.12);
+  }
+  to {
+    transform: translateY(6%) scale(1.12);
+  }
+}
+
+/* The public header tightens and gains a shadow once the page scrolls (scroll-driven). */
+@utility header-scroll {
+  @supports (animation-timeline: scroll()) {
+    animation: header-settle linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 140px;
+  }
+}
+
+@utility header-scroll-row {
+  @supports (animation-timeline: scroll()) {
+    animation: header-row linear both;
+    animation-timeline: scroll(root);
+    animation-range: 0 140px;
+  }
+}
+
+@keyframes header-settle {
+  to {
+    background-color: color-mix(in oklab, var(--background) 90%, transparent);
+    box-shadow: 0 6px 24px rgb(var(--shadow-color) / 0.08);
+  }
+}
+
+@keyframes header-row {
+  from {
+    height: 4.5rem;
+  }
+  to {
+    height: 3.75rem;
+  }
+}
+
+/* A brass-white light sweep across a button or card on hover and keyboard focus. */
+@utility shine {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    pointer-events: none;
+    background: linear-gradient(
+      110deg,
+      transparent 30%,
+      color-mix(in oklab, white 38%, transparent) 50%,
+      transparent 70%
+    );
+    transform: translateX(-130%);
+    transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  &:hover::after,
+  &:focus-visible::after {
+    transform: translateX(130%);
+  }
+}
+
+/* Shows an integer counting up to --to; give the element style="--to: 42". Decorative: pair it
+   with the real number in sr-only text and aria-hide this one. */
+@property --num {
+  syntax: '<integer>';
+  initial-value: 0;
+  inherits: false;
+}
+
+@keyframes count-up {
+  from {
+    --num: 0;
+  }
+  to {
+    --num: var(--to);
+  }
+}
+
+@utility count-up {
+  /* The final value when the animation does not run. */
+  --num: var(--to);
+  animation: count-up 1.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+  counter-reset: num var(--num);
+  &::after {
+    content: counter(num);
+  }
+}
+
+/* The Google Maps embed, tinted to the warm palette (and dimmed in the dark theme). */
+@utility map-tint {
+  filter: grayscale(0.55) sepia(0.28) contrast(0.95) brightness(1.02);
+  @variant dark {
+    filter: invert(0.9) hue-rotate(180deg) grayscale(0.5) sepia(0.25) brightness(0.95);
+  }
+}
+
 /* Thin brass rule used as a section divider or under headings. */
 @utility rule-brass {
   height: 2px;
@@ -256,8 +420,13 @@
   body {
     @apply min-h-svh bg-background font-sans text-foreground antialiased;
   }
+  /* Editorial serif for the big headlines, the geometric sans for smaller headings. */
   h1,
-  h2,
+  h2 {
+    @apply font-serif font-medium tracking-tight text-balance;
+    font-optical-sizing: auto;
+    font-variation-settings: 'SOFT' 40;
+  }
   h3 {
     @apply font-heading tracking-tight text-balance;
   }
@@ -275,7 +444,21 @@
   ::selection {
     background: color-mix(in oklab, var(--accent) 35%, transparent);
   }
+  /* Route changes crossfade (React <ViewTransition>, 05 §2); named elements morph. */
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: 0.3s;
+  }
+  ::view-transition-group(*) {
+    animation-duration: 0.45s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+  }
   @media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+      animation: none !important;
+    }
     *,
     ::before,
     ::after {

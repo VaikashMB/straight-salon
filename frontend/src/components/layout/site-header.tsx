@@ -9,14 +9,15 @@ import { MobileMenu } from './mobile-menu';
 import { activeHref, PUBLIC_NAV } from './nav';
 import { SessionActions } from './session-actions';
 
-// Public site header: sticky with a blurred backdrop, catalogue links (the current one marked
-// with a brass underline and aria-current), the visitor's session state and the theme toggle.
-// Below md everything but the brand moves into the mobile menu.
+// Public site header: sticky with a blurred backdrop that tightens and gains a shadow as the page
+// scrolls (CSS scroll-driven, 05 §2), catalogue links (the current one marked with a brass
+// underline and aria-current), the visitor's session state and the theme toggle. Below md
+// everything but the brand moves into the mobile menu.
 export function SiteHeader() {
   const active = activeHref(PUBLIC_NAV, usePathname());
   return (
-    <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/70">
-      <div className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-4 px-4">
+    <header className="sticky top-0 z-40 header-scroll border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/65">
+      <div className="mx-auto flex h-16 max-w-6xl header-scroll-row items-center justify-between gap-4 px-4">
         <Brand className="inline-flex min-h-11 items-center text-xl" />
         <nav aria-label="Main" className="hidden h-full items-stretch md:flex">
           {PUBLIC_NAV.map((item) => (

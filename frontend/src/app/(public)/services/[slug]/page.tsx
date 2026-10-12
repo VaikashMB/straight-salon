@@ -11,6 +11,7 @@ import { PageBand } from '@/features/catalog/components/page-band';
 import { PricePill } from '@/features/catalog/components/price-pill';
 import { ReviewList } from '@/features/catalog/components/review-list';
 import { SectionHeading } from '@/features/catalog/components/section-heading';
+import { serviceImageName } from '@/features/catalog/components/service-card';
 import { ServiceImage } from '@/features/catalog/components/service-image';
 import { StylistAvatar } from '@/features/catalog/components/stylist-avatar';
 import { loadPublic } from '@/lib/api/server';
@@ -51,7 +52,7 @@ export default async function ServicePage({ params }: Props) {
   return (
     <article>
       <PageBand innerClassName="max-w-5xl">
-        <header className="grid animate-fade-up gap-8 md:grid-cols-[1fr_20rem] md:items-center">
+        <header className="grid animate-fade-up gap-8 md:grid-cols-[1fr_24rem] md:items-center">
           <div className="grid gap-4">
             <Link
               href="/services"
@@ -64,9 +65,7 @@ export default async function ServicePage({ params }: Props) {
                 {category.name}
               </p>
             ) : null}
-            <h1 className="text-4xl leading-tight font-semibold tracking-tighter sm:text-5xl">
-              {s.name}
-            </h1>
+            <h1 className="text-4xl leading-tight font-semibold sm:text-6xl">{s.name}</h1>
             <div aria-hidden className="rule-brass" />
             <div className="flex flex-wrap items-center gap-4 text-muted-foreground">
               <PricePill size="lg">{formatMoney(s.price.amountMinor, s.price.currency)}</PricePill>
@@ -77,7 +76,7 @@ export default async function ServicePage({ params }: Props) {
             </div>
             {s.description ? <p className="max-w-2xl text-lg">{s.description}</p> : null}
             <div className="pt-2">
-              <Button asChild size="lg" className="shadow-soft">
+              <Button asChild size="lg" className="shine shadow-soft">
                 <Link href={`/book?services=${s.id}`}>Book {s.name}</Link>
               </Button>
             </div>
@@ -85,14 +84,15 @@ export default async function ServicePage({ params }: Props) {
           <ServiceImage
             imageUrl={s.imageUrl}
             category={category}
-            sizes="(min-width: 768px) 20rem, 100vw"
-            className="aspect-[4/3] rounded-2xl border shadow-lift"
+            sizes="(min-width: 768px) 24rem, 100vw"
+            className="aspect-[4/3] rounded-[1.75rem] border shadow-lift ring-1 ring-accent/30"
+            transitionName={serviceImageName(s.id)}
           />
         </header>
       </PageBand>
 
       <div className="mx-auto grid max-w-5xl gap-16 px-4 py-16">
-        <section aria-labelledby="who" className="grid gap-6">
+        <section aria-labelledby="who" className="grid reveal gap-6">
           <SectionHeading id="who" eyebrow="Stylists" title="Who offers it" />
           {s.stylists.length === 0 ? (
             <p className="text-sm text-muted-foreground">
@@ -126,7 +126,7 @@ export default async function ServicePage({ params }: Props) {
           )}
         </section>
 
-        <section aria-labelledby="reviews" className="grid gap-6">
+        <section aria-labelledby="reviews" className="grid reveal gap-6">
           <SectionHeading id="reviews" eyebrow="What clients say" title="Reviews" />
           <ReviewList reviews={reviews} timeZone={timeZone} />
         </section>

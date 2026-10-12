@@ -53,11 +53,20 @@ describe('stylist card', () => {
     expect(screen.getByText('4.8')).toBeInTheDocument();
   });
 
-  it('renders the photo with a brass ring, and no chips without specialities', () => {
+  it('shows the photo as a portrait, and no chips without specialities', () => {
     const { container } = render(
       <StylistCard stylist={makeStylist({ photoUrl: 'http://localhost:4000/uploads/r.webp' })} />,
     );
-    expect(container.querySelector('img')).toHaveClass('ring-accent');
+    const img = container.querySelector('img')!;
+    expect(img).toHaveAttribute('src', 'http://localhost:4000/uploads/r.webp');
+    expect(img.parentElement).toHaveClass('aspect-[4/3]', 'sm:aspect-[4/5]');
+    expect(screen.getByRole('heading', { name: 'Ravi' })).toBeInTheDocument();
     expect(screen.queryByRole('list', { name: 'Specialities' })).not.toBeInTheDocument();
+  });
+
+  it('shows initials in a brass ring when there is no photo', () => {
+    const { container } = render(<StylistCard stylist={makeStylist()} />);
+    expect(container.querySelector('img')).toBeNull();
+    expect(screen.getByText('R')).toHaveClass('ring-accent');
   });
 });

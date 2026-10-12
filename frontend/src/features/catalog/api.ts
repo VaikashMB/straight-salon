@@ -43,3 +43,32 @@ export async function loadReviews(filter: { staffId: string } | { serviceId: str
   );
   return result.data?.data ?? [];
 }
+
+// Testimonials for the home page: the most recent visible reviews with a comment and four or
+// five stars, at most `limit` of them.
+export async function loadFeaturedReviews(limit = 3): Promise<Review[]> {
+  const result = await loadPublic((api) =>
+    api.GET('/api/v1/reviews', { params: { query: { pageSize: 30 } } }),
+  );
+  return (result.data?.data ?? [])
+    .filter((review) => review.rating >= 4 && review.comment)
+    .slice(0, limit);
+}
+
+// Salon-wide figures for the home hero, from the stylists' rating aggregates (every review rates
+// one stylist). null rating when nothing has been rated yet.
+export function salonStats(catalogue: Catalogue): {
+  rating: number | null;
+  reviews: number;
+  services: number;
+  stylists: number;
+} {
+  const reviews = catalogue.stylists.reduce((sum, s) => sum + s.ratingCount, 0);
+  const weighted = catalogue.stylists.reduce((sum, s) => sum + s.ratingAvg * s.ratingCount, 0);
+  return {
+    rating: reviews > 0 ? Math.round((weighted / reviews) * 10) / 10 : null,
+    reviews,
+    services: catalogue.services.length,
+    stylists: catalogue.stylists.length,
+  };
+}

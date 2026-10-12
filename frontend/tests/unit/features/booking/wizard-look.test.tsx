@@ -143,6 +143,10 @@ describe('booking wizard look (05 §4.1)', () => {
     setLocation('/book', `step=done&booking=${booking.id}`);
     renderWithProviders(<BookPage />);
     expect(await screen.findByRole('heading', { name: "You're booked!" })).toBeInTheDocument();
+    // A ring of sparkles bursts from the check (decorative, hidden from assistive tech).
+    const burst = screen.getByTestId('burst');
+    expect(burst.closest('[aria-hidden="true"]')).not.toBeNull();
+    expect(burst.children).toHaveLength(14);
     expect(screen.queryByRole('list', { name: 'Booking steps' })).not.toBeInTheDocument();
     expect(screen.queryByText(/Step \d of 4/)).not.toBeInTheDocument();
     const ref = screen.getByText(booking.bookingRef);

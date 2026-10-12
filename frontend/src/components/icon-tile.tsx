@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { IconComponent } from '@/components/brand-icons';
 import { cn } from '@/lib/utils';
 
 const SIZE = {
@@ -7,14 +7,14 @@ const SIZE = {
   lg: 'size-14 [&>svg]:size-7',
 } as const;
 
-// A decorative icon in a soft brass circle (KPI cards, feature steps, empty states). The icon
+// A decorative icon (Lucide or the salon's own) in a soft brass circle (KPI cards, feature steps, empty states). The icon
 // is always aria-hidden: the text next to it carries the meaning.
 export function IconTile({
   icon: Icon,
   size = 'md',
   className,
 }: {
-  icon: LucideIcon;
+  icon: IconComponent;
   size?: keyof typeof SIZE;
   className?: string;
 }) {
