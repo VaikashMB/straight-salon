@@ -1,5 +1,8 @@
 // "Add to calendar" (05 §4.1): an iCalendar file built in the browser, so it needs no endpoint.
 
+import type { PublicSettings } from '@/lib/settings';
+import type { Booking } from './api';
+
 export interface CalendarEvent {
   uid: string;
   title: string;
@@ -50,4 +53,24 @@ export function downloadFile(filename: string, content: Blob): void {
   link.click();
   link.remove();
   URL.revokeObjectURL(url);
+}
+
+// The calendar file for a booking: services and stylist as the title and description, the
+// salon's address as the location.
+export function bookingCalendarFile(
+  booking: Pick<Booking, 'id' | 'bookingRef' | 'startAt' | 'endAt' | 'services' | 'staff'>,
+  salon: Pick<PublicSettings, 'name' | 'address'>,
+): { filename: string; content: Blob } {
+  const ics = buildIcs({
+    uid: `${booking.id}@straightsalon`,
+    title: `${booking.services.map((s) => s.name).join(', ')} at ${salon.name}`,
+    description: `Booking ${booking.bookingRef} with ${booking.staff.displayName}.`,
+    location: salon.address,
+    startAt: booking.startAt,
+    endAt: booking.endAt,
+  });
+  return {
+    filename: `${booking.bookingRef}.ics`,
+    content: new Blob([ics], { type: 'text/calendar' }),
+  };
 }

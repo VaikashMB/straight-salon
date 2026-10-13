@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { usePublicSettings } from '@/lib/settings';
 import { useMyBookings, type Scope } from '../api';
 import { AccountBookingCard } from './account-booking-card';
+import { NextVisitCard } from './next-visit-card';
 
 const COPY: Record<
   Scope,
@@ -53,18 +54,30 @@ export function BookingList({ scope }: { scope: Scope }) {
           }
         />
       );
+    // The first upcoming booking leads as the "next visit"; the rest follow as a list.
+    const list = bookings.data.data;
+    const next = scope === 'upcoming' && bookings.data.meta.page === 1 ? list[0] : undefined;
+    const rest = next ? list.slice(1) : list;
     return (
       <>
-        <div className="grid gap-3">
-          {bookings.data.data.map((booking, i) => (
-            <AccountBookingCard
-              key={booking.id}
-              booking={booking}
-              timeZone={settings.timezone}
-              index={i}
-            />
-          ))}
-        </div>
+        {next ? <NextVisitCard booking={next} settings={settings} /> : null}
+        {rest.length > 0 ? (
+          <div className="grid gap-3">
+            {next ? (
+              <h2 className="mt-2 font-heading text-sm font-semibold tracking-[0.14em] text-muted-foreground uppercase">
+                Later
+              </h2>
+            ) : null}
+            {rest.map((booking, i) => (
+              <AccountBookingCard
+                key={booking.id}
+                booking={booking}
+                timeZone={settings.timezone}
+                index={i}
+              />
+            ))}
+          </div>
+        ) : null}
         <Pagination
           page={bookings.data.meta.page}
           totalPages={bookings.data.meta.totalPages}

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatDateTime, formatMoney } from '@/lib/format';
 import { usePublicSettings } from '@/lib/settings';
 import { useBooking } from '../api';
-import { buildIcs, downloadFile } from '../ics';
+import { bookingCalendarFile, downloadFile } from '../ics';
 
 // A ring of brass and green sparkles bursting out from the success check (CSS only; under
 // reduced motion the animation is skipped and they stay hidden). Decorative.
@@ -51,15 +51,8 @@ export function StepSuccess({ bookingId }: { bookingId: string }) {
   const b = booking.data;
 
   const addToCalendar = () => {
-    const ics = buildIcs({
-      uid: `${b.id}@straightsalon`,
-      title: `${b.services.map((s) => s.name).join(', ')} at ${settings.name}`,
-      description: `Booking ${b.bookingRef} with ${b.staff.displayName}.`,
-      location: settings.address,
-      startAt: b.startAt,
-      endAt: b.endAt,
-    });
-    downloadFile(`${b.bookingRef}.ics`, new Blob([ics], { type: 'text/calendar' }));
+    const file = bookingCalendarFile(b, settings);
+    downloadFile(file.filename, file.content);
   };
 
   return (
