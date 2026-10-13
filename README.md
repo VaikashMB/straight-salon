@@ -67,23 +67,24 @@ The specs are written to be **stack-agnostic where possible**. Anything stack-sp
 
 ## Spec index
 
-| File                                    | Purpose                                                                            |
-| --------------------------------------- | ---------------------------------------------------------------------------------- |
-| `AGENTS.md`                             | Rules for the AI coding agent. Point your AI tool at this first.                   |
-| `docs/specs/00-product-requirements.md` | What we're building and why: personas, features, user stories, acceptance criteria |
-| `docs/specs/01-architecture.md`         | System design, repo layout, module boundaries, cross-cutting concerns              |
-| `docs/specs/02-database.md`             | Collections, fields, indexes, constraints, seed data                               |
-| `docs/specs/03-backend.md`              | Backend structure, layers, modules, business rules, config                         |
-| `docs/specs/04-api-contract.md`         | Every endpoint: method, path, auth, request, response, errors; OpenAPI rules       |
-| `docs/specs/05-frontend.md`             | Pages, routes, components, state, forms, UX rules                                  |
-| `docs/specs/06-auth-and-security.md`    | JWT flow, roles and permissions, security controls                                 |
-| `docs/specs/07-logging-and-auditing.md` | Log format, levels, correlation, audit trail                                       |
-| `docs/specs/08-caching.md`              | What is cached, keys, TTLs, invalidation, rate limiting                            |
-| `docs/specs/09-events-and-messaging.md` | Domain events, outbox pattern, workers, retries, idempotency                       |
-| `docs/specs/10-testing-and-quality.md`  | Test strategy, coverage, SonarQube setup and quality gate                          |
-| `docs/specs/11-docker-local-dev.md`     | Dockerfiles and docker-compose for local development                               |
-| `docs/specs/12-automation-and-ci.md`    | Git hooks, scripts, CI pipeline, scheduled jobs                                    |
-| `docs/specs/13-build-plan.md`           | Phased build order with ready-to-use prompts for the AI                            |
+| File                                    | Purpose                                                                             |
+| --------------------------------------- | ----------------------------------------------------------------------------------- |
+| `AGENTS.md`                             | Rules for the AI coding agent. Point your AI tool at this first.                    |
+| `docs/specs/00-product-requirements.md` | What we're building and why: personas, features, user stories, acceptance criteria  |
+| `docs/specs/01-architecture.md`         | System design, repo layout, module boundaries, cross-cutting concerns               |
+| `docs/specs/02-database.md`             | Collections, fields, indexes, constraints, seed data                                |
+| `docs/specs/03-backend.md`              | Backend structure, layers, modules, business rules, config                          |
+| `docs/specs/04-api-contract.md`         | Every endpoint: method, path, auth, request, response, errors; OpenAPI rules        |
+| `docs/specs/05-frontend.md`             | Pages, routes, components, state, forms, UX rules                                   |
+| `docs/specs/06-auth-and-security.md`    | JWT flow, roles and permissions, security controls                                  |
+| `docs/specs/07-logging-and-auditing.md` | Log format, levels, correlation, audit trail                                        |
+| `docs/specs/08-caching.md`              | What is cached, keys, TTLs, invalidation, rate limiting                             |
+| `docs/specs/09-events-and-messaging.md` | Domain events, outbox pattern, workers, retries, idempotency                        |
+| `docs/specs/10-testing-and-quality.md`  | Test strategy, coverage, SonarQube setup and quality gate                           |
+| `docs/specs/11-docker-local-dev.md`     | Dockerfiles and docker-compose for local development                                |
+| `docs/specs/12-automation-and-ci.md`    | Git hooks, scripts, CI pipeline, scheduled jobs                                     |
+| `docs/specs/13-build-plan.md`           | Phased build order with ready-to-use prompts for the AI                             |
+| `docs/specs/14-container-registry.md`   | FDE step 1: publishing, promoting and signing images in GHCR (concepts + decisions) |
 
 ## Getting started (local development)
 
@@ -202,6 +203,7 @@ Sign in at http://localhost:9000 as `admin` with the `SONAR_ADMIN_PASSWORD` from
 - SonarCloud
 - Docker image builds with a Trivy scan
 - Playwright e2e (on `main`, and on PRs labelled `e2e`)
+- on `main` only: publishing the images to GHCR (see "Published images")
 
 `npm run validate` runs the same checks locally, apart from the scans, image builds and e2e.
 
@@ -211,7 +213,25 @@ One-time GitHub setup:
 - **`e2e` label:** create it, so PRs can opt in to the e2e job.
 - **Branch protection on `main`:** require the CI checks and 1 review, with linear history and squash merge (12 §3).
 
-Releases are cut by hand: Actions → **Release** → Run workflow on `main`. semantic-release then tags `vX.Y.Z` and publishes a GitHub Release with notes generated from the Conventional Commits. The first run creates v1.0.0.
+Releases are cut by hand: Actions → **Release** → Run workflow on `main`, after CI on the latest commit has passed. semantic-release then tags `vX.Y.Z` and publishes a GitHub Release with notes generated from the Conventional Commits, and the `publish` job adds the version tags to that commit's images. The first run creates v1.0.0.
+
+### Published images
+
+Every green merge to `main` publishes two public images to GHCR (spec 14):
+
+| Image                                       | Runs             |
+| ------------------------------------------- | ---------------- |
+| `ghcr.io/vaikashmb/straight-salon-backend`  | api and worker   |
+| `ghcr.io/vaikashmb/straight-salon-frontend` | Next.js frontend |
+
+Tags: `sha-<commit>` (every build on `main`, kept 30 days), `main` (newest commit that passed every CI check), `X.Y.Z`, `X.Y`, `X` and `latest` (releases). Deploy by digest or by an exact tag, never `latest`. Each image carries an SBOM and provenance and is signed keylessly by `ci.yml`.
+
+```sh
+docker pull ghcr.io/vaikashmb/straight-salon-backend:main
+npm run images:verify -- main     # signature, digest, commit, SBOM and provenance for both images
+```
+
+`images:verify` needs [cosign](https://docs.sigstore.dev/cosign/system_config/installation/). After the first publish, check each package's visibility under the package's settings on GitHub and make it public if it was created private (pulls without login, and `images:verify`, need public packages).
 
 Commits must follow Conventional Commits with a scope from `commitlint.config.mjs`, e.g. `feat(booking): add reschedule endpoint (API-054)`. The pre-commit hook lints and formats staged files; the pre-push hook runs unit tests for the workspaces you changed.
 
@@ -243,6 +263,7 @@ Kubernetes, Helm, cloud deployment, managed databases, horizontal scaling, obser
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Specs touched                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | 2026-10-06 | Phase 0 review: resolved ambiguities and contradictions. Key changes: staff-day guard document so BR-004 holds under concurrency without relying on Redis; `ss_session` indicator cookie for frontend route protection; runtime `/api/*` proxy in `proxy.ts` (Next 16) instead of build-time rewrites; root-context Docker builds for the workspace lockfile; `directConnection=true` for host-mode Mongo; lead-time filter applied after the availability cache; walk-in `checkInNow`; 422 `ACTIVE_BOOKINGS_EXIST` + `force` semantics for holidays/time-off; new error codes; extended permission map; image upload endpoint API-027; `booking.reminder_due` event (EVT-017); outbox `PUBLISHING`/`claimedAt`; incremental seed; Sonar test exclusions; explicit commit scopes.                                                                                                    | AGENTS, 00, 01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13 |
+| 2026-10-13 | FDE step 1 (spec 14): images are built once, pushed to GHCR as `sha-<commit>` with SBOM and provenance, scanned after pulling back by digest, signed keylessly with cosign, and promoted to `main` (all CI green) and to release tags (`release.yml` `publish`) without rebuilding; weekly GHCR cleanup; `npm run images:verify`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 12, 13, 14, README                                         |
 | 2026-10-13 | Auth pages get a photo panel beside the form (scenes per page); the customer's soonest booking leads `/account` as a "next visit" card (photo, countdown, add to calendar, directions); the booking services step gets photo cards, category chips and a sticky "Your visit" panel; Open Graph share images for every page via `next/og` (`sharp` added as an explicit frontend dependency, TTF fonts under `public/fonts/og`); new `NEXT_PUBLIC_SITE_URL`.                                                                                                                                                                                                                                                                                                                                                                                                                          | 05, README                                                 |
 | 2026-10-12 | Editorial visual pass: licensed stock photography with one warm grade (seeded as service and stylist images from `frontend/public/demo/`, credits in `PHOTO-CREDITS.md`); Fraunces serif headlines; full-bleed photo hero with live salon figures; studio collage, testimonials from real reviews, gift-card band; `/gallery` lookbook with lightbox; portrait stylist cards and profiles with signature looks; CSS scroll reveals, parallax, header that settles on scroll, button shine, count-up, success sparkles; React view transitions between pages; monogram, favicon and custom category icons; announcement bar, richer footer, tinted map, page-shaped loading skeleton; dashboard greeting; branded HTML emails.                                                                                                                                                        | 02, 05, 09, README                                         |
 | 2026-10-09 | Inspired by straight-studio.com: home hero carousel of model looks (royalty-free stock photos, live service prices, accessible carousel), "Products we trust" marquee of fictional brand wordmarks, `/location` page with directions and a map; profile menu (avatar dropdown) in the header; back arrow instead of the "Main site" button in the signed-in areas.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | 05, README                                                 |

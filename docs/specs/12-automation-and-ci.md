@@ -56,17 +56,20 @@ jobs:
   contract     : needs setup → contract:check
   sonar        : needs test-backend, test-frontend → download coverage artifacts
                  → SonarQube/SonarCloud scan → wait for quality gate (fail on red)
-  docker-build : needs lint → build backend & frontend images (no push in v1),
-                 run Trivy image scan (fail on CRITICAL), cache layers with GHA cache
+  docker-build : needs lint → build backend & frontend images once, Trivy scan (fail on
+                 CRITICAL), GHA layer cache; on main also push sha-<commit> to GHCR with
+                 SBOM + provenance and sign (14 §3.2)
   e2e          : needs docker-build; on main or label "e2e"
                  → docker compose up, seed, Playwright, upload report/videos on failure
+  promote      : main only; needs every job above → move the `main` tag to the tested
+                 digests (14 §3.2)
 ```
 Implementation notes (Phase 11, decision 2026-10-08):
 - `setup` installs once and caches `node_modules` (all workspaces) keyed by `.nvmrc` + lockfile; the other jobs restore it through the composite action `.github/actions/setup-deps` (`npm ci` only on a miss, `HUSKY=0`).
 - `security` runs `npm run audit` (high and above, with the reviewed allowlist, 10 §6) and gitleaks `v8.30.1` (Docker image) over the full history, with accepted findings in `.gitleaksignore`.
 - `test-backend` caches `~/.cache/mongodb-binaries`; both test jobs upload `lcov.info`, Cobertura and JUnit (`reports/junit.xml`).
 - `sonar` scans on **SonarCloud** and is skipped with a notice while the `SONAR_TOKEN` secret is unset (10 §5.3).
-- `docker-build` builds the `runtime` targets with Buildx and the GHA layer cache. Trivy `v0.75.0` fails on CRITICAL vulnerabilities **that have a fix** (`ignore-unfixed`): an unfixable base-image CVE would otherwise block every build with nothing to upgrade. When e2e will run, the images are handed to it as an artifact instead of being rebuilt.
+- `docker-build` builds the `runtime` targets with Buildx and the GHA layer cache, through the composite action `.github/actions/build-scan-image` (since 2026-10-13, 14 §3.2: on `main` the single build is pushed to GHCR and scanned after pulling it back by digest; on PRs nothing is pushed). Trivy `v0.75.0` fails on CRITICAL vulnerabilities **that have a fix** (`ignore-unfixed`): an unfixable base-image CVE would otherwise block every build with nothing to upgrade. When e2e will run, the images are handed to it as an artifact instead of being rebuilt.
 - `e2e` loads those images, runs `npm run env:init`, `docker compose -f docker-compose.yml up -d --no-build --wait backend frontend mailpit`, then starts the worker separately (`--wait` fails on a service without a healthcheck, and the worker has none; fixed 2026-10-09), and `npm run db:seed` from the runner (the production image refuses to seed), installs Chromium, runs `npm run test:e2e`, and on failure uploads the Playwright report, traces and the compose logs. PRs are triggered on `labeled` too, so adding the `e2e` label starts it.
 - Third-party actions are pinned to commit SHAs (with the version in a comment); GitHub's own `actions/*` to major tags. Dependabot's `github-actions` entry keeps both current. Workflows are checked with actionlint.
 - Repository settings that cannot live in the repo (set them once in GitHub): branch protection for `main` as below, with the CI jobs as required checks; the `SONAR_TOKEN` secret and `SONAR_ORGANIZATION` variable; an `e2e` label.
@@ -74,11 +77,11 @@ Implementation notes (Phase 11, decision 2026-10-08):
 Rules:
 - Branch protection on `main`: all jobs green, 1 review (even if self-review while learning), linear history, squash merge.
 - Concurrency group per branch with cancel-in-progress.
-- Secrets: `SONAR_TOKEN`, `SONAR_HOST_URL` (GitHub Actions secrets). No other secrets needed for CI in v1 (test env uses generated values).
+- Secrets: `SONAR_TOKEN`, `SONAR_HOST_URL` (GitHub Actions secrets). No other secrets needed for CI (test env uses generated values; GHCR pushes use the job's `GITHUB_TOKEN` and signing is keyless, 14 §3.3).
 - Status badges in README: CI, coverage, quality gate.
 
-### Reserved for the deployment phase (do not implement in v1)
-`cd.yml`: on tag/release → push images to a registry (GHCR) with SHA + semver tags → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
+### Reserved for the deployment phase
+Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Still to come, `cd.yml`: on tag/release → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
 
 ## 4. In-app automation summary
 Specified in 09 §7: reminders (24 h, 2 h), auto no-show, outbox cleanup (Phase 6), daily stats reconcile (Phase 7). Plus:

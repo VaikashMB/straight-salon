@@ -1,7 +1,8 @@
 # Release (12-automation-and-ci §1): semantic-release, started by hand from the Actions tab on main.
 # It reads the Conventional Commits since the last v* tag, picks the next version, and creates the
 # tag and a GitHub Release with generated notes (the changelog). It commits nothing back to main,
-# so branch protection needs no bypass. The first run creates v1.0.0 (Phase 12).
+# so branch protection needs no bypass. The first run creates v1.0.0 (Phase 12). A new version
+# is then published as image tags by the `publish` job (14-container-registry §3.2).
 name: Release
 
 on:
@@ -25,7 +26,77 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
+      - name: Tags on this commit before releasing
+        id: before
+        run: echo "tags=$(git tag --points-at HEAD --list 'v*' | tr '\n' ' ')" >> "$GITHUB_OUTPUT"
       # Pinned and run through npx, like other repo tools that are not app dependencies
       - run: npx -y semantic-release@25.0.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # Tags made with GITHUB_TOKEN never start other workflows (14 §2.8), so publishing runs
+      # here, in the `publish` job, which needs to know whether a new version was just tagged:
+      # a v* tag on HEAD that wasn't there before semantic-release ran.
+      - name: Read the version semantic-release tagged (if any)
+        id: version
+        env:
+          BEFORE: ${{ steps.before.outputs.tags }}
+        run: |
+          for tag in $(git tag --points-at HEAD --list 'v*'); do
+            case " $BEFORE " in *" $tag "*) continue ;; esac
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            echo "Released ${tag}"
+            exit 0
+          done
+          echo "No new release"
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+
+  # Promotes the images CI already built and tested for the released commit (14 §3.2). Nothing
+  # is rebuilt: a release is new tags on existing digests.
+  publish:
+    needs: release
+    if: needs.release.outputs.version != ''
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # Release only what passed CI: the commit's sha-<commit> image must be the one CI's
+      # `promote` job moved `main` to. If CI is still running (or failed), stop here.
+      - name: Find the tested images and the release tags
+        id: plan
+        env:
+          VERSION: ${{ needs.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          ns="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
+          digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
+          for app in backend frontend; do
+            repo="${ns}/straight-salon-${app}"
+            built="$(digest "${repo}:sha-${GITHUB_SHA::7}")"
+            main="$(digest "${repo}:main")"
+            if [ "$built" != "$main" ]; then
+              echo "::error::${repo}:main is not this commit's image yet. Wait for CI on main to finish (and pass), then publish by re-running this job."
+              exit 1
+            fi
+            echo "${app}=${repo}@${built}" >> "$GITHUB_OUTPUT"
+          done
+          IFS=. read -r major minor _ <<<"$VERSION"
+          echo "tags=${VERSION} ${major}.${minor} ${major} latest" >> "$GITHUB_OUTPUT"
+      - name: Promote backend
+        uses: ./.github/actions/promote-image
+        with:
+          source: ${{ steps.plan.outputs.backend }}
+          tags: ${{ steps.plan.outputs.tags }}
+      - name: Promote frontend
+        uses: ./.github/actions/promote-image
+        with:
+          source: ${{ steps.plan.outputs.frontend }}
+          tags: ${{ steps.plan.outputs.tags }}
