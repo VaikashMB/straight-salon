@@ -10,7 +10,12 @@ const tag = process.argv[2] ?? 'main';
 const OIDC_ISSUER = 'https://token.actions.githubusercontent.com';
 
 function run(cmd, args) {
-  return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+  // SBOMs are large (the backend's lists hundreds of packages): allow 64 MB, not the 1 MB default.
+  return execFileSync(cmd, args, {
+    encoding: 'utf8',
+    stdio: ['ignore', 'pipe', 'pipe'],
+    maxBuffer: 64 * 1024 * 1024,
+  });
 }
 
 function fail(message) {
