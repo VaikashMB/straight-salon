@@ -75,3 +75,20 @@ export function formatMinutes(total: number): string {
   if (minutes === 0) return hours === 1 ? '1 hour' : `${hours} hours`;
   return `${hours} h ${minutes} min`;
 }
+
+// How far off an appointment is, for the customer's "next visit" card: "In 40 min",
+// "In 2 h 15 min" (later today), "Tomorrow", "In 3 days", "In 2 weeks". Days are counted on the
+// salon calendar, so 23:00 tonight to 10:00 tomorrow is "Tomorrow", not "In 11 hours".
+export function countdown(startAt: string, timeZone: string, now: Date = new Date()): string {
+  const minutes = Math.round((new Date(startAt).getTime() - now.getTime()) / 60_000);
+  if (minutes <= 0) return 'Happening now';
+  const today = todayInZone(timeZone, now);
+  const day = dateInZone(startAt, timeZone);
+  if (day === today) return `In ${formatMinutes(minutes)}`;
+  const [y1, m1, d1] = parts(today);
+  const [y2, m2, d2] = parts(day);
+  const days = Math.round((Date.UTC(y2, m2 - 1, d2) - Date.UTC(y1, m1 - 1, d1)) / 86_400_000);
+  if (days === 1) return 'Tomorrow';
+  if (days < 14) return `In ${days} days`;
+  return `In ${Math.round(days / 7)} weeks`;
+}

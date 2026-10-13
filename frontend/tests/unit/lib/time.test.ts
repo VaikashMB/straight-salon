@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   addDays,
+  countdown,
   dateInZone,
   datesBetween,
   formatMinutes,
@@ -50,5 +51,17 @@ describe('salon-calendar helpers (NFR-010)', () => {
     expect(formatMinutes(60)).toBe('1 hour');
     expect(formatMinutes(120)).toBe('2 hours');
     expect(formatMinutes(90)).toBe('1 h 30 min');
+  });
+
+  it('counts down to an appointment on the salon calendar (05 §4.2 next visit)', () => {
+    const tz = 'Asia/Kolkata';
+    const now = new Date('2026-10-12T04:30:00.000Z'); // 10:00 in India
+    expect(countdown('2026-10-12T04:00:00.000Z', tz, now)).toBe('Happening now');
+    expect(countdown('2026-10-12T05:10:00.000Z', tz, now)).toBe('In 40 min');
+    expect(countdown('2026-10-12T06:45:00.000Z', tz, now)).toBe('In 2 h 15 min');
+    // 23:00 tonight UTC is already tomorrow in India.
+    expect(countdown('2026-10-12T19:00:00.000Z', tz, now)).toBe('Tomorrow');
+    expect(countdown('2026-10-15T05:30:00.000Z', tz, now)).toBe('In 3 days');
+    expect(countdown('2026-10-26T05:30:00.000Z', tz, now)).toBe('In 2 weeks');
   });
 });

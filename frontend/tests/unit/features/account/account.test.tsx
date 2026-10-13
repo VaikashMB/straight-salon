@@ -9,7 +9,7 @@ import AccountPage from '@/app/(customer)/account/page';
 import ProfilePage from '@/app/(customer)/account/profile/page';
 import { addDays, todayInZone } from '@/lib/time';
 import { api, makeUser, problem, server, signedInAs } from '../../helpers/api';
-import { ids, makeBooking, page, stylists } from '../../helpers/fixtures';
+import { ids, makeBooking, makeService, page, services, stylists } from '../../helpers/fixtures';
 import { router } from '../../helpers/next-navigation';
 import { renderWithProviders } from '../../helpers/render';
 
@@ -19,6 +19,9 @@ const tomorrow = addDays(todayInZone('Asia/Kolkata'), 1);
 function myBookings(upcoming = [makeBooking()], past = [makeBooking({ status: 'COMPLETED' })]) {
   const scopes: string[] = [];
   server.use(
+    // The next-visit card takes photos from the public catalogue.
+    http.get(api('/services'), () => HttpResponse.json(page(services))),
+    http.get(api('/staff'), () => HttpResponse.json(stylists)),
     http.get(api('/bookings/me'), ({ request }) => {
       const query = new URL(request.url).searchParams;
       scopes.push(`${query.get('scope')}:${query.get('page')}`);
@@ -56,6 +59,53 @@ describe('customer account (05 §4.2)', () => {
     );
     await user().click(blocked);
     expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
+
+  it('next visit: the first upcoming booking leads with photo, countdown and visit actions', async () => {
+    signedInAs(makeUser());
+    myBookings([
+      makeBooking({ startAt: `${tomorrow}T05:30:00.000Z`, endAt: `${tomorrow}T06:30:00.000Z` }),
+      makeBooking({ id: '6712c0f9a1b2c3d4e5f60790', bookingRef: 'SS-2' }),
+    ]);
+    server.use(
+      http.get(api('/services'), () =>
+        HttpResponse.json(page([makeService({ imageUrl: '/demo/services/haircut.webp' })])),
+      ),
+    );
+    renderWithProviders(<AccountPage />);
+    const next = await screen.findByRole('article', { name: 'Haircut + Beard Trim' });
+    expect(within(next).getByText('Your next visit')).toBeInTheDocument();
+    expect(within(next).getByText('Tomorrow')).toBeInTheDocument();
+    expect(within(next).getByText('Ravi')).toBeInTheDocument();
+    expect(within(next).getByText(/pay at the salon/)).toBeInTheDocument();
+    await waitFor(() => expect(next.querySelector('img[src*="haircut"]')).not.toBeNull());
+    expect(within(next).getByRole('link', { name: /Directions/ })).toHaveAttribute(
+      'href',
+      expect.stringContaining('google.com/maps'),
+    );
+    expect(within(next).getByRole('button', { name: 'Add to calendar' })).toBeInTheDocument();
+    expect(within(next).getByRole('button', { name: 'Reschedule' })).toBeInTheDocument();
+    // The rest follow under "Later".
+    expect(screen.getByRole('heading', { name: 'Later' })).toBeInTheDocument();
+    expect(screen.getAllByRole('article')).toHaveLength(2);
+  });
+
+  it('next visit: a paid booking says so, and a service without a photo gets a studio one', async () => {
+    signedInAs(makeUser());
+    myBookings([makeBooking({ payment: { status: 'PAID' } })]);
+    renderWithProviders(<AccountPage />);
+    const next = await screen.findByRole('article', { name: 'Haircut + Beard Trim' });
+    expect(within(next).getByText(/paid$/)).toBeInTheDocument();
+    expect(next.querySelector('img[src*="salon"]')).not.toBeNull();
+    expect(screen.queryByRole('heading', { name: 'Later' })).not.toBeInTheDocument();
+  });
+
+  it('history has no next-visit card', async () => {
+    signedInAs(makeUser());
+    myBookings();
+    renderWithProviders(<HistoryPage />);
+    expect(await screen.findAllByRole('article')).toHaveLength(1);
+    expect(screen.queryByText('Your next visit')).not.toBeInTheDocument();
   });
 
   it('cancels with an optional reason (API-055, FR-035)', async () => {

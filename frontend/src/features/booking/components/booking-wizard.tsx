@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { usePublicSettings } from '@/lib/settings';
+import { cn } from '@/lib/utils';
 import { qualifiedFor, useServices, useStylists, type Stylist } from '../api';
 import {
   ANY,
@@ -22,6 +23,7 @@ import { StepServices } from './step-services';
 import { StepStylist } from './step-stylist';
 import { StepSuccess } from './step-success';
 import { SummaryBar } from './summary-bar';
+import { VisitPanel } from './visit-panel';
 import { STEPS, WizardProgress } from './wizard-progress';
 
 const TITLES: Record<Step, string> = {
@@ -30,6 +32,13 @@ const TITLES: Record<Step, string> = {
   time: 'Pick a date and time',
   review: 'Review and confirm',
   done: 'Booking confirmed',
+};
+
+// A line under the title, where the step needs one.
+const SUBTITLES: Partial<Record<Step, string>> = {
+  services: `Pick one or more. You can combine up to ${MAX_SERVICES} in one visit.`,
+  stylist: 'Choose who you would like, or let us match you with whoever is free.',
+  time: 'Only times that fit everything you have chosen are shown.',
 };
 
 const PREVIOUS: Partial<Record<Step, Step>> = {
@@ -150,7 +159,12 @@ export function BookingWizard() {
   );
 
   return (
-    <div className="mx-auto grid max-w-5xl gap-8 px-4 pt-8 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:pt-12 sm:pb-16">
+    <div
+      className={cn(
+        'mx-auto grid gap-8 px-4 pt-8 pb-[calc(8rem+env(safe-area-inset-bottom))] sm:pt-12 sm:pb-16',
+        step === 'services' ? 'max-w-6xl' : 'max-w-5xl',
+      )}
+    >
       {step !== 'done' ? <WizardProgress current={step} /> : null}
       <div className="flex items-start gap-3">
         {PREVIOUS[step] ? (
@@ -178,27 +192,41 @@ export function BookingWizard() {
             {TITLES[step]}
           </h1>
           <div aria-hidden className="rule-brass" />
+          {SUBTITLES[step] ? (
+            <p className="max-w-xl text-sm text-muted-foreground sm:text-base">{SUBTITLES[step]}</p>
+          ) : null}
         </div>
       </div>
 
       {/* Keyed by step so each step fades in as it appears. */}
-      <div key={step} className="grid animate-fade-up gap-8">
-        {content}
-      </div>
+      {step === 'services' ? (
+        // The list with "Your visit" beside it on large screens (a bottom bar on phones).
+        <div className="grid items-start gap-8 lg:grid-cols-[minmax(0,1fr)_20rem] xl:grid-cols-[minmax(0,1fr)_22rem]">
+          <div key={step} className="grid animate-fade-up gap-8">
+            {content}
+          </div>
+          <VisitPanel
+            services={chosen}
+            onRemove={toggleService}
+            action={
+              <Button
+                size="lg"
+                className="min-w-32"
+                onClick={() => go({ step: 'stylist' }, 'push')}
+              >
+                Continue <ArrowRight aria-hidden />
+              </Button>
+            }
+          />
+        </div>
+      ) : (
+        <div key={step} className="grid animate-fade-up gap-8">
+          {content}
+        </div>
+      )}
 
-      {/* Running total on phones; on the services step it also carries Continue. The review
-          step renders its own bar, with the Confirm button inside its form. */}
-      {step === 'services' && chosen.length > 0 ? (
-        <SummaryBar
-          services={chosen}
-          layout="sticky"
-          action={
-            <Button size="lg" className="min-w-32" onClick={() => go({ step: 'stylist' }, 'push')}>
-              Continue <ArrowRight aria-hidden />
-            </Button>
-          }
-        />
-      ) : null}
+      {/* Running total on phones for the stylist and time steps (the services step has its
+          "Your visit" panel). The review step renders its own bar, with Confirm in its form. */}
       {(step === 'stylist' || step === 'time') && chosen.length > 0 ? (
         <SummaryBar services={chosen} layout="mobile" />
       ) : null}

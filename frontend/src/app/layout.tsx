@@ -6,9 +6,13 @@ import '@/styles/globals.css';
 import { bodyFont, displayFont, serifFont } from './fonts';
 import { Providers } from './providers';
 
+// metadataBase makes the generated share images (opengraph-image.tsx) absolute URLs.
 export const metadata: Metadata = {
+  metadataBase: new URL(publicEnv.siteUrl),
   title: { default: publicEnv.appName, template: `%s · ${publicEnv.appName}` },
   description: `Book your next appointment at ${publicEnv.appName}.`,
+  openGraph: { siteName: publicEnv.appName, type: 'website', locale: 'en_IN' },
+  twitter: { card: 'summary_large_image' },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -84,6 +84,32 @@ describe('booking wizard look (05 §4.1)', () => {
     expect(screen.getAllByRole('button', { name: 'Continue' })).toHaveLength(1);
   });
 
+  it('services step: category chips, photo cards and a "Your visit" panel with remove buttons', async () => {
+    catalogue();
+    renderWithProviders(<BookPage />);
+    const u = userEvent.setup();
+    expect(
+      await screen.findByText('Pick one or more. You can combine up to 5 in one visit.'),
+    ).toBeInTheDocument();
+    const nav = await screen.findByRole('navigation', { name: 'Service categories' });
+    const hairChip = within(nav).getByRole('link', { name: /^Hair/ });
+    expect(hairChip).toHaveAttribute('href', `#cat-${ids.hair}`);
+    expect(document.getElementById(`cat-${ids.hair}`)).toHaveAccessibleName('Hair');
+
+    const panel = screen.getByRole('complementary', { name: 'Your visit' });
+    expect(within(panel).getByText('Nothing chosen yet')).toBeInTheDocument();
+
+    await u.click(screen.getByRole('button', { name: /^Haircut/ }));
+    expect(within(panel).getByText('Looking good.')).toBeInTheDocument();
+    expect(within(nav).getByRole('link', { name: /^Hair/ })).toHaveTextContent('1/2');
+    await u.click(within(panel).getByRole('button', { name: 'Remove Haircut' }));
+    expect(screen.getByRole('button', { name: /^Haircut/ })).toHaveAttribute(
+      'aria-pressed',
+      'false',
+    );
+    expect(within(panel).getByText('Nothing chosen yet')).toBeInTheDocument();
+  });
+
   it('stylist step: the bar shows the running total without an extra action', async () => {
     catalogue();
     setLocation('/book', `services=${ids.haircut},${ids.beardTrim}&step=stylist`);

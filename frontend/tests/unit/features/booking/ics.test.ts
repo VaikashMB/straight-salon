@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { buildIcs, downloadFile } from '@/features/booking/ics';
+import { bookingCalendarFile, buildIcs, downloadFile } from '@/features/booking/ics';
+import { makeBooking } from '../../helpers/fixtures';
 
 describe('add to calendar (05 §4.1)', () => {
   it('builds an iCalendar event in UTC with escaped text', () => {
@@ -44,5 +45,18 @@ describe('add to calendar (05 §4.1)', () => {
     expect(click).toHaveBeenCalledOnce();
     expect(revoke).toHaveBeenCalledWith('blob:1');
     expect(document.querySelector('a[download]')).toBeNull();
+  });
+
+  it('names the file after the booking and describes services, stylist and address', async () => {
+    const file = bookingCalendarFile(makeBooking(), {
+      name: 'Straight Salon',
+      address: '12 MG Road, Bengaluru',
+    });
+    expect(file.filename).toBe('SS-261012-7KQ2.ics');
+    expect(file.content.type).toBe('text/calendar');
+    const text = await file.content.text();
+    expect(text).toContain('SUMMARY:Haircut\\, Beard Trim at Straight Salon');
+    expect(text).toContain('DESCRIPTION:Booking SS-261012-7KQ2 with Ravi.');
+    expect(text).toContain('LOCATION:12 MG Road\\, Bengaluru');
   });
 });

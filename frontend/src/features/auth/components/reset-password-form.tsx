@@ -61,14 +61,18 @@ export function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <AuthCard title="Reset your password">
+      <AuthCard scene="help" title="Reset your password">
         <FormError>This page needs the link from your reset email. {requestNewLink}</FormError>
       </AuthCard>
     );
   }
 
   return (
-    <AuthCard title="Choose a new password" description="You'll be signed out everywhere else.">
+    <AuthCard
+      scene="help"
+      title="Choose a new password"
+      description="You'll be signed out everywhere else."
+    >
       <form noValidate onSubmit={(e) => void onSubmit(e)} className="grid gap-4">
         <FormError>{formError}</FormError>
         <TextField

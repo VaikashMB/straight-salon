@@ -48,7 +48,7 @@ export function ForgotPasswordForm() {
 
   if (sentTo) {
     return (
-      <AuthCard title="Check your email" footer={backToSignIn}>
+      <AuthCard scene="help" title="Check your email" footer={backToSignIn}>
         <Alert variant="success">
           <MailCheck aria-hidden />
           <AlertTitle>Reset link sent</AlertTitle>
@@ -63,6 +63,7 @@ export function ForgotPasswordForm() {
 
   return (
     <AuthCard
+      scene="help"
       title="Forgot your password?"
       description="Enter your email and we'll send you a link to choose a new one."
       footer={backToSignIn}

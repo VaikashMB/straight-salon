@@ -55,6 +55,7 @@ export function RegisterForm() {
   const loginHref = next ? `/login?next=${encodeURIComponent(next)}` : '/login';
   return (
     <AuthCard
+      scene="join"
       title="Create your account"
       description="Book in under a minute and manage your appointments online."
       footer={
