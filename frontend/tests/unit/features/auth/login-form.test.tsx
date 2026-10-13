@@ -42,7 +42,9 @@ describe('login page (API-002, 05 §5)', () => {
     renderWithProviders(<LoginPage />);
     await fill('Ananya@example.com', 'Fade-and-Trim7');
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/account'));
-    expect(toast.success).toHaveBeenCalledWith('Welcome back, Ananya');
+    expect(toast.success).toHaveBeenCalledWith('Welcome back, Ananya', {
+      description: "You're signed in.",
+    });
   });
 
   it('honours ?next when the role may go there; staff roles land in their area', async () => {

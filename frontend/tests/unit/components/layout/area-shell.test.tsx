@@ -156,6 +156,8 @@ describe('signed-in areas (05 §5 role checks in layouts)', () => {
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Sign out' }));
     await waitFor(() => expect(router.replace).toHaveBeenCalledWith('/'));
     expect(loggedOut).toBe(true);
-    expect(toast.success).toHaveBeenCalledWith('You have been signed out.');
+    expect(toast.success).toHaveBeenCalledWith('Signed out', {
+      description: 'See you in the chair soon.',
+    });
   });
 });
