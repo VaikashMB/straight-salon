@@ -35,7 +35,9 @@ export function LoginForm() {
     setFormError(null);
     try {
       const user = await login(email, password);
-      toast.success(`Welcome back, ${user.name.split(/\s+/)[0] ?? user.name}`);
+      toast.success(`Welcome back, ${user.name.split(/\s+/)[0] ?? user.name}`, {
+        description: "You're signed in.",
+      });
     } catch (error) {
       setFormError(
         error instanceof ApiError && error.status === 401

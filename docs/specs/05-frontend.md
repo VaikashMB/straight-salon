@@ -37,6 +37,7 @@
   - **Announcement bar** above the public header (one static line), and a **richer footer**: a "From the studio" strip of six looks, the serif sign-off "See you in the chair.", a "Visit the studio" photo card to `/location`.
   - **Location page:** the map embed is tinted to the palette (`map-tint`, dimmed in dark mode), followed by studio photos.
   - **Loading:** `(public)/loading.tsx` is a skeleton in the shape of a page (title band and image cards).
+  - **Toasts** (`components/ui/sonner.tsx`): built from the theme tokens (card surface, warm shadow, brass edge and icon disc; red or amber edge for errors and warnings), so they match the page and follow the site's light/dark toggle rather than the OS setting. A short title with a softer description line, e.g. "Welcome back, Ananya" / "You're signed in." and "Signed out" / "See you in the chair soon."
   - **Admin dashboard:** the title greets whoever is signed in by the salon's time of day ("Good morning, Priya") and the description counts today's bookings.
   - **Theme toggle:** one button in the public header and the area shell cycles system → light → dark (`lib/theme.ts`). A pinned choice is `<html data-theme>` plus `localStorage` (`ss-theme`, a per-browser convenience; access is guarded). "System" removes both and follows `prefers-color-scheme`. An inline script in `<head>` applies a pinned theme before the first paint, and other open tabs follow a change.
 - Mobile-first. Booking flow must be comfortably usable one-handed on a phone.

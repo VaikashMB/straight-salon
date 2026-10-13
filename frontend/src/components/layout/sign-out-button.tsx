@@ -16,7 +16,7 @@ export function useSignOut() {
   const signOut = async () => {
     setPending(true);
     await logout();
-    toast.success('You have been signed out.');
+    toast.success('Signed out', { description: 'See you in the chair soon.' });
     router.replace('/');
   };
   return { signOut, pending };
