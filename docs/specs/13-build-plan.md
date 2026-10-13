@@ -64,7 +64,7 @@ Decision 2026-10-09: the `v1.0.0` tag and its GitHub Release come from the manua
 
 ## After v1 — Forward Deployed Engineering track (future specs)
 These will get their own spec files later (`14-…` onwards). Listed here so v1 decisions stay compatible:
-1. **Container registry & image hygiene** — GHCR, tagging strategy, SBOM, signing.
+1. **Container registry & image hygiene** — GHCR, tagging strategy, SBOM, signing. Spec: `14-container-registry.md` (drafted 2026-10-13).
 2. **Kubernetes basics** — Deployments (api, worker, frontend), Services, Ingress + TLS, ConfigMaps/Secrets, probes mapped to `/health/*`, resource requests/limits, HPA on api.
 3. **Stateful dependencies** — managed MongoDB Atlas & managed Redis vs. StatefulSets; backups and restore drills.
 4. **Helm or Kustomize** — environment overlays (dev/staging/prod).

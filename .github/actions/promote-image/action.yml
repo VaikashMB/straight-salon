@@ -1,0 +1,61 @@
+name: Promote one image by digest
+description: >
+  14-container-registry §3.2. Adds tags to an image that is already in GHCR, without rebuilding
+  ("build once, promote everywhere", §2.3). Refuses to promote an image that isn't signed by
+  this repository's CI, and fails if the new tags don't point at exactly the source digest.
+  Needs `packages: write` on the calling job and a prior GHCR login.
+
+inputs:
+  source:
+    description: Image to promote, by digest or tag, e.g. ghcr.io/vaikashmb/straight-salon-backend@sha256:…
+    required: true
+  tags:
+    description: Tags to add, space-separated, e.g. "main" or "1.2.3 1.2 1 latest"
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Install cosign
+      uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
+      with:
+        cosign-release: v3.0.6 # the release this installer checks against its own checksum
+    - name: Verify, retag and check the digest
+      shell: bash
+      env:
+        SOURCE: ${{ inputs.source }}
+        TAGS: ${{ inputs.tags }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        repo="${SOURCE%@*}"
+        repo="${repo%:*}"
+        digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
+        src="$(digest "$SOURCE")"
+        echo "Promoting ${repo}@${src}"
+
+        # Only images signed by this repo's CI workflow can be promoted (§2.7). The signature
+        # is made after the image passed its scan, so this is also the "scanned" check.
+        cosign verify "${repo}@${src}" \
+          --certificate-identity "https://github.com/${REPO}/.github/workflows/ci.yml@refs/heads/main" \
+          --certificate-oidc-issuer https://token.actions.githubusercontent.com > /dev/null
+        echo "Signature verified"
+
+        args=()
+        for tag in $TAGS; do args+=(--tag "${repo}:${tag}"); done
+        docker buildx imagetools create "${args[@]}" "${repo}@${src}"
+
+        # Retagging must not create a new image: every tag has to name the source digest.
+        for tag in $TAGS; do
+          got="$(digest "${repo}:${tag}")"
+          if [ "$got" != "$src" ]; then
+            echo "::error::${repo}:${tag} is ${got}, expected ${src}"
+            exit 1
+          fi
+        done
+        {
+          echo "### ${repo}"
+          echo
+          echo "\`${src}\` is now tagged: $(sed 's/[^ ]*/`&`/g' <<<"$TAGS")"
+          echo
+        } >> "$GITHUB_STEP_SUMMARY"

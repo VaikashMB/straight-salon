@@ -1,0 +1,86 @@
+name: Build and scan one image
+description: >
+  14-container-registry §3.2. Builds one runtime image exactly once and scans it with Trivy
+  (fails on fixable CRITICAL). With `push: true` (main) the single build is pushed to GHCR under
+  its immutable `sha-<commit>` tag with SBOM and provenance attestations, then pulled back by
+  digest, so the scan (and the e2e job) test the very bytes that were pushed. Without it (pull
+  requests) the image only goes into the local engine. Either way it ends up locally as
+  `local-tag`. Pushing needs `packages: write` on the calling job and a prior GHCR login.
+
+inputs:
+  dockerfile:
+    description: Dockerfile path, e.g. backend/Dockerfile (built from the repo root, target runtime)
+    required: true
+  local-tag:
+    description: Tag of the image in the local engine (scanned; reused by e2e)
+    required: true
+  cache-scope:
+    description: GitHub Actions layer-cache scope (one per image)
+    required: true
+  push:
+    description: "'true' to push the build to `image` as `sha-<commit>`"
+    default: 'false'
+  image:
+    description: Registry repository, e.g. ghcr.io/vaikashmb/straight-salon-backend (when pushing)
+    default: ''
+
+outputs:
+  digest:
+    description: Digest of the pushed image (empty when not pushed)
+    value: ${{ steps.build.outputs.digest }}
+
+runs:
+  using: composite
+  steps:
+    - name: Image coordinates
+      id: ref
+      shell: bash
+      run: |
+        short="${GITHUB_SHA::7}"
+        echo "sha-tag=sha-${short}" >> "$GITHUB_OUTPUT"
+        # The version baked into the image names the commit; the release version is a tag
+        # added later by promotion, and deployments pass APP_VERSION at runtime (§2.4).
+        echo "app-version=0.0.0+sha.${short}" >> "$GITHUB_OUTPUT"
+
+    # The only build. Pushed (main) or loaded into the local engine (pull requests): an image
+    # with attestations can't be loaded locally, so the two paths are exclusive.
+    - name: Build ${{ inputs.local-tag }}
+      id: build
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: .
+        file: ${{ inputs.dockerfile }}
+        target: runtime
+        tags: ${{ inputs.push == 'true' && format('{0}:{1}', inputs.image, steps.ref.outputs.sha-tag) || inputs.local-tag }}
+        push: ${{ inputs.push == 'true' }}
+        load: ${{ inputs.push != 'true' }}
+        # SBOM: the SPDX list of every package inside (§2.5). Provenance: SLSA statement of
+        # which repo, commit and workflow built it (§2.6). Both are stored next to the image.
+        sbom: ${{ inputs.push == 'true' }}
+        provenance: ${{ inputs.push == 'true' && 'mode=max' || 'false' }}
+        build-args: |
+          APP_VERSION=${{ steps.ref.outputs.app-version }}
+          GIT_SHA=${{ github.sha }}
+        cache-from: type=gha,scope=${{ inputs.cache-scope }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.cache-scope }}
+
+    # Pull back by digest, not by tag: a digest names exact bytes (§2.2).
+    - name: Pull the pushed image by digest
+      if: inputs.push == 'true'
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        DIGEST: ${{ steps.build.outputs.digest }}
+        LOCAL: ${{ inputs.local-tag }}
+      run: |
+        docker pull "${IMAGE}@${DIGEST}"
+        docker tag "${IMAGE}@${DIGEST}" "${LOCAL}"
+
+    - name: Trivy scan ${{ inputs.local-tag }} (fail on fixable CRITICAL)
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        version: v0.75.0
+        image-ref: ${{ inputs.local-tag }}
+        severity: CRITICAL
+        ignore-unfixed: true
+        exit-code: '1'

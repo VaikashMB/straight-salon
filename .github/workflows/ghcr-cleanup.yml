@@ -1,0 +1,41 @@
+# Registry retention (14-container-registry §3.6). Every commit on main leaves a sha-<commit>
+# image behind, and every promotion can leave old manifests untagged, so GHCR grows forever
+# unless something prunes it. Weekly: delete sha-* tags and untagged versions older than 30
+# days. An image that also carries `main` or a release tag (1.2.3, 1.2, 1, latest) keeps those
+# tags and stays; releases are kept forever.
+#
+# Why not the simpler actions/delete-package-versions with "delete untagged"? Each of our images
+# is an index whose SBOM, provenance and platform manifests are *untagged* children of the
+# tagged index. Deleting untagged versions would delete those children and break images that
+# are still tagged. ghcr-cleanup-action follows those links (and cosign signatures) and
+# validates what's left.
+name: GHCR cleanup
+
+on:
+  schedule:
+    - cron: '30 3 * * 1' # Mondays 03:30 UTC
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Only list what would be deleted
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          package: straight-salon-backend,straight-salon-frontend
+          delete-tags: sha-*
+          delete-untagged: true
+          older-than: 30 days
+          validate: true
+          # Scheduled runs delete; a manual run lists only, unless dry-run is unticked.
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}

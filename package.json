@@ -35,6 +35,7 @@
     "api:client": "npm run api:client -w frontend",
     "contract:check": "node scripts/contract-check.mjs",
     "audit": "node scripts/audit.mjs",
+    "images:verify": "node scripts/verify-images.mjs",
     "sonar": "node --env-file-if-exists=.env scripts/sonar.mjs",
     "sonar:setup": "node --env-file-if-exists=.env scripts/sonar-setup.mjs",
     "db:seed": "npm run db:seed -w backend",
