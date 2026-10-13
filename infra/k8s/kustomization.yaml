@@ -1,0 +1,25 @@
+# Everything `kubectl apply -k infra/k8s` applies (15 §3.5). Kustomize is used for two things
+# only: listing the files, and pinning the images by digest in one place. Environments and
+# Kustomize-vs-Helm are FDE step 4.
+#
+# `npm run k8s:up` rewrites the two digests below to whatever `main` points at in GHCR, after
+# checking the cosign signature. Every pod then runs exactly those bytes (14 §2.2).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - config.yaml
+  - mongo.yaml
+  - redis.yaml
+  - mailpit.yaml
+  - migrate.yaml
+  - backend.yaml
+  - worker.yaml
+  - frontend.yaml
+  - certificates.yaml
+  - gateway.yaml
+images:
+  - name: ghcr.io/vaikashmb/straight-salon-backend
+    digest: sha256:3630b843d2e20a0a987ef9eb20ab707b0798e1840e1b34a0783d59087811ec2a
+  - name: ghcr.io/vaikashmb/straight-salon-frontend
+    digest: sha256:80d94c9b7d5929e40ddd7bbc1879d87b6b275653395a8aea5818f1015fadf485

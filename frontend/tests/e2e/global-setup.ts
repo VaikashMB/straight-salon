@@ -13,7 +13,10 @@ const RATE_LIMIT_PATTERNS = ['ss:v1:rl:auth:*', 'ss:v1:rl:bookings:*'];
 const READY_TIMEOUT_MS = 120_000;
 
 async function waitForStack(baseURL: string): Promise<void> {
-  const api = await request.newContext({ baseURL });
+  const api = await request.newContext({
+    baseURL,
+    ignoreHTTPSErrors: process.env.E2E_IGNORE_HTTPS_ERRORS === 'true',
+  });
   const deadline = Date.now() + READY_TIMEOUT_MS;
   try {
     for (;;) {
