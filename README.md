@@ -158,10 +158,11 @@ FDE step 2 ([spec 15](docs/specs/15-kubernetes-basics.md)) runs the published im
 Install kind and kubectl once (Linux x86-64; other platforms: [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation), [kubectl](https://kubernetes.io/docs/tasks/tools/)):
 
 ```sh
-curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64
-echo "$(curl -sL https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64.sha256sum | cut -d' ' -f1)  kind" | sha256sum -c -
-curl -LO https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
-echo "$(curl -sL https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)  kubectl" | sha256sum -c -
+cd /tmp
+curl -fL --retry 5 --retry-all-errors -o kind https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64
+echo "$(curl -fsL --retry 5 https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64.sha256sum | cut -d' ' -f1)  kind" | sha256sum -c -
+curl -fLO --retry 5 --retry-all-errors https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+echo "$(curl -fsL --retry 5 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)  kubectl" | sha256sum -c -
 chmod +x kind kubectl && sudo mv kind kubectl /usr/local/bin/
 ```
 
@@ -266,7 +267,16 @@ docker pull ghcr.io/vaikashmb/straight-salon-backend:main
 npm run images:verify -- main     # signature, digest, commit, SBOM and provenance for both images
 ```
 
-`images:verify` needs [cosign](https://docs.sigstore.dev/cosign/system_config/installation/). After the first publish, check each package's visibility under the package's settings on GitHub and make it public if it was created private (pulls without login, and `images:verify`, need public packages).
+`images:verify` needs [cosign](https://docs.sigstore.dev/cosign/system_config/installation/). On Linux x86-64, the version CI uses:
+
+```sh
+cd /tmp
+curl -fL --retry 5 --retry-all-errors -o cosign https://github.com/sigstore/cosign/releases/download/v3.0.6/cosign-linux-amd64
+echo "$(curl -fsL --retry 5 https://github.com/sigstore/cosign/releases/download/v3.0.6/cosign_checksums.txt | grep ' cosign-linux-amd64$' | cut -d' ' -f1)  cosign" | sha256sum -c -
+chmod +x cosign && sudo mv cosign /usr/local/bin/
+```
+
+Each checksum line must print `OK` before the file is moved. The `--retry` flags matter: GitHub's download servers sometimes reset connections, and without `-f` a failed download goes unnoticed until a later step. After the first publish, check each package's visibility under the package's settings on GitHub and make it public if it was created private (pulls without login, and `images:verify`, need public packages).
 
 Commits must follow Conventional Commits with a scope from `commitlint.config.mjs`, e.g. `feat(booking): add reschedule endpoint (API-054)`. The pre-commit hook lints and formats staged files; the pre-push hook runs unit tests for the workspaces you changed.
 
