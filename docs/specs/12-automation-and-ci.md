@@ -81,7 +81,7 @@ Rules:
 - Status badges in README: CI, coverage, quality gate.
 
 ### Reserved for the deployment phase
-Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Still to come, `cd.yml`: on tag/release → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
+Running them on Kubernetes locally is FDE step 2 (`15-kubernetes-basics.md`, `npm run k8s:up`). Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Still to come, `cd.yml`: on tag/release → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
 
 ## 4. In-app automation summary
 Specified in 09 §7: reminders (24 h, 2 h), auto no-show, outbox cleanup (Phase 6), daily stats reconcile (Phase 7). Plus:

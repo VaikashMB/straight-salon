@@ -1,0 +1,5 @@
+# Everything for the app lives in one namespace (15 §2.13): delete it to start over.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: straight-salon

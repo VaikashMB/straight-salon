@@ -98,4 +98,6 @@ Verified against a real auth-enabled replica set: `ss_app` can insert/find `audi
 - SonarQube: http://localhost:9000
 
 ## 9. Not in v1 (reserved for deployment phase)
+The Kubernetes counterpart of this stack is FDE step 2, `15-kubernetes-basics.md` (`infra/k8s`, `npm run k8s:up`); this file stays the local-development setup.
+
 Kubernetes manifests/Helm in `infra/k8s`, image registry pushes, TLS/ingress, production secrets, managed Mongo/Redis, multi-replica setups. The compose file's service split (api / worker / frontend / mongo / redis) maps 1:1 to future Kubernetes Deployments/StatefulSets.

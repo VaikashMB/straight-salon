@@ -84,6 +84,7 @@ The specs are written to be **stack-agnostic where possible**. Anything stack-sp
 | `docs/specs/11-docker-local-dev.md`     | Dockerfiles and docker-compose for local development                                |
 | `docs/specs/12-automation-and-ci.md`    | Git hooks, scripts, CI pipeline, scheduled jobs                                     |
 | `docs/specs/13-build-plan.md`           | Phased build order with ready-to-use prompts for the AI                             |
+| `docs/specs/15-kubernetes-basics.md`    | FDE step 2: the app on a local Kubernetes cluster (concepts + decisions)            |
 | `docs/specs/14-container-registry.md`   | FDE step 1: publishing, promoting and signing images in GHCR (concepts + decisions) |
 
 ## Getting started (local development)
@@ -149,6 +150,40 @@ Try the API in Swagger UI: `POST /api/v1/auth/login` with a demo account and the
 | Customer     | `customer1@` … `customer10@straightsalon.local`          | `/account` | Book, reschedule, cancel, review, profile                                                                        |
 
 The seed also adds the salon settings, 4 categories with about 15 services, schedules, a holiday next month, a few time-off blocks, about 60 bookings over the past 14 and next 7 days (paid where completed), a few reviews, and the ratings and report figures computed from them. Re-running it is safe.
+
+### Run on Kubernetes (local)
+
+FDE step 2 ([spec 15](docs/specs/15-kubernetes-basics.md)) runs the published images on a local three-node [kind](https://kind.sigs.k8s.io) cluster at `https://salon.localhost`. It doesn't touch the Compose stack; both can run at once.
+
+Install kind and kubectl once (Linux x86-64; other platforms: [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation), [kubectl](https://kubernetes.io/docs/tasks/tools/)):
+
+```sh
+curl -Lo kind https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64
+echo "$(curl -sL https://github.com/kubernetes-sigs/kind/releases/download/v0.33.0/kind-linux-amd64.sha256sum | cut -d' ' -f1)  kind" | sha256sum -c -
+curl -LO https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+echo "$(curl -sL https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)  kubectl" | sha256sum -c -
+chmod +x kind kubectl && sudo mv kind kubectl /usr/local/bin/
+```
+
+Then:
+
+```sh
+npm run k8s:up                 # cluster + add-ons + app (about 3 minutes the first time)
+npm run k8s:seed               # demo data (same accounts as "Demo accounts")
+kubectl -n straight-salon get pods -o wide
+kubectl -n straight-salon port-forward svc/mailpit 8025   # emails at http://localhost:8025
+npm run k8s:up -- --latest     # move the pinned image digests to what `main` points at, then deploy
+npm run k8s:down               # delete the cluster
+```
+
+Ports 80 and 443 on 127.0.0.1 must be free. The browser warns about the certificate because it comes from the cluster's own CA. To trust it (Chrome/Chromium on Linux; Firefox: Settings → Certificates → Import):
+
+```sh
+kubectl -n cert-manager get secret salon-local-ca -o jsonpath='{.data.ca\.crt}' | base64 -d > salon-local-ca.crt
+certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "Straight Salon local CA" -i salon-local-ca.crt
+```
+
+The CA is recreated with each new cluster, so trust it again after `k8s:down` / `k8s:up`. Run the e2e suite against the cluster with `E2E_BASE_URL=https://salon.localhost E2E_IGNORE_HTTPS_ERRORS=true E2E_RESET_RATE_LIMITS=false npm run test:e2e`. Exercises: spec 15 §6.
 
 ### Useful commands
 
@@ -263,6 +298,7 @@ Kubernetes, Helm, cloud deployment, managed databases, horizontal scaling, obser
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Specs touched                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | 2026-10-06 | Phase 0 review: resolved ambiguities and contradictions. Key changes: staff-day guard document so BR-004 holds under concurrency without relying on Redis; `ss_session` indicator cookie for frontend route protection; runtime `/api/*` proxy in `proxy.ts` (Next 16) instead of build-time rewrites; root-context Docker builds for the workspace lockfile; `directConnection=true` for host-mode Mongo; lead-time filter applied after the availability cache; walk-in `checkInNow`; 422 `ACTIVE_BOOKINGS_EXIST` + `force` semantics for holidays/time-off; new error codes; extended permission map; image upload endpoint API-027; `booking.reminder_due` event (EVT-017); outbox `PUBLISHING`/`claimedAt`; incremental seed; Sonar test exclusions; explicit commit scopes.                                                                                                    | AGENTS, 00, 01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13 |
+| 2026-10-13 | FDE step 2 (spec 15): local kind cluster (1 control plane + 2 workers) running the GHCR images by digest; Gateway API with Envoy Gateway (ingress-nginx is retired), cert-manager local CA for HTTPS, metrics-server and a backend HPA; Mongo/Redis StatefulSets, mongo-init and migrate Jobs; `npm run k8s:up/seed/down`; opt-in `E2E_IGNORE_HTTPS_ERRORS` for e2e against the cluster.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 11, 12, 13, 15, README                                     |
 | 2026-10-13 | FDE step 1 (spec 14): images are built once, pushed to GHCR as `sha-<commit>` with SBOM and provenance, scanned after pulling back by digest, signed keylessly with cosign, and promoted to `main` (all CI green) and to release tags (`release.yml` `publish`) without rebuilding; weekly GHCR cleanup; `npm run images:verify`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 12, 13, 14, README                                         |
 | 2026-10-13 | Auth pages get a photo panel beside the form (scenes per page); the customer's soonest booking leads `/account` as a "next visit" card (photo, countdown, add to calendar, directions); the booking services step gets photo cards, category chips and a sticky "Your visit" panel; Open Graph share images for every page via `next/og` (`sharp` added as an explicit frontend dependency, TTF fonts under `public/fonts/og`); new `NEXT_PUBLIC_SITE_URL`.                                                                                                                                                                                                                                                                                                                                                                                                                          | 05, README                                                 |
 | 2026-10-12 | Editorial visual pass: licensed stock photography with one warm grade (seeded as service and stylist images from `frontend/public/demo/`, credits in `PHOTO-CREDITS.md`); Fraunces serif headlines; full-bleed photo hero with live salon figures; studio collage, testimonials from real reviews, gift-card band; `/gallery` lookbook with lightbox; portrait stylist cards and profiles with signature looks; CSS scroll reveals, parallax, header that settles on scroll, button shine, count-up, success sparkles; React view transitions between pages; monogram, favicon and custom category icons; announcement bar, richer footer, tinted map, page-shaped loading skeleton; dashboard greeting; branded HTML emails.                                                                                                                                                        | 02, 05, 09, README                                         |

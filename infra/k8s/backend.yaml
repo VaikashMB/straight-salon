@@ -1,0 +1,126 @@
+# The API (15 §3.2). Image by digest: kustomization.yaml's `images:` fills in the digest.
+#
+# Probes (15 §2.8): startup and liveness ask /health/live (process up, no dependency checks),
+# readiness asks /health/ready (503 while Mongo is down or while shutting down). A liveness
+# probe that checked Mongo would restart every api pod during a database blip.
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: straight-salon
+  labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
+spec:
+  selector: { app.kubernetes.io/name: backend }
+  ports:
+    - name: http
+      port: 4000
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend
+  namespace: straight-salon
+  labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
+spec:
+  # No `replicas:` here: the HorizontalPodAutoscaler below owns the count. Setting it would
+  # reset the HPA's choice on every `kubectl apply`.
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0 # never drop below the current count during a rollout
+      maxSurge: 1 # start one new pod, wait until it's ready, then stop one old pod
+  selector:
+    matchLabels: { app.kubernetes.io/name: backend }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
+    spec:
+      # SIGTERM → readiness turns 503 and in-flight requests finish (01 §6); killed after 30 s.
+      terminationGracePeriodSeconds: 30
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000 # volumes are made writable for group 1000
+        seccompProfile: { type: RuntimeDefault }
+      containers:
+        - name: backend
+          image: ghcr.io/vaikashmb/straight-salon-backend
+          envFrom:
+            - configMapRef: { name: backend-config }
+            - secretRef: { name: backend-secrets }
+          ports:
+            - name: http
+              containerPort: 4000
+          startupProbe:
+            httpGet: { path: /health/live, port: http }
+            periodSeconds: 2
+            failureThreshold: 30 # up to 60 s to start before liveness takes over
+          livenessProbe:
+            httpGet: { path: /health/live, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /health/ready, port: http }
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 2
+          lifecycle:
+            # Removal from the Service and SIGTERM happen at the same time; routing needs a
+            # moment to notice. Keep serving for 5 s first (15 §2.9).
+            preStop:
+              sleep: { seconds: 5 }
+          resources:
+            requests: { cpu: 100m, memory: 192Mi }
+            limits: { cpu: '1', memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          volumeMounts:
+            - name: uploads
+              mountPath: /app/backend/uploads
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        # Node-local and ReadWriteOnce on kind: every api pod has to run on the node holding
+        # it (15 §2.12). Object storage removes that limit (step 3).
+        - name: uploads
+          persistentVolumeClaim:
+            claimName: uploads
+        - name: tmp
+          emptyDir: {}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: uploads
+  namespace: straight-salon
+  labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: { storage: 1Gi }
+---
+# Keeps average CPU near 70 % of the pods' requests by adding or removing api pods (15 §2.10).
+# Reads CPU from metrics-server.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: backend
+  namespace: straight-salon
+  labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: backend
+  minReplicas: 2
+  maxReplicas: 4
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 70 }

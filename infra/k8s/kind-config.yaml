@@ -1,0 +1,24 @@
+# Local cluster for FDE step 2 (docs/specs/15-kubernetes-basics.md §3.1).
+# One control-plane node and two worker nodes; each node is a Docker container.
+# Host ports 80/443 (127.0.0.1 only) map to fixed NodePorts 30080/30443, which the Envoy
+# Gateway service exposes (infra/k8s/gateway.yaml), so https://salon.localhost reaches the
+# cluster without a cloud load balancer. A NodePort is open on every node, so mapping it on
+# the control-plane node is enough.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: straight-salon
+nodes:
+  - role: control-plane
+    # kind v0.33.0's default Kubernetes, pinned by digest like every other image (14 §2.2)
+    image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+    extraPortMappings:
+      - containerPort: 30080
+        hostPort: 80
+        listenAddress: 127.0.0.1
+      - containerPort: 30443
+        hostPort: 443
+        listenAddress: 127.0.0.1
+  - role: worker
+    image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
+  - role: worker
+    image: kindest/node:v1.37.0@sha256:a1ed56cfb0e7b93589bdf97c8cd566405a265939e3620fc4f5de89adff580ae5
