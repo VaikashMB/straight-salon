@@ -13,9 +13,9 @@ resources:
 # on with `npm run k8s:promote -- dev staging`.
 images:
   - name: ghcr.io/vaikashmb/straight-salon-backend
-    digest: sha256:603da087cf483640425c04081cb5f6b9ba36e8a61ec885b7bf6b42767931bf12
+    digest: sha256:20611348c59f6acff58d89f62bbbc58837e0cfc32be865e28c1ef3069dc4a460
   - name: ghcr.io/vaikashmb/straight-salon-frontend
-    digest: sha256:7138c54b7717fff6a1e10e2657328616fcb7343bdcfdf7b190c1e3220f73768f
+    digest: sha256:e434e3235be4bd91ba213b15a1fa6318ebdcb76cecef446f10360f0a95b00c93
 # The environment's addresses: its hostname on the shared Gateway.
 configMapGenerator:
   - name: backend-config
