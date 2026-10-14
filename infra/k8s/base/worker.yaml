@@ -5,7 +5,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: worker
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: worker, app.kubernetes.io/part-of: straight-salon }
 spec:
   replicas: 1

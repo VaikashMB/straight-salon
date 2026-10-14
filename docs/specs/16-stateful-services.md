@@ -203,7 +203,8 @@ the control-plane node doesn't take workloads). Re-create the cluster once
 
 - StatefulSet `mongo`, **3 replicas**, each with its own 2 GiB volume, `--replSet rs0 --keyFile`.
   Required pod anti-affinity on the hostname (one member per node); PDB `minAvailable: 2`.
-- `mongo-init` Job: initiates the set with all three members
+- `mongo-init` Job *(since step 4, 17 §2.10: connects through the replica set once it exists,
+  and builds member names from the namespace)*: initiates the set with all three members
   (`mongo-0/1/2.mongo.straight-salon.svc.cluster.local`), creates the admin and `ss_app` users
   (`MONGO_AUTH=true`) and the backup user `ss_backup` (roles `backup`, `restore`, and `dbOwner`
   on the drill's scratch database). `infra/docker/mongo-init.js` learns a member list (env

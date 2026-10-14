@@ -1,10 +1,9 @@
 # Catches every email the worker sends (09 §8). Its web UI isn't exposed through the Gateway:
-# open it with `kubectl -n straight-salon port-forward svc/mailpit 8025` (README).
+# open it with `kubectl -n <namespace> port-forward svc/mailpit 8025` (README).
 apiVersion: v1
 kind: Service
 metadata:
   name: mailpit
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mailpit, app.kubernetes.io/part-of: straight-salon }
 spec:
   selector: { app.kubernetes.io/name: mailpit }
@@ -18,7 +17,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: mailpit
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mailpit, app.kubernetes.io/part-of: straight-salon }
 spec:
   replicas: 1

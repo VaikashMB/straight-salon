@@ -120,6 +120,22 @@ jobs:
       - name: OpenAPI and generated client match the code (04 §2)
         run: npm run contract:check
 
+  manifests:
+    needs: setup
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      # The kubectl the README installs (it carries Kustomize), not whatever the runner image
+      # has this month: a Kustomize upgrade can change what an overlay renders.
+      - name: kubectl v1.37.0 (checksum verified)
+        run: |
+          curl -fLO --retry 5 --retry-all-errors https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+          echo "$(curl -fsL --retry 5 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)  kubectl" | sha256sum -c -
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - name: Every environment renders and follows the rules (17 §3.5)
+        run: npm run k8s:check
+
   sonar:
     needs: [test-backend, test-frontend]
     runs-on: ubuntu-latest
@@ -284,7 +300,8 @@ jobs:
   # passed (14 §3.2). No rebuild: the tested bytes are the promoted bytes.
   promote:
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    needs: [docker-build, lint, security, test-backend, test-frontend, contract, sonar, e2e]
+    needs:
+      [docker-build, lint, security, test-backend, test-frontend, contract, manifests, sonar, e2e]
     runs-on: ubuntu-latest
     permissions:
       contents: read

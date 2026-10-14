@@ -1,0 +1,6 @@
+# The platform's own namespace (17 §3.3): the shared Gateway and its certificate. No
+# environment's app runs here.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: straight-salon-gateway

@@ -3,11 +3,17 @@
 # March 2026; the Gateway API is its successor.
 #
 #   GatewayClass  (platform team)  which implementation runs gateways: Envoy Gateway
-#   Gateway       (platform team)  listen on 80/443 for salon.localhost, with this certificate
-#   HTTPRoute     (app team)       which paths go to which Service
+#   Gateway       (platform team)  listen on 80/443, which hostname may be claimed by which
+#                                  namespace, with which certificate
+#   HTTPRoute     (app team)       which paths go to which Service (base/routes.yaml, one per
+#                                  environment, in the environment's namespace)
+#
+# One Gateway for every environment (17 §3.3): kind maps host ports 80/443 to one pair of
+# NodePorts, and a NodePort can belong to only one Service in the whole cluster.
 #
 # How a request arrives: 127.0.0.1:443 → kind node port 30443 (kind-config.yaml) → the Envoy
-# Service (NodePort, set below) → an Envoy pod → the frontend or backend Service.
+# Service (NodePort, set below) → an Envoy pod → by hostname, the environment's HTTPRoute → the
+# frontend Service in that environment's namespace.
 
 # Envoy Gateway runs one Envoy deployment per Gateway. On a cloud cluster its Service would
 # be a LoadBalancer with a public address; kind has no load balancer, so it's a NodePort on
@@ -16,7 +22,7 @@ apiVersion: gateway.envoyproxy.io/v1alpha1
 kind: EnvoyProxy
 metadata:
   name: salon-proxy
-  namespace: straight-salon
+  namespace: straight-salon-gateway
 spec:
   provider:
     type: Kubernetes
@@ -44,11 +50,16 @@ metadata:
 spec:
   controllerName: gateway.envoyproxy.io/gatewayclass-controller
 ---
+# One HTTPS listener per environment. `allowedRoutes` names the one namespace that may attach
+# routes to it (the label kubernetes.io/metadata.name is set by Kubernetes itself), so a route
+# in the dev namespace can't claim salon.localhost, even by mistake: the hostname-to-namespace
+# map is the platform's decision, not each app's. Adding an environment means adding a
+# listener here and a name to the certificate (certificates.yaml).
 apiVersion: gateway.networking.k8s.io/v1
 kind: Gateway
 metadata:
   name: salon
-  namespace: straight-salon
+  namespace: straight-salon-gateway
 spec:
   gatewayClassName: envoy
   infrastructure:
@@ -57,11 +68,13 @@ spec:
       kind: EnvoyProxy
       name: salon-proxy
   listeners:
+    # Plain HTTP for every hostname; only the redirect below (same namespace) attaches to it.
     - name: http
       protocol: HTTP
       port: 80
-      hostname: salon.localhost
-    - name: https
+      allowedRoutes:
+        namespaces: { from: Same }
+    - name: https-prod
       protocol: HTTPS
       port: 443
       hostname: salon.localhost
@@ -69,46 +82,49 @@ spec:
         mode: Terminate # TLS ends at Envoy; traffic inside the cluster is plain HTTP
         certificateRefs:
           - name: salon-tls # issued by cert-manager (certificates.yaml)
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels: { kubernetes.io/metadata.name: straight-salon }
+    - name: https-staging
+      protocol: HTTPS
+      port: 443
+      hostname: staging.salon.localhost
+      tls:
+        mode: Terminate
+        certificateRefs: [{ name: salon-tls }]
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels: { kubernetes.io/metadata.name: straight-salon-staging }
+    - name: https-dev
+      protocol: HTTPS
+      port: 443
+      hostname: dev.salon.localhost
+      tls:
+        mode: Terminate
+        certificateRefs: [{ name: salon-tls }]
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels: { kubernetes.io/metadata.name: straight-salon-dev }
 ---
-# Plain HTTP only redirects to HTTPS.
+# Plain HTTP only redirects to HTTPS, for every hostname.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
   name: salon-redirect
-  namespace: straight-salon
+  namespace: straight-salon-gateway
 spec:
   parentRefs:
     - name: salon
       sectionName: http
-  hostnames: [salon.localhost]
   rules:
     - filters:
         - type: RequestRedirect
           requestRedirect:
             scheme: https
             statusCode: 301
----
-# The app's routes. /api/* needs no rule: the frontend forwards it to the backend itself, so
-# the API stays same-origin (no CORS). Uploaded images are read straight from object storage:
-# /uploads/<key> is the S3 path of <key> in the public bucket `uploads` (16 §3.3).
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: salon
-  namespace: straight-salon
-spec:
-  parentRefs:
-    - name: salon
-      sectionName: https
-  hostnames: [salon.localhost]
-  rules:
-    - matches:
-        - path: { type: PathPrefix, value: /uploads }
-      backendRefs:
-        - name: seaweedfs
-          port: 8333
-    - matches:
-        - path: { type: PathPrefix, value: / }
-      backendRefs:
-        - name: frontend
-          port: 3000

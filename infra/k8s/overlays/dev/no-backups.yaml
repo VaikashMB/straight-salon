@@ -1,0 +1,19 @@
+# No nightly backup or restore drill: dev's data is demo data, rebuilt with `npm run k8s:seed`.
+# Staging keeps them, so the backup path is rehearsed before prod depends on it.
+$patch: delete
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-backup
+---
+$patch: delete
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-restore-drill
+---
+$patch: delete
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-drill

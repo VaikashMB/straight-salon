@@ -1,0 +1,27 @@
+# The app's routes (15 §3.3), attached to the platform's shared Gateway in another namespace
+# (platform/gateway.yaml). The hostname is the environment's: each overlay patches it, and the
+# Gateway only accepts it from the namespace that owns that hostname (17 §3.3).
+#
+# /api/* needs no rule: the frontend forwards it to the backend itself, so the API stays
+# same-origin (no CORS). Uploaded images are read straight from object storage: /uploads/<key>
+# is the S3 path of <key> in the public bucket `uploads` (16 §3.3).
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: salon
+spec:
+  parentRefs:
+    - name: salon
+      namespace: straight-salon-gateway
+  hostnames: [set-by-overlay.invalid]
+  rules:
+    - matches:
+        - path: { type: PathPrefix, value: /uploads }
+      backendRefs:
+        - name: seaweedfs
+          port: 8333
+    - matches:
+        - path: { type: PathPrefix, value: / }
+      backendRefs:
+        - name: frontend
+          port: 3000

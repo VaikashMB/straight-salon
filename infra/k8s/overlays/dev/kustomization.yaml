@@ -1,0 +1,36 @@
+# Dev (17 §3.2): https://dev.salon.localhost, the first place a new build runs. Smaller than
+# prod on purpose (one Mongo member, one pod per app, no backups, debug logs), so it's cheap to
+# keep running next to the others and to throw away (`npm run k8s:down -- --env dev`).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: straight-salon-dev
+resources:
+  - namespace.yaml
+  - ../../base
+# Which build runs here, by digest (14 §2.2). Dev is where new builds enter: changed by
+# `npm run k8s:up -- --env dev --latest` (what `main` points at in GHCR, signature checked)
+# and committed: the deployed version is a decision recorded in git. From here a build moves
+# on with `npm run k8s:promote -- dev staging`.
+images:
+  - name: ghcr.io/vaikashmb/straight-salon-backend
+    digest: sha256:262015211516400d0add17d7b0d100dc5ab7fd5a836caf3e9661f40fac45fd61
+  - name: ghcr.io/vaikashmb/straight-salon-frontend
+    digest: sha256:6f74ce1515c02b2197c91dc57c49d9e57a48b92b062aeda83c494362256d8674
+# The environment's addresses: its hostname on the shared Gateway.
+configMapGenerator:
+  - name: backend-config
+    behavior: merge
+    literals:
+      - APP_BASE_URL=https://dev.salon.localhost
+      - UPLOADS_PUBLIC_URL=https://dev.salon.localhost/uploads
+      - LOG_LEVEL=debug
+patches:
+  - target: { kind: HTTPRoute, name: salon }
+    patch: |
+      - op: replace
+        path: /spec/hostnames
+        value: [dev.salon.localhost]
+  # Smaller than prod (17 §3.2). Each patch is a deliberate difference; k8s:check lists them.
+  - path: single-mongo.yaml
+  - path: one-of-each.yaml
+  - path: no-backups.yaml

@@ -1,31 +1,62 @@
-// `npm run k8s:up | k8s:down | k8s:seed` (15-kubernetes-basics §3.5): the local Kubernetes
-// cluster for FDE step 2. Needs Docker, kind and kubectl (README, "Run on Kubernetes").
+// `npm run k8s:*` (15-kubernetes-basics §3.5, 17 §3.4): the local Kubernetes cluster and its
+// environments. Needs Docker, kind and kubectl (README, "Run on Kubernetes").
 //
-//   k8s:up             create the kind cluster if missing, install the add-ons, apply
-//                      infra/k8s with the image digests pinned in kustomization.yaml
-//   k8s:up -- --latest first move those digests to what `main` points at in GHCR (signature
-//                      checked with cosign when it's installed), then deploy
-//   k8s:up -- --local  build the images from this checkout and load them into the kind nodes
-//                      (no registry), for code that isn't published yet; the committed digests
-//                      stay as they are
+// Every command takes `-- --env dev|staging|prod` (default dev, the least dangerous one). The
+// environment's namespace, hostname and Mongo member count come from its overlay
+// (infra/k8s/overlays/<env>), never from this file.
+//
+//   k8s:up             create the kind cluster if missing, install the add-ons and the shared
+//                      platform (Gateway, certificates), then apply the environment's overlay
+//                      with the image digests pinned in it
+//   k8s:up -- --latest (dev only) first move dev's digests to what `main` points at in GHCR
+//                      (signature checked with cosign when it's installed), then deploy
+//   k8s:up -- --local  (dev only) build the images from this checkout and load them into the
+//                      kind nodes (no registry), for code that isn't published yet; the
+//                      committed digests stay as they are
+//   k8s:promote -- <from> <to>  copy the digests one environment runs to the next one
+//                      (dev → staging → prod), after checking <from> really runs them
+//   k8s:render         print the environment's manifests, as they would be applied
+//   k8s:diff           what applying the environment would change in the running cluster
 //   k8s:seed           demo data, from this machine through port-forwards (the production
 //                      image refuses to seed)
-//   k8s:backup         run the nightly MongoDB backup now (16 §3.5)
+//   k8s:backup         run the nightly MongoDB backup now (16 §3.5; staging and prod)
 //   k8s:restore-drill  restore the newest backup into a scratch database and check it
 //   k8s:restore -- <archive> <collection>  put one collection back from a backup (no args: list)
-//   k8s:down           delete the cluster
+//   k8s:down           delete the cluster; with --env, only that environment's namespace
 //
 // Every step prints the kubectl command it runs, so the script doubles as a walkthrough.
 import { execFileSync, spawn } from 'node:child_process';
 import { randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
+import {
+  ENVIRONMENTS,
+  OUR_IMAGES as IMAGES,
+  PLATFORM_DIR,
+  describe,
+  overlayDir,
+  overlayKustomization,
+  render,
+} from './k8s-manifests.mjs';
 
 const CLUSTER = 'straight-salon';
 const CONTEXT = `kind-${CLUSTER}`;
-const NS = 'straight-salon';
-const URL = 'https://salon.localhost';
-const KUSTOMIZATION = 'infra/k8s/kustomization.yaml';
+const GATEWAY_NS = 'straight-salon-gateway';
+
+// `--env <name>` (or `--env=<name>`); dev unless stated.
+function envArg() {
+  const args = process.argv.slice(3);
+  const i = args.findIndex((a) => a === '--env' || a.startsWith('--env='));
+  if (i < 0) return 'dev';
+  const value = args[i].includes('=') ? args[i].split('=')[1] : args[i + 1];
+  if (!ENVIRONMENTS.includes(value)) fail(`--env must be one of ${ENVIRONMENTS.join(', ')}`);
+  return value;
+}
+// Positional arguments after the command, without the flags.
+function positional() {
+  const args = process.argv.slice(3);
+  return args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--env');
+}
 
 // Cluster add-ons, pinned (15 §3.1). Installed from their release manifests (no Helm needed).
 const ADDONS = {
@@ -36,7 +67,6 @@ const ADDONS = {
     'https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.9.0/components.yaml',
 };
 
-const IMAGES = ['backend', 'frontend'].map((app) => `ghcr.io/vaikashmb/straight-salon-${app}`);
 const SIGNER =
   'https://github.com/VaikashMB/straight-salon/.github/workflows/ci.yml@refs/heads/main';
 
@@ -52,6 +82,7 @@ function run(cmd, args, { capture = false, input, quiet = false } = {}) {
   return execFileSync(cmd, args, {
     encoding: 'utf8',
     input,
+    maxBuffer: 64 * 1024 * 1024, // add-on manifests are several MB (Node's default: 1 MB)
     stdio: [input === undefined ? 'inherit' : 'pipe', capture ? 'pipe' : 'inherit', 'inherit'],
   });
 }
@@ -89,13 +120,36 @@ function digestOf(ref) {
   return JSON.parse(json).digest;
 }
 
-// Moves the pinned digests to what `main` points at, after checking each signature (14 §2.7).
-function pinLatest() {
+// The digests an overlay pins, by image.
+function pinnedDigests(env) {
+  const text = readFileSync(overlayKustomization(env), 'utf8');
+  return Object.fromEntries(
+    IMAGES.map((image) => {
+      const match = text.match(digestPattern(image));
+      if (!match) fail(`${overlayKustomization(env)} has no digest entry for ${image}`);
+      return [image, match[2]];
+    }),
+  );
+}
+const digestPattern = (image) =>
+  new RegExp(`(- name: ${image.replaceAll('.', '\\.')}\\n\\s+digest: )(sha256:[0-9a-f]{64})`);
+
+function writeDigests(env, digests) {
+  let text = readFileSync(overlayKustomization(env), 'utf8');
+  for (const [image, digest] of Object.entries(digests)) {
+    text = text.replace(digestPattern(image), `$1${digest}`);
+  }
+  writeFileSync(overlayKustomization(env), text);
+}
+
+// Moves dev's pinned digests to what `main` points at, after checking each signature (14 §2.7).
+// Only dev: a new build enters there, and reaches staging and prod only by promotion.
+function pinLatest(env) {
   say('Resolving the digests `main` points at in GHCR');
   const cosign = has('cosign');
   if (!cosign)
     say('cosign not installed: pinning WITHOUT verifying signatures (README, "Published images")');
-  let text = readFileSync(KUSTOMIZATION, 'utf8');
+  const digests = {};
   for (const image of IMAGES) {
     const digest = digestOf(`${image}:main`);
     if (cosign) {
@@ -113,12 +167,77 @@ function pinLatest() {
       );
       process.stdout.write(`  signature ok: ${image}@${digest}\n`);
     }
-    const pattern = new RegExp(`(- name: ${image}\\n\\s+digest: )sha256:[0-9a-f]{64}`);
-    if (!pattern.test(text)) fail(`${KUSTOMIZATION} has no digest entry for ${image}`);
-    text = text.replace(pattern, `$1${digest}`);
+    digests[image] = digest;
   }
-  writeFileSync(KUSTOMIZATION, text);
-  say(`Pinned in ${KUSTOMIZATION}. Commit it: the deployed version is a decision recorded in git.`);
+  pinnedDigests(env); // fails early if the overlay lost an entry
+  writeDigests(env, digests);
+  say(
+    `Pinned in ${overlayKustomization(env)}. Commit it: the deployed version is a decision recorded in git.`,
+  );
+}
+
+// ---- promote ------------------------------------------------------------------------------
+
+// The images an environment's Deployments run right now, by image name.
+function liveDigests(namespace) {
+  const out = kubectl(
+    [
+      '-n',
+      namespace,
+      'get',
+      'deployment',
+      'backend',
+      'frontend',
+      '-o',
+      'jsonpath={range .items[*]}{.spec.template.spec.containers[0].image}{"\\n"}{end}',
+    ],
+    { capture: true, quiet: true },
+  );
+  return Object.fromEntries(
+    out
+      .split('\n')
+      .filter(Boolean)
+      .map((ref) => ref.split('@')),
+  );
+}
+
+// Copies the digests <from> runs to <to> (17 §2.5). Promotion moves exactly the bytes that were
+// tested, and only one step at a time: what reaches prod has run in staging, and before that in
+// dev. It refuses when <from> isn't running what its overlay pins (not deployed yet, or a
+// --local build): you'd be promoting something nobody has looked at.
+function promote(from, to) {
+  if (!ENVIRONMENTS.includes(from) || !ENVIRONMENTS.includes(to))
+    fail(`usage: npm run k8s:promote -- <from> <to>, environments ${ENVIRONMENTS.join(' → ')}`);
+  if (ENVIRONMENTS.indexOf(to) !== ENVIRONMENTS.indexOf(from) + 1)
+    fail(`promote one step at a time: ${ENVIRONMENTS.join(' → ')}`);
+  requireTools();
+  const pinned = pinnedDigests(from);
+  const { namespace } = describe(from);
+  say(`Checking that ${from} (${namespace}) runs what its overlay pins`);
+  let live;
+  try {
+    live = liveDigests(namespace);
+  } catch {
+    fail(`${from} isn't running (npm run k8s:up -- --env ${from}); nothing to promote`);
+  }
+  for (const image of IMAGES) {
+    if (live[image] !== pinned[image])
+      fail(
+        `${from} runs ${image}${live[image] ? `@${live[image]}` : ' from a local build'}, its overlay pins ${pinned[image]}. Deploy ${from} first: npm run k8s:up -- --env ${from}`,
+      );
+  }
+  const current = pinnedDigests(to);
+  const changes = IMAGES.filter((image) => current[image] !== pinned[image]);
+  if (changes.length === 0) {
+    say(`${to} already pins what ${from} runs. Nothing to promote.`);
+    return;
+  }
+  writeDigests(to, pinned);
+  for (const image of changes)
+    process.stdout.write(`  ${image}\n    ${current[image]}\n  → ${pinned[image]}\n`);
+  say(`Promoted ${from} → ${to} in ${overlayKustomization(to)}. Next:
+  git diff ${overlayKustomization(to)}        # review, then commit it
+  npm run k8s:up -- --env ${to}`);
 }
 
 // ---- up -----------------------------------------------------------------------------------
@@ -129,18 +248,26 @@ function clusterExists() {
     .includes(CLUSTER);
 }
 
+// Release manifests come from GitHub, which sometimes resets a connection or times out a TLS
+// handshake. `kubectl apply -f <url>` doesn't retry; curl does, on any error.
+const download = (url) =>
+  run('curl', ['-fsSL', '--retry', '8', '--retry-max-time', '120', '--retry-all-errors', url], {
+    capture: true,
+  });
+
 function installAddons() {
   say('Installing cluster add-ons: Envoy Gateway (Gateway API), cert-manager, metrics-server');
-  kubectl(['apply', '--server-side', '-f', ADDONS.envoyGateway], { capture: true });
-  kubectl(['apply', '--server-side', '-f', ADDONS.certManager], { capture: true });
+  for (const url of [ADDONS.envoyGateway, ADDONS.certManager]) {
+    kubectl(['apply', '--server-side', '-f', '-'], { input: download(url), capture: true });
+  }
   // kind's kubelet certificates aren't signed for metrics-server, so it needs
   // --kubelet-insecure-tls (never on a real cluster). Added to the manifest before applying,
   // not patched afterwards: a later `kubectl patch` would own that field, and the next
   // server-side apply would refuse to touch it (a field-manager conflict, 15 §3.5).
-  const metricsServer = run('curl', ['-fsSL', '--retry', '5', ADDONS.metricsServer], {
-    capture: true,
-    quiet: true,
-  }).replace('- --secure-port=10250', '- --secure-port=10250\n        - --kubelet-insecure-tls');
+  const metricsServer = download(ADDONS.metricsServer).replace(
+    '- --secure-port=10250',
+    '- --secure-port=10250\n        - --kubelet-insecure-tls',
+  );
   if (!metricsServer.includes('--kubelet-insecure-tls'))
     fail('metrics-server manifest changed shape');
   kubectl(['apply', '--server-side', '--force-conflicts', '-f', '-'], {
@@ -168,16 +295,66 @@ function installAddons() {
   ]);
 }
 
+// Before environments existed (steps 2 and 3), the Gateway, its EnvoyProxy, the redirect route
+// and the site certificate lived in the app's namespace, `straight-salon`. They move to the
+// platform's namespace (17 §3.3), and `kubectl apply` never deletes what a manifest no longer
+// mentions (17 §2.7), so they're removed here, once. They must go before the new Gateway
+// starts: both would want the same NodePorts.
+function removePreEnvironmentEdge() {
+  const old = kubectl(
+    ['-n', 'straight-salon', 'get', 'gateway', 'salon', '--ignore-not-found', '-o', 'name'],
+    { capture: true, quiet: true },
+  );
+  if (!old.trim()) return;
+  say('Removing the pre-environment Gateway from namespace straight-salon (moves to the platform)');
+  for (const [kind, name] of [
+    ['gateway', 'salon'],
+    ['envoyproxy', 'salon-proxy'],
+    ['httproute', 'salon-redirect'],
+    ['certificate', 'salon-tls'],
+    ['secret', 'salon-tls'],
+  ]) {
+    kubectl(['-n', 'straight-salon', 'delete', kind, name, '--ignore-not-found']);
+  }
+}
+
+// What every environment shares (17 §3.3): one Gateway with a listener per environment, and
+// the certificates. Applied on every `k8s:up`, whichever environment it's for.
+function installPlatform() {
+  removePreEnvironmentEdge();
+  say('Applying the platform: shared Gateway and certificates');
+  kubectl([
+    'apply',
+    '--server-side',
+    '--force-conflicts',
+    '--field-manager=k8s-up',
+    '-k',
+    PLATFORM_DIR,
+  ]);
+  kubectl([
+    '-n',
+    GATEWAY_NS,
+    'wait',
+    '--for=condition=Programmed',
+    'gateway/salon',
+    '--timeout=180s',
+  ]);
+}
+
 // Secrets (15 §3.4, 16 §2.5). Generated here, never written to disk or git, and REUSED on every
 // re-run: a changed password would lock the app out of its own database, a changed outbox key
 // would make queued payloads unreadable. Several secrets share values (the app's Mongo password
 // is in mongo-auth and inside backend-secrets' MONGO_URI; the S3 keys are in three places), so
-// they're all built from one set of values.
-const MONGO_HOSTS = [0, 1, 2]
-  .map((i) => `mongo-${i}.mongo.${NS}.svc.cluster.local:27017`)
-  .join(',');
+// they're all built from one set of values. Each environment has its own (17 §2.3): nothing
+// in dev can open prod's database.
+function mongoHosts(e) {
+  return Array.from(
+    { length: e.mongoMembers },
+    (_, i) => `mongo-${i}.mongo.${e.namespace}.svc.cluster.local:27017`,
+  ).join(',');
+}
 
-function readSecret(name) {
+function readSecret(NS, name) {
   const json = kubectl(['-n', NS, 'get', 'secret', name, '--ignore-not-found', '-o', 'json'], {
     capture: true,
     quiet: true,
@@ -189,7 +366,7 @@ function readSecret(name) {
   );
 }
 
-function applySecret(name, values) {
+function applySecret(NS, name, values) {
   const manifest = kubectl(
     [
       '-n',
@@ -212,10 +389,12 @@ function applySecret(name, values) {
   });
 }
 
-function ensureSecrets() {
-  const mongo = readSecret('mongo-auth');
-  const backend = readSecret('backend-secrets');
-  const rclone = readSecret('rclone-s3');
+function ensureSecrets(e) {
+  const NS = e.namespace;
+  const MONGO_HOSTS = mongoHosts(e);
+  const mongo = readSecret(NS, 'mongo-auth');
+  const backend = readSecret(NS, 'backend-secrets');
+  const rclone = readSecret(NS, 'rclone-s3');
   const hex = (n) => randomBytes(n).toString('hex'); // URI-safe passwords
   const v = {
     rootPassword: mongo['root-password'] ?? hex(24),
@@ -230,7 +409,7 @@ function ensureSecrets() {
   const fresh = !mongo['app-password'];
   say(fresh ? 'Generating secrets' : 'Secrets exist, reusing their values');
 
-  applySecret('mongo-auth', {
+  applySecret(NS, 'mongo-auth', {
     'root-password': v.rootPassword,
     'app-password': v.appPassword,
     'backup-password': v.backupPassword,
@@ -238,7 +417,7 @@ function ensureSecrets() {
     // Backups and the drill log in as ss_backup (admin database).
     'backup-uri': `mongodb://ss_backup:${v.backupPassword}@${MONGO_HOSTS}/?replicaSet=rs0&authSource=admin`,
   });
-  applySecret('backend-secrets', {
+  applySecret(NS, 'backend-secrets', {
     JWT_ACCESS_SECRET: v.jwt,
     OUTBOX_ENCRYPTION_KEY: v.outbox,
     // w=majority: an acknowledged write is on two of three members (16 §2.3).
@@ -247,7 +426,7 @@ function ensureSecrets() {
     S3_SECRET_ACCESS_KEY: v.s3Secret,
   });
   // SeaweedFS's access rules: one key with full rights, anonymous read on `uploads` only.
-  applySecret('seaweedfs-s3', {
+  applySecret(NS, 'seaweedfs-s3', {
     's3.json': JSON.stringify({
       identities: [
         {
@@ -260,7 +439,7 @@ function ensureSecrets() {
     }),
   });
   // rclone (bucket Job, backups) reads its whole configuration from these variables.
-  applySecret('rclone-s3', {
+  applySecret(NS, 'rclone-s3', {
     RCLONE_CONFIG_S3_TYPE: 's3',
     RCLONE_CONFIG_S3_PROVIDER: 'SeaweedFS',
     RCLONE_CONFIG_S3_ENDPOINT: 'http://seaweedfs:8333',
@@ -307,8 +486,8 @@ function buildLocalImages() {
 }
 
 // The manifests with the pinned GHCR digests swapped for the local tags.
-function renderWithLocalImages(tags) {
-  let yaml = kubectl(['kustomize', 'infra/k8s'], { capture: true });
+function renderWithLocalImages(e, tags) {
+  let yaml = e.text;
   for (const [app, tag] of Object.entries(tags)) {
     yaml = yaml.replaceAll(
       new RegExp(`ghcr\\.io/vaikashmb/straight-salon-${app}@sha256:[0-9a-f]{64}`, 'g'),
@@ -337,12 +516,52 @@ function checkInotifyLimits() {
   (to keep them after a reboot, add both lines to /etc/sysctl.d/99-kind.conf)`);
 }
 
-function up() {
+// After a rollout: does the site answer through the Gateway? `kubectl rollout status` only
+// knows the pods are ready; this follows the browser's path (Gateway, route, certificate,
+// frontend, backend). -k: the local CA isn't in curl's trust store. curl resolves *.localhost
+// to 127.0.0.1 by itself.
+async function smokeTest(e) {
+  say(`Smoke test: ${e.url}/api/v1/settings/public through the Gateway`);
+  for (let attempt = 1; attempt <= 30; attempt++) {
+    try {
+      const code = run(
+        'curl',
+        [
+          '-sk',
+          '-o',
+          '/dev/null',
+          '-w',
+          '%{http_code}',
+          '--max-time',
+          '10',
+          `${e.url}/api/v1/settings/public`,
+        ],
+        { capture: true, quiet: attempt > 1 },
+      );
+      if (code === '200') return;
+    } catch {
+      // not answering yet
+    }
+    await sleep(2000);
+  }
+  fail(`${e.url} doesn't answer. Look at: kubectl -n ${e.namespace} describe httproute salon`);
+}
+
+async function up() {
   requireTools();
   checkInotifyLimits();
+  const env = envArg();
   const local = process.argv.includes('--local');
-  if (local && process.argv.includes('--latest')) fail('use --latest or --local, not both');
-  if (process.argv.includes('--latest')) pinLatest();
+  const latest = process.argv.includes('--latest');
+  if (local && latest) fail('use --latest or --local, not both');
+  // New builds enter at dev; staging and prod only get what was promoted to them (17 §2.5).
+  if ((local || latest) && env !== 'dev')
+    fail(
+      `--${local ? 'local' : 'latest'} is for dev only. ${env} gets builds by promotion: npm run k8s:promote -- ${ENVIRONMENTS[ENVIRONMENTS.indexOf(env) - 1]} ${env}`,
+    );
+  if (latest) pinLatest(env);
+  const e = describe(env);
+  const NS = e.namespace;
 
   if (clusterExists()) {
     say(`Cluster ${CLUSTER} exists`);
@@ -351,11 +570,14 @@ function up() {
     run('kind', ['create', 'cluster', '--config', 'infra/k8s/kind-config.yaml']);
   }
   installAddons();
+  installPlatform();
   const localTags = local ? buildLocalImages() : null;
 
-  say('Namespace, secrets and the mongo-init script');
-  kubectl(['apply', '-f', 'infra/k8s/namespace.yaml']);
-  ensureSecrets();
+  say(`${env}: namespace ${NS}, secrets and the mongo-init script`);
+  kubectl(['apply', '--server-side', '--field-manager=k8s-up', '-f', '-'], {
+    input: JSON.stringify(e.objects.find((o) => o.kind === 'Namespace')),
+  });
+  ensureSecrets(e);
   const initScript = kubectl(
     [
       '-n',
@@ -375,45 +597,52 @@ function up() {
     capture: true,
   });
 
-  // A Job's pod template can't change after creation: replace last deploy's migration run.
-  kubectl(['-n', NS, 'delete', 'job', 'migrate', '--ignore-not-found']);
+  // A Job's pod template can't change after creation, so every Job is replaced on each deploy:
+  // the migration runs once per deploy, and mongo-init and buckets are idempotent.
+  const jobs = e.objects.filter((o) => o.kind === 'Job').map((o) => `job/${o.metadata.name}`);
+  kubectl(['-n', NS, 'delete', ...jobs, '--ignore-not-found']);
+  // Before step 4 the backend config had a fixed name; now it's generated with a hash (17 §2.6).
+  // Apply doesn't delete the old one (17 §2.7), so it's removed here.
+  kubectl(['-n', NS, 'delete', 'configmap', 'backend-config', '--ignore-not-found']);
 
-  say(`Applying infra/k8s (server-side apply${local ? ', local images' : ''})`);
+  say(`Applying ${overlayDir(env)} (server-side apply${local ? ', local images' : ''})`);
   const applyArgs = ['apply', '--server-side', '--force-conflicts', '--field-manager=k8s-up'];
-  if (localTags) kubectl([...applyArgs, '-f', '-'], { input: renderWithLocalImages(localTags) });
-  else kubectl([...applyArgs, '-k', 'infra/k8s']);
+  if (localTags) kubectl([...applyArgs, '-f', '-'], { input: renderWithLocalImages(e, localTags) });
+  else kubectl([...applyArgs, '-k', overlayDir(env)]);
 
   say('Waiting for the rollout');
-  for (const job of ['mongo-init', 'buckets', 'migrate']) {
+  const named = (kind) => e.objects.filter((o) => o.kind === kind).map((o) => o.metadata.name);
+  for (const job of named('Job')) {
     kubectl(['-n', NS, 'wait', '--for=condition=Complete', `job/${job}`, '--timeout=600s']);
   }
   for (const workload of [
-    'statefulset/mongo',
-    'statefulset/seaweedfs',
-    'statefulset/redis',
-    'deployment/backend',
-    'deployment/worker',
-    'deployment/frontend',
-    'deployment/mailpit',
+    ...named('StatefulSet').map((n) => `statefulset/${n}`),
+    ...named('Deployment').map((n) => `deployment/${n}`),
   ]) {
     kubectl(['-n', NS, 'rollout', 'status', workload, '--timeout=300s']);
   }
-  kubectl(['-n', NS, 'wait', '--for=condition=Programmed', 'gateway/salon', '--timeout=120s']);
   kubectl(['-n', NS, 'get', 'pods', '-o', 'wide']);
+  await smokeTest(e);
 
-  say(`Ready: ${URL}
-  Demo data:     npm run k8s:seed
+  const flag = env === 'dev' ? '' : ` -- --env ${env}`;
+  say(`Ready: ${e.url}  (${env}, namespace ${NS})
+  Demo data:     npm run k8s:seed${flag}
   Emails:        kubectl -n ${NS} port-forward svc/mailpit 8025   → http://localhost:8025
-  Look around:   kubectl -n ${NS} get pods,svc,gateway,httproute
-  Backups:       npm run k8s:backup && npm run k8s:restore-drill
-  Exercises:     docs/specs/15-kubernetes-basics.md §6, 16-stateful-services.md §6`);
+  Look around:   kubectl -n ${NS} get pods,svc,httproute
+${e.backups ? `  Backups:       npm run k8s:backup${flag} && npm run k8s:restore-drill${flag}\n` : ''}\
+  Next step:     ${env === 'prod' ? 'nothing to promote to: prod is the end of the line' : `npm run k8s:promote -- ${env} ${ENVIRONMENTS[ENVIRONMENTS.indexOf(env) + 1]}`}
+  Exercises:     docs/specs/15 §6, 16 §6, 17 §6`);
 }
 
-// ---- seed ---------------------------------------------------------------------------------
+// ---- seed, backups, restore -----------------------------------------------------------------
+
+// The environment the command acts on (--env), set by main below.
+let NS;
+let URL;
 
 function secretValue(name, key) {
-  const value = readSecret(name)[key];
-  if (!value) fail(`secret ${name} has no ${key}. Run npm run k8s:up first.`);
+  const value = readSecret(NS, name)[key];
+  if (!value) fail(`secret ${name} has no ${key} in ${NS}. Run npm run k8s:up first.`);
   return value;
 }
 
@@ -622,20 +851,78 @@ function restore(archive, collection) {
   );
 }
 
+// ---- render, diff, down ------------------------------------------------------------------
+
+// What Kubernetes would be asked to apply, exactly (17 §3.4). Pipe it, diff two environments:
+//   diff <(npm run -s k8s:render -- --env staging) <(npm run -s k8s:render -- --env prod)
+function renderCommand() {
+  process.stdout.write(render(overlayDir(envArg())));
+}
+
+// What applying the environment would change in the running cluster, as a diff, without
+// changing anything (the API server computes the result, 17 §3.4). Secrets made by k8s:up aren't
+// in the overlay, so they never show. Jobs are left out: their pod template is immutable, so
+// the server can only answer "invalid", and k8s:up replaces them on every deploy anyway.
+function diffCommand() {
+  requireTools();
+  const e = describe(envArg());
+  say(`Changes applying ${overlayDir(e.env)} would make, Jobs aside (no output: no changes)`);
+  const manifests = e.objects
+    .filter((o) => o.kind !== 'Job')
+    .map((o) => JSON.stringify(o))
+    .join('\n');
+  try {
+    kubectl(['diff', '--server-side', '--force-conflicts', '--field-manager=k8s-up', '-f', '-'], {
+      input: manifests,
+    });
+  } catch (error) {
+    if (error.status !== 1) throw error; // 1 means "there are differences"
+  }
+}
+
+function down() {
+  requireTools();
+  if (!process.argv.some((a) => a.startsWith('--env'))) {
+    run('kind', ['delete', 'cluster', '--name', CLUSTER]);
+    return;
+  }
+  const e = describe(envArg());
+  say(`Deleting ${e.env} (namespace ${e.namespace}): its pods, volumes, data and secrets`);
+  kubectl(['delete', 'namespace', e.namespace, '--ignore-not-found']);
+}
+
 // ---- main ---------------------------------------------------------------------------------
 
+function target({ needsBackups = false } = {}) {
+  const e = describe(envArg());
+  NS = e.namespace;
+  URL = e.url;
+  if (needsBackups && !e.backups)
+    fail(`${e.env} has no backups (17 §3.2). Use --env staging or --env prod.`);
+  return e;
+}
+
 const command = process.argv[2];
-if (command === 'up') up();
+const [first, second] = positional();
+if (command === 'up') await up();
+else if (command === 'promote') promote(first, second);
+else if (command === 'render') renderCommand();
+else if (command === 'diff') diffCommand();
 else if (command === 'seed') {
+  target();
   await seed();
   say(`Seeded. Sign in at ${URL} with customer1@straightsalon.local / Password@123`);
-} else if (command === 'backup') runCronJob('mongo-backup');
-else if (command === 'restore-drill') runCronJob('mongo-restore-drill');
-else if (command === 'restore') restore(process.argv[3], process.argv[4]);
-else if (command === 'down') {
-  requireTools();
-  run('kind', ['delete', 'cluster', '--name', CLUSTER]);
-} else
+} else if (command === 'backup') {
+  target({ needsBackups: true });
+  runCronJob('mongo-backup');
+} else if (command === 'restore-drill') {
+  target({ needsBackups: true });
+  runCronJob('mongo-restore-drill');
+} else if (command === 'restore') {
+  target({ needsBackups: true });
+  restore(first, second);
+} else if (command === 'down') down();
+else
   fail(
-    'usage: node scripts/k8s.mjs up [--latest] | seed | backup | restore-drill | restore [archive collection] | down',
+    'usage: node scripts/k8s.mjs up [--latest|--local] | promote <from> <to> | render | diff | seed | backup | restore-drill | restore [archive collection] | down, each with [--env dev|staging|prod]',
   );

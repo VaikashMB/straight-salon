@@ -10,10 +10,9 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mongo
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mongo, app.kubernetes.io/part-of: straight-salon }
 spec:
-  clusterIP: None # headless: one DNS name per member, mongo-N.mongo.straight-salon.svc.cluster.local
+  clusterIP: None # headless: one DNS name per member, mongo-N.mongo.<namespace>.svc.cluster.local
   publishNotReadyAddresses: true # members must find each other before they're "ready"
   selector: { app.kubernetes.io/name: mongo }
   ports:
@@ -24,7 +23,6 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mongo
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mongo, app.kubernetes.io/part-of: straight-salon }
 spec:
   serviceName: mongo
@@ -105,7 +103,6 @@ apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
   name: mongo
-  namespace: straight-salon
 spec:
   minAvailable: 2 # a drain may take one member at a time, never the majority
   selector:
@@ -115,11 +112,15 @@ spec:
 # shared with Compose; loaded into the ConfigMap `mongo-init` by `npm run k8s:up`). Connects to
 # mongo-0 as root. Kubernetes has no depends_on (15 §2.11): until mongo-0 answers, the Job fails
 # and is retried. Idempotent: re-running it changes nothing.
+#
+# The manifests don't know their namespace (each environment sets it, 17 §3.2). Connecting needs
+# no namespace: `mongo-0.mongo` resolves inside the pod's own one. The replica-set member names
+# do: they're stored in the set's configuration and must be the full names, so they're built
+# from NAMESPACE, which the downward API fills in, and `$(NAMESPACE)` (expanded by Kubernetes).
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: mongo-init
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mongo-init, app.kubernetes.io/part-of: straight-salon }
 spec:
   backoffLimit: 30
@@ -131,20 +132,32 @@ spec:
       containers:
         - name: mongo-init
           image: mongo:8.2
+          # First run: no replica set yet, so talk to mongo-0 alone and let the script form it.
+          # Every later run (k8s:up re-runs this Job on each deploy, 17 §3.4): any member may be
+          # primary, and after a failover it usually isn't mongo-0, so connect through the set,
+          # which finds the primary. (Talking to mongo-0 alone, the script would wait for
+          # mongo-0 to become primary, forever.)
           command:
             - bash
             - -c
-            - >
-              exec mongosh --quiet --host mongo-0.mongo.straight-salon.svc.cluster.local:27017
-              --username root --password "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin
-              --file /scripts/mongo-init.js
+            - |
+              set -e
+              auth=(--quiet --username root --password "$MONGO_ROOT_PASSWORD" --authenticationDatabase admin)
+              set_uri='mongodb://mongo-0.mongo:27017/?replicaSet=rs0&serverSelectionTimeoutMS=5000'
+              if mongosh "${auth[@]}" "$set_uri" --eval 'quit()' > /dev/null 2>&1; then
+                echo "[mongo-init] replica set reachable: connecting through it"
+                exec mongosh "${auth[@]}" "$set_uri" --file /scripts/mongo-init.js
+              fi
+              exec mongosh "${auth[@]}" --host mongo-0.mongo:27017 --file /scripts/mongo-init.js
           env:
+            - name: NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
             - name: MONGO_AUTH
               value: 'true'
             - name: MONGO_DB_NAME
               value: straight_salon
             - name: MONGO_RS_MEMBERS
-              value: mongo-0.mongo.straight-salon.svc.cluster.local:27017,mongo-1.mongo.straight-salon.svc.cluster.local:27017,mongo-2.mongo.straight-salon.svc.cluster.local:27017
+              value: mongo-0.mongo.$(NAMESPACE).svc.cluster.local:27017,mongo-1.mongo.$(NAMESPACE).svc.cluster.local:27017,mongo-2.mongo.$(NAMESPACE).svc.cluster.local:27017
             - name: MONGO_ROOT_PASSWORD
               valueFrom: { secretKeyRef: { name: mongo-auth, key: root-password } }
             - name: MONGO_APP_PASSWORD

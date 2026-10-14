@@ -39,7 +39,8 @@ async function waitForStack(baseURL: string): Promise<void> {
 }
 
 // How to reach redis-cli: the Compose stack by default; E2E_REDIS_CLI overrides it, e.g.
-// "kubectl -n straight-salon exec redis-0 -- redis-cli" for the Kubernetes cluster (15 §6).
+// "kubectl -n straight-salon exec redis-0 -- redis-cli" for the Kubernetes cluster's prod
+// (15 §6; staging and dev are straight-salon-staging and straight-salon-dev, 17 §3.2).
 // Behind the cluster's gateway every browser shares one client IP, so the auth limiter fills
 // up within a run unless it's reset (16 §8).
 function redisCli(args: string[]): string {

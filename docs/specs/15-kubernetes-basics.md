@@ -266,7 +266,9 @@ non-root user, `readOnlyRootFilesystem` where the image allows it.
   time).
   The `kustomization.yaml` only lists the files and sets the two image digests (its `images:`
   field), so pinning a new digest is one edit. Overlays for dev/staging/prod, and the choice
-  between Kustomize and Helm, are step 4.
+  between Kustomize and Helm, are step 4. *(Since step 4, 17 §3.1: the files are split into
+  `platform/`, `base/` and `overlays/<env>/`; each environment pins its own digests, and every
+  `k8s:*` command takes `-- --env`.)*
 - `npm run k8s:up`: creates the kind cluster (if missing), installs the add-ons and waits for
   them, creates the Secret (once; kept on re-runs), loads `mongo-init.js` into a ConfigMap,
   replaces the previous migration Job (a Job's template is immutable), applies everything,

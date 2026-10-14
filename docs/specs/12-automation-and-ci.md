@@ -54,6 +54,8 @@ jobs:
                  → test:coverage (backend), upload coverage + junit artifacts
   test-frontend: needs setup → test:coverage (frontend), upload artifacts
   contract     : needs setup → contract:check
+  manifests    : needs setup → k8s:check: every Kubernetes environment renders and follows
+                 the rules, staging matches prod (17 §3.5)
   sonar        : needs test-backend, test-frontend → download coverage artifacts
                  → SonarQube/SonarCloud scan → wait for quality gate (fail on red)
   docker-build : needs lint → build backend & frontend images once, Trivy scan (fail on
@@ -81,7 +83,7 @@ Rules:
 - Status badges in README: CI, coverage, quality gate.
 
 ### Reserved for the deployment phase
-Running them on Kubernetes locally is FDE step 2 (`15-kubernetes-basics.md`, `npm run k8s:up`). Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Still to come, `cd.yml`: on tag/release → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
+Running them on Kubernetes locally is FDE step 2 (`15-kubernetes-basics.md`, `npm run k8s:up`); dev, staging and prod overlays with promotion by digest are step 4 (`17-environments-kustomize.md`, `npm run k8s:promote`). Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Still to come, `cd.yml`: on tag/release → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
 
 ## 4. In-app automation summary
 Specified in 09 §7: reminders (24 h, 2 h), auto no-show, outbox cleanup (Phase 6), daily stats reconcile (Phase 7). Plus:

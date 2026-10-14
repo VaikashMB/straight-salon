@@ -1,10 +1,9 @@
 # The Next.js frontend. It forwards /api/* to the backend Service inside the cluster (05 §5),
-# so the browser only ever talks to https://salon.localhost.
+# so the browser only ever talks to the environment's own hostname.
 apiVersion: v1
 kind: Service
 metadata:
   name: frontend
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: straight-salon }
 spec:
   selector: { app.kubernetes.io/name: frontend }
@@ -17,7 +16,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: straight-salon }
 spec:
   replicas: 2
