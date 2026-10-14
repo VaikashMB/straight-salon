@@ -366,7 +366,7 @@ jobs:
       - name: Is this still the newest build on main?
         id: newest
         run: |
-          newer="$(git log --format=%h "${GITHUB_SHA}..HEAD" -- . ':(exclude)infra/k8s/overlays')"
+          newer="$(git log --first-parent --format=%h "${GITHUB_SHA}..HEAD" -- . ':(exclude)infra/k8s/overlays')"
           if [ -n "$newer" ]; then
             echo "::notice title=dev not updated::main has newer code (${newer//$'\n'/ }); its CI run deploys it."
             echo "deploy=false" >> "$GITHUB_OUTPUT"

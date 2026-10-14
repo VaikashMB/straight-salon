@@ -411,7 +411,10 @@ same for staging → prod
   protective: the weekly cleanup (14 §3.6) deletes images whose only tags are `sha-*`, which would
   leave an environment pinned to a digest that no longer exists.
 - **The Release workflow** releases the images of the newest commit that changed anything but
-  the overlays, since deploy commits have no images of their own.
+  the overlays, since deploy commits have no images of their own. It walks `main` with
+  `git log --first-parent`: CI builds the commit pushed to `main` (the merge), while plain
+  path-limited `git log` skips such a merge and names the branch commit, which has no images
+  (found on the first release, v1.0.0). CI's "newest build" check in `deploy-dev` does the same.
 
 ### 3.8 `k8s:check` additions
 
