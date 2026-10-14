@@ -124,11 +124,17 @@ spec:
 ---
 # Keeps average CPU near 70 % of the pods' requests by adding or removing api pods (15 §2.10).
 # Reads CPU from metrics-server.
+#
+# Same sync wave as the Rollout it scales. In an earlier wave it's unhealthy until its target
+# exists ("unable to get the target's current scale"), and that wave never finishes, so the
+# Rollout's wave never starts (18 §2.10).
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: backend
   labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
 spec:
   scaleTargetRef:
     apiVersion: argoproj.io/v1alpha1
