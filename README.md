@@ -154,7 +154,15 @@ The seed also adds the salon settings, 4 categories with about 15 services, sche
 
 ### Run on Kubernetes (local)
 
-FDE steps 2 and 3 ([spec 15](docs/specs/15-kubernetes-basics.md), [spec 16](docs/specs/16-stateful-services.md)) run the published images on a local [kind](https://kind.sigs.k8s.io) cluster (one control plane, three workers) at `https://salon.localhost`: a three-member MongoDB replica set with authentication, nightly backups with an automatic restore drill, and SeaweedFS object storage for uploads. It doesn't touch the Compose stack; both can run at once.
+FDE steps 2 to 4 ([spec 15](docs/specs/15-kubernetes-basics.md), [spec 16](docs/specs/16-stateful-services.md), [spec 17](docs/specs/17-environments-kustomize.md)) run the published images on a local [kind](https://kind.sigs.k8s.io) cluster (one control plane, three workers), as three environments side by side, from one Kustomize base and an overlay each (`infra/k8s/overlays`):
+
+| Environment | URL                               | Namespace                | Shape                                                                                  |
+| ----------- | --------------------------------- | ------------------------ | -------------------------------------------------------------------------------------- |
+| dev         | `https://dev.salon.localhost`     | `straight-salon-dev`     | one MongoDB member, one pod each, no backups, debug logs                               |
+| staging     | `https://staging.salon.localhost` | `straight-salon-staging` | identical to prod (checked by `npm run k8s:check`)                                     |
+| prod        | `https://salon.localhost`         | `straight-salon`         | three-member MongoDB replica set, autoscaled api, nightly backups with a restore drill |
+
+Every environment has its own data and generated secrets; uploads go to SeaweedFS object storage. A build enters at dev and moves on by digest with `k8s:promote`. None of this touches the Compose stack; both can run at once.
 
 Four kind nodes need more file watchers than Linux allows by default (`k8s:up` warns if yours are too low). Raise them once:
 
@@ -174,19 +182,25 @@ echo "$(curl -fsL --retry 5 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/ku
 chmod +x kind kubectl && sudo mv kind kubectl /usr/local/bin/
 ```
 
-Then:
+Then (every `k8s:*` command acts on dev unless given `-- --env staging` or `-- --env prod`):
 
 ```sh
-npm run k8s:up                 # cluster + add-ons + app (about 3 minutes the first time)
-npm run k8s:seed               # demo data (same accounts as "Demo accounts")
-kubectl -n straight-salon get pods -o wide
-kubectl -n straight-salon port-forward svc/mailpit 8025   # emails at http://localhost:8025
-npm run k8s:up -- --latest     # move the pinned image digests to what `main` points at, then deploy
-npm run k8s:up -- --local      # build this checkout's images and run them (unpublished code)
-npm run k8s:backup             # back up MongoDB now (also nightly at 02:00 UTC)
-npm run k8s:restore-drill      # restore the newest backup into a scratch database and check it
-npm run k8s:restore            # list backups; `-- <archive> <collection>` puts one collection back
-npm run k8s:down               # delete the cluster
+npm run k8s:up                          # cluster + add-ons + platform + dev (about 3 minutes the first time)
+npm run k8s:seed                        # demo data (same accounts as "Demo accounts")
+kubectl -n straight-salon-dev get pods -o wide
+kubectl -n straight-salon-dev port-forward svc/mailpit 8025   # emails at http://localhost:8025
+npm run k8s:up -- --latest              # dev only: pin what `main` points at in GHCR (signature checked), deploy
+npm run k8s:up -- --local               # dev only: build this checkout's images and run them (unpublished code)
+npm run k8s:promote -- dev staging      # copy the digests dev runs into staging's overlay (commit it)
+npm run k8s:up -- --env staging         # deploy staging; then promote staging → prod the same way
+npm run k8s:render -- --env prod        # the manifests an environment applies
+npm run k8s:diff -- --env prod          # what applying it would change in the running cluster
+npm run k8s:check                       # every environment renders and follows the rules (CI runs it)
+npm run k8s:backup -- --env prod        # back up MongoDB now (staging and prod; also nightly at 02:00 UTC)
+npm run k8s:restore-drill -- --env prod # restore the newest backup into a scratch database and check it
+npm run k8s:restore -- --env prod       # list backups; add `<archive> <collection>` to put one collection back
+npm run k8s:down -- --env dev           # delete one environment (its namespace and data)
+npm run k8s:down                        # delete the cluster
 ```
 
 Ports 80 and 443 on 127.0.0.1 must be free. The browser warns about the certificate because it comes from the cluster's own CA. To trust it (Chrome/Chromium on Linux; Firefox: Settings → Certificates → Import):
@@ -199,11 +213,13 @@ certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "Straight Salon local CA" -i sal
 MongoDB as admin (the root password is generated per cluster):
 
 ```sh
-ROOT=$(kubectl -n straight-salon get secret mongo-auth -o jsonpath='{.data.root-password}' | base64 -d)
-kubectl -n straight-salon exec -it mongo-0 -c mongo -- mongosh -u root -p "$ROOT" --authenticationDatabase admin
+NS=straight-salon   # prod; or straight-salon-staging, straight-salon-dev
+ROOT=$(kubectl -n $NS get secret mongo-auth -o jsonpath='{.data.root-password}' | base64 -d)
+kubectl -n $NS exec -it mongo-0 -c mongo -- mongosh -u root -p "$ROOT" --authenticationDatabase admin \
+  "mongodb://mongo-0.mongo:27017/?replicaSet=rs0"   # through the set: lands on the primary
 ```
 
-The CA is recreated with each new cluster, so trust it again after `k8s:down` / `k8s:up`. Run the e2e suite against the cluster with `E2E_BASE_URL=https://salon.localhost E2E_IGNORE_HTTPS_ERRORS=true E2E_REDIS_CLI="kubectl -n straight-salon exec redis-0 -- redis-cli" npm run test:e2e` (behind the cluster's gateway every browser shares one client IP, so the suite resets the rate limits in the cluster's Redis first). Exercises: spec 15 §6.
+One CA signs the certificate for all three hostnames. It's recreated with each new cluster, so trust it again after `k8s:down` / `k8s:up`. Run the e2e suite against an environment with `E2E_BASE_URL=https://dev.salon.localhost E2E_IGNORE_HTTPS_ERRORS=true E2E_REDIS_CLI="kubectl -n straight-salon-dev exec redis-0 -- redis-cli" npm run test:e2e` (after `k8s:seed`; behind the cluster's gateway every browser shares one client IP, so the suite resets the rate limits in that environment's Redis first). Exercises: spec 15 §6, 16 §6, 17 §6.
 
 ### Useful commands
 
@@ -327,6 +343,7 @@ Kubernetes, Helm, cloud deployment, managed databases, horizontal scaling, obser
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Specs touched                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | 2026-10-06 | Phase 0 review: resolved ambiguities and contradictions. Key changes: staff-day guard document so BR-004 holds under concurrency without relying on Redis; `ss_session` indicator cookie for frontend route protection; runtime `/api/*` proxy in `proxy.ts` (Next 16) instead of build-time rewrites; root-context Docker builds for the workspace lockfile; `directConnection=true` for host-mode Mongo; lead-time filter applied after the availability cache; walk-in `checkInNow`; 422 `ACTIVE_BOOKINGS_EXIST` + `force` semantics for holidays/time-off; new error codes; extended permission map; image upload endpoint API-027; `booking.reminder_due` event (EVT-017); outbox `PUBLISHING`/`claimedAt`; incremental seed; Sonar test exclusions; explicit commit scopes.                                                                                                    | AGENTS, 00, 01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13 |
+| 2026-10-14 | FDE step 4 (spec 17): `infra/k8s` split into platform, base and dev/staging/prod overlays (Kustomize; Helm explained and practised); one shared Gateway with a listener per environment hostname, bound to its namespace; per-environment secrets and digests, `k8s:promote` (dev → staging → prod by digest), `k8s:render`, `k8s:diff`, `k8s:check` (staging/prod parity and other rules, new CI job `manifests`); hashed `backend-config`; smoke test after deploy; fixes found while testing: mongo-init after a failover, Jobs replaced per deploy, add-on download retries, restore drill `--drop`.                                                                                                                                                                                                                                                                             | 01, 12, 13, 15, 16, 17, README                             |
 | 2026-10-13 | FDE step 3 (spec 16): three-member MongoDB replica set with keyFile auth, anti-affinity and a PDB on a fourth kind node; nightly `mongodump` backups to SeaweedFS with an automatic restore drill and `k8s:restore`; uploads in S3-compatible object storage (`STORAGE_DRIVER=s3`, backend S3 adapter, `@aws-sdk/client-s3`); `k8s:up -- --local` inner loop; inotify pre-flight check; footer no longer prefetches `/account` (cached sign-in redirect after registering); Redis without a PDB. Free and local (no cloud account).                                                                                                                                                                                                                                                                                                                                                  | 01, 03, 05, 12, 13, 15, 16, README                         |
 | 2026-10-13 | FDE step 2 (spec 15): local kind cluster (1 control plane + 2 workers) running the GHCR images by digest; Gateway API with Envoy Gateway (ingress-nginx is retired), cert-manager local CA for HTTPS, metrics-server and a backend HPA; Mongo/Redis StatefulSets, mongo-init and migrate Jobs; `npm run k8s:up/seed/down`; opt-in `E2E_IGNORE_HTTPS_ERRORS` for e2e against the cluster.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 11, 12, 13, 15, README                                     |
 | 2026-10-13 | FDE step 1 (spec 14): images are built once, pushed to GHCR as `sha-<commit>` with SBOM and provenance, scanned after pulling back by digest, signed keylessly with cosign, and promoted to `main` (all CI green) and to release tags (`release.yml` `publish`) without rebuilding; weekly GHCR cleanup; `npm run images:verify`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 12, 13, 14, README                                         |

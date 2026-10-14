@@ -78,8 +78,11 @@ straight-salon/
 │   └── package.json
 ├── infra/
 │   ├── docker/                 # mongo init (replica set), sonar config
-│   └── k8s/                    # EMPTY in v1 — reserved for the deployment phase
-├── scripts/                    # repo tooling (git-hook helpers, env/contract/audit/sonar scripts)
+│   └── k8s/                    # empty in v1; FDE steps 2–4 (15, 16, 17 §3.1): kind-config.yaml,
+│       ├── platform/           #   shared Gateway + certificates
+│       ├── base/               #   the app as every environment runs it
+│       └── overlays/           #   dev / staging / prod
+├── scripts/                    # repo tooling (git-hook helpers, env/contract/audit/sonar/k8s scripts)
 ├── .github/                    # workflows (CI, release), setup-deps action, PR/issue templates, CODEOWNERS, dependabot
 ├── .husky/                     # git hooks (12 §1)
 ├── docker-compose.yml          # base stack (production-style images)

@@ -1,0 +1,32 @@
+# Staging (17 §3.2): https://staging.salon.localhost. A dress rehearsal for prod: same shape,
+# same replica counts, same backups, its own data and secrets. Builds arrive here from dev and
+# move on to prod, by digest (`npm run k8s:promote`).
+#
+# Identical to prod apart from the namespace, the hostname and the image digests, and
+# `npm run k8s:check` fails if that stops being true (17 §2.4).
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: straight-salon-staging
+resources:
+  - namespace.yaml
+  - ../../base
+# Which build runs here, by digest (14 §2.2). Changed only by `npm run k8s:promote` and
+# committed: the deployed version is a decision recorded in git.
+images:
+  - name: ghcr.io/vaikashmb/straight-salon-backend
+    digest: sha256:262015211516400d0add17d7b0d100dc5ab7fd5a836caf3e9661f40fac45fd61
+  - name: ghcr.io/vaikashmb/straight-salon-frontend
+    digest: sha256:6f74ce1515c02b2197c91dc57c49d9e57a48b92b062aeda83c494362256d8674
+# The environment's addresses: its hostname on the shared Gateway.
+configMapGenerator:
+  - name: backend-config
+    behavior: merge
+    literals:
+      - APP_BASE_URL=https://staging.salon.localhost
+      - UPLOADS_PUBLIC_URL=https://staging.salon.localhost/uploads
+patches:
+  - target: { kind: HTTPRoute, name: salon }
+    patch: |
+      - op: replace
+        path: /spec/hostnames
+        value: [staging.salon.localhost]

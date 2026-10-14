@@ -7,7 +7,6 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: migrate
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: migrate, app.kubernetes.io/part-of: straight-salon }
 spec:
   backoffLimit: 3
@@ -23,7 +22,7 @@ spec:
             - sh
             - -c
             - >
-              until mongosh --quiet --host mongo-0.mongo.straight-salon.svc.cluster.local:27017
+              until mongosh --quiet --host mongo-0.mongo:27017
               --eval 'quit(db.hello().primary ? 0 : 1)'; do
               echo "waiting for the replica set to elect a primary"; sleep 3; done
           resources:

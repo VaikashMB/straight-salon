@@ -1,0 +1,35 @@
+# One MongoDB member instead of three. Still a replica set (transactions and change streams,
+# which the app needs, only work on one), but no failover: dev doesn't need to survive a node.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+spec:
+  replicas: 1
+---
+# The init Job forms the set from this list: one member here. NAMESPACE is repeated on purpose:
+# a merge patch puts the variables it names first, and Kubernetes only expands $(NAMESPACE)
+# from a variable defined *earlier* in the list. Without it, the member name would be the
+# literal text "$(NAMESPACE)" (k8s:check catches that).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mongo-init
+spec:
+  template:
+    spec:
+      containers:
+        - name: mongo-init
+          env:
+            - name: NAMESPACE
+              valueFrom: { fieldRef: { fieldPath: metadata.namespace } }
+            - name: MONGO_RS_MEMBERS
+              value: mongo-0.mongo.$(NAMESPACE).svc.cluster.local:27017
+---
+# A budget of "at least 2 available" can never be met by one pod, so every node drain would
+# wait for it forever (the anti-pattern 16 §2.10 describes for Redis). Remove it.
+$patch: delete
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: mongo

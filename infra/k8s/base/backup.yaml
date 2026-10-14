@@ -12,7 +12,6 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: mongo-backup
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mongo-backup, app.kubernetes.io/part-of: straight-salon }
 spec:
   schedule: '0 2 * * *' # 02:00 UTC
@@ -80,7 +79,6 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: mongo-restore-drill
-  namespace: straight-salon
   labels: { app.kubernetes.io/name: mongo-restore-drill, app.kubernetes.io/part-of: straight-salon }
 spec:
   schedule: '0 3 * * *' # 03:00 UTC, an hour after the backup
@@ -131,7 +129,10 @@ spec:
                   set -eo pipefail
                   mongosh --quiet "$BACKUP_URI" --eval \
                     "db.getSiblingDB('straight_salon_restore_check').dropDatabase()" > /dev/null
-                  mongorestore --uri "$BACKUP_URI" --gzip --archive=/backup/dump.archive.gz \
+                  # --drop: each collection is emptied right before it's restored, as well as
+                  # the whole database above. Once, the drill failed on duplicate keys from
+                  # leftovers despite the dropDatabase, a false alarm (17 §2.10).
+                  mongorestore --uri "$BACKUP_URI" --gzip --archive=/backup/dump.archive.gz --drop \
                     --nsFrom 'straight_salon.*' --nsTo 'straight_salon_restore_check.*' 2>&1 \
                     | tee /tmp/restore.log
                   grep -q ' 0 document(s) failed to restore' /tmp/restore.log \
@@ -159,7 +160,6 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: restore-drill
-  namespace: straight-salon
 data:
   # Compares the restored copy with the live database. Counts can't be compared one to one (the
   # live data keeps changing after the backup), so it checks what a good backup must give you:

@@ -1,0 +1,11 @@
+# What every environment shares, applied once per cluster before any environment (17 §3.3):
+# the Gateway with one listener per environment hostname, and the certificates. In a company
+# this is the platform team's repository; the overlays are the app teams'.
+#
+#   kubectl apply --server-side -k infra/k8s/platform
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - namespace.yaml
+  - certificates.yaml
+  - gateway.yaml

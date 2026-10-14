@@ -1,4 +1,4 @@
-# HTTPS for https://salon.localhost (15 §2.6): the backend's refresh cookie is `Secure` in
+# HTTPS for https://salon.localhost and the other environments' hosts (15 §2.6, 17 §3.3): the backend's refresh cookie is `Secure` in
 # production, and browsers only send Secure cookies over HTTPS.
 #
 # cert-manager makes a tiny private certificate authority, the way a client's internal CA
@@ -33,15 +33,16 @@ spec:
   ca:
     secretName: salon-local-ca
 ---
-# The site certificate. cert-manager renews it before it expires (default: 90 days, renewed
-# at two thirds); the Gateway picks up the new secret by itself.
+# The site certificate, one for every environment's hostname (the Gateway's listeners). It
+# lives next to the Gateway, which reads it. cert-manager renews it before it expires (default:
+# 90 days, renewed at two thirds); the Gateway picks up the new secret by itself.
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
   name: salon-tls
-  namespace: straight-salon
+  namespace: straight-salon-gateway
 spec:
   secretName: salon-tls
-  dnsNames: [salon.localhost]
+  dnsNames: [salon.localhost, staging.salon.localhost, dev.salon.localhost]
   privateKey: { algorithm: ECDSA, size: 256 }
   issuerRef: { kind: ClusterIssuer, name: salon-local-ca, group: cert-manager.io }

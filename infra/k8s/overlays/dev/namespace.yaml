@@ -1,0 +1,6 @@
+# The dev environment's namespace (17 §3.2). Its name is what the platform Gateway's
+# https-dev listener admits routes from (platform/gateway.yaml).
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: straight-salon-dev
