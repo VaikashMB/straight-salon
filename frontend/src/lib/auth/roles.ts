@@ -54,3 +54,8 @@ export function postLoginPath(role: Role, next: string | null | undefined): stri
 
 export const loginPathFor = (current: string): string =>
   `/login?next=${encodeURIComponent(current)}`;
+
+// The signed-in areas (05 §5). proxy.ts redirects these to sign-in without the session cookie,
+// so a link to one must not be prefetched: a prefetch made while signed out caches that
+// redirect, and Next.js reuses it after signing in (the new customer lands on /login again).
+export const isProtectedPath = (pathname: string): boolean => areaOf(pathname) !== null;
