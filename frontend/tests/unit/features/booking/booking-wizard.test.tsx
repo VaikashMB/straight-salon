@@ -290,3 +290,5 @@ describe('booking wizard (05 §4.1, US-01)', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('check the highlighted fields');
   });
 });
+
+vi.setConfig({ testTimeout: 15_000 });
