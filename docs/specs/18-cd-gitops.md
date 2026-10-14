@@ -245,6 +245,9 @@ What it found:
   documentation reported the new argo-rollouts Application Healthy before its first sync, so
   dev's wave started before the Rollout and AnalysisTemplate kinds existed (one failed attempt,
   then the retry policy recovered). The check in `argocd-cm` now also requires Synced.
+- **The first Deployments run on `main` tagged prod but not staging**: both matrix jobs shared one
+  concurrency group with cancel-in-progress, so one cancelled the other. The group is per
+  environment now.
 - **The production cluster wasn't used for testing.** The step 4 cluster holds prod's data, and
   taking it over is the user's call (§3.9 is the one-time migration it runs).
 

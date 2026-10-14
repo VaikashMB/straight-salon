@@ -11,10 +11,18 @@ name: Deployments
 
 on:
   pull_request:
-    paths: ['infra/k8s/**', 'infra/docker/mongo-init.js', 'scripts/k8s*.mjs']
+    paths:
+      - 'infra/k8s/**'
+      - 'infra/docker/mongo-init.js'
+      - 'scripts/k8s*.mjs'
+      - '.github/workflows/deployments.yml'
   push:
     branches: [main]
-    paths: ['infra/k8s/**', 'infra/docker/mongo-init.js', 'scripts/k8s*.mjs']
+    paths:
+      - 'infra/k8s/**'
+      - 'infra/docker/mongo-init.js'
+      - 'scripts/k8s*.mjs'
+      - '.github/workflows/deployments.yml'
 
 permissions:
   contents: read
@@ -37,9 +45,10 @@ jobs:
     if: github.event_name == 'push'
     needs: check
     runs-on: ubuntu-latest
-    # The newest push wins; tags for an older one would only be moved again.
+    # The newest push wins; tags for an older one would only be moved again. One group per
+    # environment: a shared group made the matrix's two jobs cancel each other.
     concurrency:
-      group: deployment-tags
+      group: deployment-tags-${{ matrix.env }}
       cancel-in-progress: true
     permissions:
       contents: read
