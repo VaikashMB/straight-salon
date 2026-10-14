@@ -4,6 +4,10 @@
 # shrinks it, staging and prod keep it (17 §2.4).
 #
 # No `namespace:` anywhere in here, and no image digests: both are the environment's decision.
+#
+# Argo CD applies it (18 §3.3), in sync waves: data stores (wave 0), then the Jobs that prepare
+# them (wave 1: replica set and users, buckets), then migrations (wave 2), then the code that
+# depends on all of that (wave 3). The waves are annotations on the objects themselves.
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 resources:
@@ -13,10 +17,24 @@ resources:
   - seaweedfs.yaml
   - backup.yaml
   - migrate.yaml
+  - analysis.yaml
   - backend.yaml
   - worker.yaml
   - frontend.yaml
   - routes.yaml
+# Kustomize rewrites references to generated ConfigMaps only in kinds it knows. A Rollout is a
+# custom resource, so without this it would keep asking for `backend-config` (no hash), which
+# doesn't exist (18 §2.10).
+configurations:
+  - rollout-transform.yaml
+# Generated ConfigMaps get a new name whenever their content changes (17 §2.6). Argo CD would
+# prune the old one at the next sync, but a ReplicaSet we might still go back to (an aborted
+# canary, a blue-green rollback) needs it to start pods. So Argo CD keeps them (Prune=false) and
+# doesn't count the leftovers as drift (IgnoreExtraneous) (18 §2.8).
+generatorOptions:
+  annotations:
+    argocd.argoproj.io/sync-options: Prune=false
+    argocd.argoproj.io/compare-options: IgnoreExtraneous
 # Non-secret backend settings (15 §2.7, §3.4): what docker-compose.yml's x-backend-env sets,
 # with in-cluster names. Overlays add the environment's addresses (APP_BASE_URL,
 # UPLOADS_PUBLIC_URL) and may override any of these. Secrets (JWT_ACCESS_SECRET,
@@ -42,3 +60,9 @@ configMapGenerator:
       - EMAIL_PROVIDER=smtp
       - SMTP_HOST=mailpit
       - SMTP_PORT=1025
+  # The script that forms the replica set and creates the users, shared with Compose. It lives
+  # outside this folder, so rendering needs `--load-restrictor LoadRestrictionsNone`
+  # (scripts/k8s-manifests.mjs, and Argo CD's kustomize.buildOptions in argocd/argocd-cm.yaml).
+  - name: mongo-init
+    files:
+      - mongo-init.js=../../docker/mongo-init.js

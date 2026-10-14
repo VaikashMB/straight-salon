@@ -1,8 +1,11 @@
 # Registry retention (14-container-registry §3.6). Every commit on main leaves a sha-<commit>
 # image behind, and every promotion can leave old manifests untagged, so GHCR grows forever
 # unless something prunes it. Weekly: delete sha-* tags and untagged versions older than 30
-# days. An image that also carries `main` or a release tag (1.2.3, 1.2, 1, latest) keeps those
-# tags and stays; releases are kept forever.
+# days. An image that also carries `main`, an environment tag (`dev`, `staging`, `prod`: what
+# each environment runs, 18 §3.7) or a release tag (1.2.3, 1.2, 1, latest) keeps those tags and
+# stays; releases are kept forever. A digest an environment ran before its current one loses
+# its environment tag and goes after 30 days, so a git revert can only go back that far
+# (18 §8).
 #
 # Why not the simpler actions/delete-package-versions with "delete untagged"? Each of our images
 # is an index whose SBOM, provenance and platform manifests are *untagged* children of the

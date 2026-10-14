@@ -1,0 +1,58 @@
+# Projects are Argo CD's guard rails (18 §2.4): what an Application in the project may deploy,
+# from where, and to which namespaces. An Application that asks for more is refused, whatever its
+# manifests say. In a company, the platform team owns `platform` and an app team owns its own
+# project; a second salon (step 10) would get a project of its own.
+
+# The cluster's shared software: add-ons, the Gateway and certificates, Argo CD's own settings,
+# and the Applications themselves (the root app writes them into `argocd`).
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+spec:
+  description: Cluster add-ons, the shared Gateway and Argo CD's own configuration
+  sourceRepos:
+    - https://github.com/VaikashMB/straight-salon.git
+    - https://charts.jetstack.io
+    - docker.io/envoyproxy
+    - https://kubernetes-sigs.github.io/metrics-server/
+    - https://argoproj.github.io/argo-helm
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: argocd }
+    - { server: https://kubernetes.default.svc, namespace: argo-rollouts }
+    - { server: https://kubernetes.default.svc, namespace: cert-manager }
+    - { server: https://kubernetes.default.svc, namespace: envoy-gateway-system }
+    - { server: https://kubernetes.default.svc, namespace: kube-system }
+    - { server: https://kubernetes.default.svc, namespace: straight-salon-gateway }
+  # Add-ons bring CRDs, cluster roles and webhooks.
+  clusterResourceWhitelist:
+    - { group: '*', kind: '*' }
+---
+# Straight Salon's environments: only from our repository, only into the three namespaces, and
+# nothing cluster-wide except their own Namespace object. A mistake in an overlay can't touch
+# the Gateway, another team's namespace or a CRD.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: straight-salon
+spec:
+  description: The app, in dev, staging and prod
+  sourceRepos:
+    - https://github.com/VaikashMB/straight-salon.git
+  destinations:
+    - { server: https://kubernetes.default.svc, namespace: straight-salon-dev }
+    - { server: https://kubernetes.default.svc, namespace: straight-salon-staging }
+    - { server: https://kubernetes.default.svc, namespace: straight-salon }
+  clusterResourceWhitelist:
+    - { group: '', kind: Namespace }
+  # Show what's in the namespaces but not in git (18 §2.8): something created by hand is drift
+  # too, just of a kind `selfHeal` can't see. Warnings only, nothing is deleted. Ignored: what
+  # `npm run k8s:up` creates on purpose (the Secrets, until step 7), volumes the StatefulSets
+  # create, and the one-off Jobs and pods of k8s:restore.
+  orphanedResources:
+    warn: true
+    ignore:
+      - { kind: Secret }
+      - { kind: PersistentVolumeClaim }
+      - { group: batch, kind: Job, name: mongo-restore-* }
+      - { kind: Pod, name: list-backups-* }

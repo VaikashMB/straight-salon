@@ -1,0 +1,13 @@
+# Argo CD's own settings (18 §3.2). Argo CD itself is installed by `npm run k8s:up` from its
+# pinned release manifest (someone has to install the installer: the bootstrap, 18 §2.9). These
+# files are applied once at that point too, and from then on Argo CD manages them like everything
+# else (Application `argocd-config`, gitops/apps/platform.yaml): a settings change is a commit.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources:
+  - argocd-cm.yaml
+  - argocd-cmd-params-cm.yaml
+  - repositories.yaml
+  - projects.yaml
+  - route.yaml

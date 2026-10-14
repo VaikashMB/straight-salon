@@ -1,47 +1,60 @@
-// `npm run k8s:*` (15-kubernetes-basics §3.5, 17 §3.4): the local Kubernetes cluster and its
-// environments. Needs Docker, kind and kubectl (README, "Run on Kubernetes").
+// `npm run k8s:*` (15-kubernetes-basics §3.5, 17 §3.4, 18 §3.6): the local Kubernetes cluster
+// and its environments. Needs Docker, kind and kubectl (README, "Run on Kubernetes").
 //
-// Every command takes `-- --env dev|staging|prod` (default dev, the least dangerous one). The
-// environment's namespace, hostname and Mongo member count come from its overlay
-// (infra/k8s/overlays/<env>), never from this file.
+// Since step 5, Argo CD deploys everything from git (18): this script only does what can't come
+// from git. It creates the cluster, installs Argo CD (the bootstrap), generates each
+// environment's secrets, points Argo CD at the repository and waits for what it deploys.
+// Changing what runs is a commit, not a command.
 //
-//   k8s:up             create the kind cluster if missing, install the add-ons and the shared
-//                      platform (Gateway, certificates), then apply the environment's overlay
-//                      with the image digests pinned in it
-//   k8s:up -- --latest (dev only) first move dev's digests to what `main` points at in GHCR
-//                      (signature checked with cosign when it's installed), then deploy
-//   k8s:up -- --local  (dev only) build the images from this checkout and load them into the
-//                      kind nodes (no registry), for code that isn't published yet; the
-//                      committed digests stay as they are
+// Environment facts (namespace, hostname, Mongo member count) come from the overlays
+// (infra/k8s/overlays/<env>), never from this file. Commands that act on one environment take
+// `-- --env dev|staging|prod` (default dev, the least dangerous one).
+//
+//   k8s:up             create the kind cluster if missing, install Argo CD, generate every
+//                      environment's secrets, apply the root Application (gitops/root.yaml),
+//                      then wait until Argo CD has deployed everything and smoke-test each site
+//                      (with --env: wait for and test that environment only)
+//   k8s:up -- --revision <branch>  the same, with Argo CD following <branch> instead of main:
+//                      to try a change to the GitOps setup itself before merging it
+//   k8s:up -- --local  (dev only) also build the images from this checkout and run them in dev,
+//                      by hand, for code that isn't published yet. Dev doesn't self-heal, so it
+//                      stays until the next commit on main
+//   k8s:pin -- <image@digest>...  (dev only) write digests into overlays/dev; CI runs it for every
+//                      build on main (18 §3.7)
 //   k8s:promote -- <from> <to>  copy the digests one environment runs to the next one
-//                      (dev → staging → prod), after checking <from> really runs them
-//   k8s:render         print the environment's manifests, as they would be applied
-//   k8s:diff           what applying the environment would change in the running cluster
+//                      (dev → staging → prod), after checking <from> really runs them; you commit it
+//   k8s:render         print the environment's manifests, as Argo CD renders them
+//   k8s:diff           what applying this checkout's overlay would change in the running cluster
 //   k8s:seed           demo data, from this machine through port-forwards (the production
 //                      image refuses to seed)
 //   k8s:backup         run the nightly MongoDB backup now (16 §3.5; staging and prod)
 //   k8s:restore-drill  restore the newest backup into a scratch database and check it
 //   k8s:restore -- <archive> <collection>  put one collection back from a backup (no args: list)
-//   k8s:down           delete the cluster; with --env, only that environment's namespace
+//   k8s:down           delete the cluster (removing one environment is a git change, 18 §3.6)
 //
 // Every step prints the kubectl command it runs, so the script doubles as a walkthrough.
 import { execFileSync, spawn } from 'node:child_process';
-import { randomBytes } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import {
+  ARGOCD_DIR,
   ENVIRONMENTS,
   OUR_IMAGES as IMAGES,
-  PLATFORM_DIR,
+  ROOT_APP,
   describe,
   overlayDir,
   overlayKustomization,
+  parse,
   render,
 } from './k8s-manifests.mjs';
 
-const CLUSTER = 'straight-salon';
+// K8S_CLUSTER=<name> works on a second, throwaway cluster instead (18 §6, exercise 8: rebuild
+// everything from git). It gets no host ports (only one cluster can own 80/443), so the smoke
+// tests reach its Gateway through a port-forward.
+const MAIN_CLUSTER = 'straight-salon';
+const CLUSTER = process.env.K8S_CLUSTER || MAIN_CLUSTER;
 const CONTEXT = `kind-${CLUSTER}`;
-const GATEWAY_NS = 'straight-salon-gateway';
 
 // `--env <name>` (or `--env=<name>`); dev unless stated.
 function envArg() {
@@ -58,17 +71,14 @@ function positional() {
   return args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--env');
 }
 
-// Cluster add-ons, pinned (15 §3.1). Installed from their release manifests (no Helm needed).
-const ADDONS = {
-  envoyGateway: 'https://github.com/envoyproxy/gateway/releases/download/v1.9.2/install.yaml',
-  certManager:
-    'https://github.com/cert-manager/cert-manager/releases/download/v1.21.2/cert-manager.yaml',
-  metricsServer:
-    'https://github.com/kubernetes-sigs/metrics-server/releases/download/v0.9.0/components.yaml',
+// Argo CD, pinned by version and by the checksum of its install manifest (18 §3.2). Everything
+// else in the cluster, the add-ons included, Argo CD installs from git (gitops/apps).
+const ARGOCD = {
+  version: 'v3.5.5',
+  manifest: 'https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.5/manifests/install.yaml',
+  sha256: '90dc9094bf4c5964afd9c0e35d735e1c2fcbbda4f8e36799c092d9864ed65f50',
 };
-
-const SIGNER =
-  'https://github.com/VaikashMB/straight-salon/.github/workflows/ci.yml@refs/heads/main';
+const ARGOCD_NS = 'argocd';
 
 const say = (message) => process.stdout.write(`\n[k8s] ${message}\n`);
 function fail(message) {
@@ -109,17 +119,6 @@ function requireTools() {
 
 // ---- digests ------------------------------------------------------------------------------
 
-function digestOf(ref) {
-  const json = run(
-    'docker',
-    ['buildx', 'imagetools', 'inspect', ref, '--format', '{{json .Manifest}}'],
-    {
-      capture: true,
-    },
-  );
-  return JSON.parse(json).digest;
-}
-
 // The digests an overlay pins, by image.
 function pinnedDigests(env) {
   const text = readFileSync(overlayKustomization(env), 'utf8');
@@ -142,69 +141,68 @@ function writeDigests(env, digests) {
   writeFileSync(overlayKustomization(env), text);
 }
 
-// Moves dev's pinned digests to what `main` points at, after checking each signature (14 §2.7).
-// Only dev: a new build enters there, and reaches staging and prod only by promotion.
-function pinLatest(env) {
-  say('Resolving the digests `main` points at in GHCR');
-  const cosign = has('cosign');
-  if (!cosign)
-    say('cosign not installed: pinning WITHOUT verifying signatures (README, "Published images")');
+// `k8s:pin -- --env dev <image@digest>...` (18 §3.7): CI calls this for every build that passed on
+// main, then commits the change, and Argo CD deploys it to dev. Only dev: new builds enter there
+// and reach staging and prod by promotion (17 §2.5). CI has already checked the signatures
+// before moving `main` (14 §3.2).
+function pin(env, refs) {
+  if (env !== 'dev') fail('new builds enter at dev only; staging and prod get them by promotion');
   const digests = {};
-  for (const image of IMAGES) {
-    const digest = digestOf(`${image}:main`);
-    if (cosign) {
-      run(
-        'cosign',
-        [
-          'verify',
-          `${image}@${digest}`,
-          '--certificate-identity',
-          SIGNER,
-          '--certificate-oidc-issuer',
-          'https://token.actions.githubusercontent.com',
-        ],
-        { capture: true },
-      );
-      process.stdout.write(`  signature ok: ${image}@${digest}\n`);
-    }
+  for (const ref of refs) {
+    const [image, digest] = ref.split('@');
+    if (!IMAGES.includes(image) || !/^sha256:[0-9a-f]{64}$/.test(digest ?? ''))
+      fail(`not one of our images by digest: ${ref}`);
     digests[image] = digest;
   }
-  pinnedDigests(env); // fails early if the overlay lost an entry
+  if (Object.keys(digests).length === 0) fail('usage: npm run k8s:pin -- <image@digest>...');
+  const before = pinnedDigests(env);
   writeDigests(env, digests);
-  say(
-    `Pinned in ${overlayKustomization(env)}. Commit it: the deployed version is a decision recorded in git.`,
-  );
+  for (const [image, digest] of Object.entries(digests))
+    process.stdout.write(
+      `  ${image}\n    ${before[image]}\n  ${before[image] === digest ? '= (unchanged)' : `→ ${digest}`}\n`,
+    );
 }
 
 // ---- promote ------------------------------------------------------------------------------
 
-// The images an environment's Deployments run right now, by image name.
-function liveDigests(namespace) {
-  const out = kubectl(
-    [
-      '-n',
-      namespace,
-      'get',
-      'deployment',
-      'backend',
-      'frontend',
-      '-o',
-      'jsonpath={range .items[*]}{.spec.template.spec.containers[0].image}{"\\n"}{end}',
-    ],
+// What an environment's Rollouts run right now, and whether each release has finished:
+// `Healthy` means no canary or blue-green release in progress (or aborted).
+function liveRollouts(namespace) {
+  const json = kubectl(['-n', namespace, 'get', 'rollout', 'backend', 'frontend', '-o', 'json'], {
+    capture: true,
+    quiet: true,
+  });
+  return Object.fromEntries(
+    JSON.parse(json).items.map((r) => {
+      const [image, digest] = r.spec.template.spec.containers[0].image.split('@');
+      return [image, { digest, phase: r.status?.phase ?? 'Unknown' }];
+    }),
+  );
+}
+
+// Argo CD's view of an environment: its Application's sync and health status.
+function appStatus(name) {
+  const json = kubectl(
+    ['-n', ARGOCD_NS, 'get', 'application', name, '--ignore-not-found', '-o', 'json'],
     { capture: true, quiet: true },
   );
-  return Object.fromEntries(
-    out
-      .split('\n')
-      .filter(Boolean)
-      .map((ref) => ref.split('@')),
-  );
+  if (!json.trim()) return null;
+  const app = JSON.parse(json);
+  return {
+    sync: app.status?.sync?.status ?? 'Unknown',
+    health: app.status?.health?.status ?? 'Unknown',
+    revision: app.status?.sync?.revision ?? '',
+    targetRevision: app.spec.source?.targetRevision,
+    message: app.status?.operationState?.message ?? '',
+    phase: app.status?.operationState?.phase ?? '',
+  };
 }
 
 // Copies the digests <from> runs to <to> (17 §2.5). Promotion moves exactly the bytes that were
 // tested, and only one step at a time: what reaches prod has run in staging, and before that in
-// dev. It refuses when <from> isn't running what its overlay pins (not deployed yet, or a
-// --local build): you'd be promoting something nobody has looked at.
+// dev. It refuses unless <from> runs what its overlay pins, with every release finished
+// (a paused or aborted canary isn't "tested"), and Argo CD reports it Synced and Healthy.
+// It edits git; Argo CD deploys <to> once the change is merged to main (18 §2.2).
 function promote(from, to) {
   if (!ENVIRONMENTS.includes(from) || !ENVIRONMENTS.includes(to))
     fail(`usage: npm run k8s:promote -- <from> <to>, environments ${ENVIRONMENTS.join(' → ')}`);
@@ -214,17 +212,27 @@ function promote(from, to) {
   const pinned = pinnedDigests(from);
   const { namespace } = describe(from);
   say(`Checking that ${from} (${namespace}) runs what its overlay pins`);
+  const app = appStatus(from);
+  if (!app) fail(`Argo CD has no Application ${from}. Run npm run k8s:up first.`);
+  if (app.sync !== 'Synced' || app.health !== 'Healthy')
+    fail(
+      `Argo CD reports ${from} ${app.sync} and ${app.health}${app.message ? ` (${app.message})` : ''}. Promote once it's Synced and Healthy.`,
+    );
   let live;
   try {
-    live = liveDigests(namespace);
+    live = liveRollouts(namespace);
   } catch {
-    fail(`${from} isn't running (npm run k8s:up -- --env ${from}); nothing to promote`);
+    fail(`${from} isn't running (npm run k8s:up); nothing to promote`);
   }
   for (const image of IMAGES) {
-    if (live[image] !== pinned[image])
+    const running = live[image];
+    if (running?.digest !== pinned[image])
       fail(
-        `${from} runs ${image}${live[image] ? `@${live[image]}` : ' from a local build'}, its overlay pins ${pinned[image]}. Deploy ${from} first: npm run k8s:up -- --env ${from}`,
+        `${from} runs ${image}${running?.digest ? `@${running.digest}` : ' from a local build'}, its overlay pins ${pinned[image]}. Is the overlay pushed to main, and has Argo CD deployed it?`,
       );
+    if (running.phase !== 'Healthy')
+      fail(`${from}'s release of ${image} is ${running.phase}, not finished. Wait, or look at it:
+  kubectl -n ${namespace} get rollout -o wide`);
   }
   const current = pinnedDigests(to);
   const changes = IMAGES.filter((image) => current[image] !== pinned[image]);
@@ -236,8 +244,10 @@ function promote(from, to) {
   for (const image of changes)
     process.stdout.write(`  ${image}\n    ${current[image]}\n  → ${pinned[image]}\n`);
   say(`Promoted ${from} → ${to} in ${overlayKustomization(to)}. Next:
-  git diff ${overlayKustomization(to)}        # review, then commit it
-  npm run k8s:up -- --env ${to}`);
+  git diff ${overlayKustomization(to)}        # review
+  git commit, push (or open a pull request) and merge to main
+  Argo CD deploys it to ${to} within a minute or two:
+  kubectl -n ${ARGOCD_NS} get application ${to} -w`);
 }
 
 // ---- up -----------------------------------------------------------------------------------
@@ -248,63 +258,175 @@ function clusterExists() {
     .includes(CLUSTER);
 }
 
-// Release manifests come from GitHub, which sometimes resets a connection or times out a TLS
-// handshake. `kubectl apply -f <url>` doesn't retry; curl does, on any error.
+// Release manifests come from GitHub, which sometimes resets connections or times out TLS
+// handshakes, now and then for minutes (18 §2.10). `kubectl apply -f <url>` doesn't retry; curl
+// does, on any error, for up to 5 minutes.
 const download = (url) =>
-  run('curl', ['-fsSL', '--retry', '8', '--retry-max-time', '120', '--retry-all-errors', url], {
+  run('curl', ['-fsSL', '--retry', '12', '--retry-max-time', '300', '--retry-all-errors', url], {
     capture: true,
   });
 
-function installAddons() {
-  say('Installing cluster add-ons: Envoy Gateway (Gateway API), cert-manager, metrics-server');
-  for (const url of [ADDONS.envoyGateway, ADDONS.certManager]) {
-    kubectl(['apply', '--server-side', '-f', '-'], { input: download(url), capture: true });
-  }
-  // kind's kubelet certificates aren't signed for metrics-server, so it needs
-  // --kubelet-insecure-tls (never on a real cluster). Added to the manifest before applying,
-  // not patched afterwards: a later `kubectl patch` would own that field, and the next
-  // server-side apply would refuse to touch it (a field-manager conflict, 15 §3.5).
-  const metricsServer = download(ADDONS.metricsServer).replace(
-    '- --secure-port=10250',
-    '- --secure-port=10250\n        - --kubelet-insecure-tls',
-  );
-  if (!metricsServer.includes('--kubelet-insecure-tls'))
-    fail('metrics-server manifest changed shape');
-  kubectl(['apply', '--server-side', '--force-conflicts', '-f', '-'], {
-    input: metricsServer,
+// Installs Argo CD from its pinned release manifest, checksum verified: the one piece of the
+// cluster that can't come from Argo CD (18 §2.9). Re-running it is how Argo CD is upgraded (a
+// new version and checksum above). Server-side, because its CRDs are too big for client-side
+// apply.
+function installArgoCD() {
+  say(`Installing Argo CD ${ARGOCD.version} (the bootstrap: everything else comes from git)`);
+  const manifest = download(ARGOCD.manifest);
+  const sum = createHash('sha256').update(manifest).digest('hex');
+  if (sum !== ARGOCD.sha256)
+    fail(
+      `Argo CD's install manifest has checksum ${sum}, expected ${ARGOCD.sha256}. Not applying it.`,
+    );
+  process.stdout.write(`  checksum ok: ${sum}\n`);
+  kubectl(['apply', '--server-side', '--field-manager=k8s-up', '-f', '-'], {
+    input: JSON.stringify({ apiVersion: 'v1', kind: 'Namespace', metadata: { name: ARGOCD_NS } }),
     capture: true,
   });
-  for (const ns of ['envoy-gateway-system', 'cert-manager']) {
-    kubectl([
+  kubectl(
+    [
       '-n',
-      ns,
-      'wait',
-      '--for=condition=Available',
-      'deployment',
-      '--all',
-      '--timeout=300s',
-    ]);
+      ARGOCD_NS,
+      'apply',
+      '--server-side',
+      '--force-conflicts',
+      '--field-manager=k8s-up',
+      '-f',
+      '-',
+    ],
+    { input: manifest, capture: true },
+  );
+  // The repo server fetches from GitHub and the chart repositories. Pods inherit the host's DNS
+  // search domains with ndots:5, so `github.com` is first tried as `github.com.<search domain>`;
+  // a network whose DNS answers every name under its domain (a wildcard, common on office and
+  // VPN networks) then sends the request to the wrong server (18 §2.10). With ndots:1 a name
+  // with a dot is looked up as written first. Its own field manager: applying this as `k8s-up`
+  // would drop every other field `k8s-up` set from the manifest above.
+  kubectl(['apply', '--server-side', '--field-manager=k8s-up-dns', '-f', '-'], {
+    input: JSON.stringify({
+      apiVersion: 'apps/v1',
+      kind: 'Deployment',
+      metadata: { name: 'argocd-repo-server', namespace: ARGOCD_NS },
+      spec: { template: { spec: { dnsConfig: { options: [{ name: 'ndots', value: '1' }] } } } },
+    }),
+    capture: true,
+  });
+
+  // Argo CD's settings (argocd/) are in git and Argo CD manages them (Application
+  // argocd-config), but the first sync needs some of them already: the projects, the OCI
+  // repository, the Kustomize flag. So they're applied here once, before that Application
+  // exists. The UI's route waits for Argo CD: the Gateway API's kinds don't exist yet on a new
+  // cluster.
+  if (!appStatus('argocd-config')) {
+    say('First install: applying Argo CD settings from infra/k8s/argocd once');
+    const before = kubectl(
+      ['-n', ARGOCD_NS, 'get', 'configmap', 'argocd-cmd-params-cm', '-o', 'json'],
+      { capture: true, quiet: true },
+    );
+    const settings = parse(render(ARGOCD_DIR)).filter((o) => o.kind !== 'HTTPRoute');
+    kubectl(['apply', '--server-side', '--force-conflicts', '--field-manager=k8s-up', '-f', '-'], {
+      input: settings.map((o) => JSON.stringify(o)).join('\n'),
+    });
+    // Command-line settings are read at start: restart what they changed.
+    if (
+      JSON.stringify(JSON.parse(before).data ?? {}) !==
+      JSON.stringify(settings.find((o) => o.metadata.name === 'argocd-cmd-params-cm').data)
+    )
+      for (const component of [
+        'deployment/argocd-server',
+        'statefulset/argocd-application-controller',
+      ])
+        kubectl(['-n', ARGOCD_NS, 'rollout', 'restart', component]);
   }
-  kubectl([
-    '-n',
-    'kube-system',
-    'wait',
-    '--for=condition=Available',
-    'deployment/metrics-server',
-    '--timeout=300s',
-  ]);
+  for (const component of [
+    'deployment/argocd-server',
+    'deployment/argocd-repo-server',
+    'statefulset/argocd-application-controller',
+  ])
+    kubectl(['-n', ARGOCD_NS, 'rollout', 'status', component, '--timeout=300s']);
+}
+
+// Until step 5, k8s:up applied the add-ons from release manifests and the environments with
+// kubectl. Argo CD takes those objects over in place (same names, 18 §2.10), except where a field
+// can't change: metrics-server's chart selects its pods by other labels than its manifest did,
+// and a Deployment's selector is immutable. That Deployment is removed once here so Argo CD can
+// create the chart's (a minute without CPU metrics). Also the fixed-name mongo-init ConfigMap
+// k8s:up used to make (now generated from git) and the Jobs it made, which Argo CD's hooks
+// replace.
+function removeKubectlLeftovers(namespaces) {
+  const selector = kubectl(
+    [
+      '-n',
+      'kube-system',
+      'get',
+      'deployment',
+      'metrics-server',
+      '--ignore-not-found',
+      '-o',
+      'jsonpath={.spec.selector.matchLabels.k8s-app}',
+    ],
+    { capture: true, quiet: true },
+  );
+  if (selector.trim()) {
+    say('Removing the manifest-installed metrics-server (its chart selects pods differently)');
+    kubectl(['-n', 'kube-system', 'delete', 'deployment', 'metrics-server']);
+    kubectl(['delete', 'clusterrole', 'system:aggregated-metrics-reader', '--ignore-not-found']);
+  }
+  for (const ns of namespaces) {
+    kubectl(['-n', ns, 'delete', 'configmap', 'mongo-init', '--ignore-not-found'], { quiet: true });
+    const jobs = kubectl(['-n', ns, 'get', 'job', '-o', 'json'], { capture: true, quiet: true });
+    const unhooked = JSON.parse(jobs)
+      .items.filter(
+        (j) =>
+          ['migrate', 'mongo-init', 'buckets'].includes(j.metadata.name) &&
+          !j.metadata.annotations?.['argocd.argoproj.io/hook'],
+      )
+      .map((j) => `job/${j.metadata.name}`);
+    if (unhooked.length) kubectl(['-n', ns, 'delete', ...unhooked]);
+  }
+}
+
+// After Argo CD has started an environment's Rollouts, the Deployments they replace (applied by
+// k8s:up before step 5) are still running: Argo CD never created them, so it doesn't prune them
+// (18 §2.8). Removed once the Rollouts are healthy, so the site never has zero pods.
+function removeReplacedDeployments(e) {
+  const old = kubectl(
+    [
+      '-n',
+      e.namespace,
+      'get',
+      'deployment',
+      'backend',
+      'frontend',
+      '--ignore-not-found',
+      '-o',
+      'name',
+    ],
+    { capture: true, quiet: true },
+  )
+    .split('\n')
+    .filter(Boolean);
+  if (old.length === 0) return;
+  say(`${e.env}: the Rollouts are healthy; removing the Deployments they replace`);
+  kubectl(['-n', e.namespace, 'delete', ...old]);
 }
 
 // Before environments existed (steps 2 and 3), the Gateway, its EnvoyProxy, the redirect route
 // and the site certificate lived in the app's namespace, `straight-salon`. They move to the
 // platform's namespace (17 §3.3), and `kubectl apply` never deletes what a manifest no longer
 // mentions (17 §2.7), so they're removed here, once. They must go before the new Gateway
-// starts: both would want the same NodePorts.
+// starts: both would want the same NodePorts. On a new cluster the Gateway kind doesn't exist
+// yet (Argo CD installs it later), so there's nothing to remove.
 function removePreEnvironmentEdge() {
-  const old = kubectl(
-    ['-n', 'straight-salon', 'get', 'gateway', 'salon', '--ignore-not-found', '-o', 'name'],
-    { capture: true, quiet: true },
-  );
+  let old = '';
+  try {
+    old = kubectl(
+      ['-n', 'straight-salon', 'get', 'gateway', 'salon', '--ignore-not-found', '-o', 'name'],
+      { capture: true, quiet: true },
+    );
+  } catch {
+    return; // no Gateway API yet
+  }
   if (!old.trim()) return;
   say('Removing the pre-environment Gateway from namespace straight-salon (moves to the platform)');
   for (const [kind, name] of [
@@ -316,29 +438,6 @@ function removePreEnvironmentEdge() {
   ]) {
     kubectl(['-n', 'straight-salon', 'delete', kind, name, '--ignore-not-found']);
   }
-}
-
-// What every environment shares (17 §3.3): one Gateway with a listener per environment, and
-// the certificates. Applied on every `k8s:up`, whichever environment it's for.
-function installPlatform() {
-  removePreEnvironmentEdge();
-  say('Applying the platform: shared Gateway and certificates');
-  kubectl([
-    'apply',
-    '--server-side',
-    '--force-conflicts',
-    '--field-manager=k8s-up',
-    '-k',
-    PLATFORM_DIR,
-  ]);
-  kubectl([
-    '-n',
-    GATEWAY_NS,
-    'wait',
-    '--for=condition=Programmed',
-    'gateway/salon',
-    '--timeout=180s',
-  ]);
 }
 
 // Secrets (15 §3.4, 16 §2.5). Generated here, never written to disk or git, and REUSED on every
@@ -522,116 +621,288 @@ function checkInotifyLimits() {
 // to 127.0.0.1 by itself.
 async function smokeTest(e) {
   say(`Smoke test: ${e.url}/api/v1/settings/public through the Gateway`);
-  for (let attempt = 1; attempt <= 30; attempt++) {
-    try {
-      const code = run(
-        'curl',
-        [
-          '-sk',
-          '-o',
-          '/dev/null',
-          '-w',
-          '%{http_code}',
-          '--max-time',
-          '10',
-          `${e.url}/api/v1/settings/public`,
-        ],
-        { capture: true, quiet: attempt > 1 },
-      );
-      if (code === '200') return;
-    } catch {
-      // not answering yet
-    }
+  // A second cluster has no host ports: forward a local port to its Envoy Service, and send the
+  // request there under the environment's hostname (curl --connect-to).
+  let forward = null;
+  const via = [];
+  if (CLUSTER !== MAIN_CLUSTER) {
+    const svc = kubectl(
+      [
+        '-n',
+        'envoy-gateway-system',
+        'get',
+        'service',
+        '-l',
+        'gateway.envoyproxy.io/owning-gateway-name=salon',
+        '-o',
+        'name',
+      ],
+      { capture: true, quiet: true },
+    ).trim();
+    forward = spawn(
+      'kubectl',
+      ['--context', CONTEXT, '-n', 'envoy-gateway-system', 'port-forward', svc, '18443:443'],
+      {
+        stdio: 'ignore',
+      },
+    );
+    via.push('--connect-to', `${e.host}:443:127.0.0.1:18443`);
     await sleep(2000);
   }
-  fail(`${e.url} doesn't answer. Look at: kubectl -n ${e.namespace} describe httproute salon`);
+  try {
+    for (let attempt = 1; attempt <= 30; attempt++) {
+      try {
+        const code = run(
+          'curl',
+          [
+            '-sk',
+            ...via,
+            '-o',
+            '/dev/null',
+            '-w',
+            '%{http_code}',
+            '--max-time',
+            '10',
+            `${e.url}/api/v1/settings/public`,
+          ],
+          { capture: true, quiet: attempt > 1 },
+        );
+        if (code === '200') return;
+      } catch {
+        // not answering yet
+      }
+      await sleep(2000);
+    }
+    fail(`${e.url} doesn't answer. Look at: kubectl -n ${e.namespace} describe httproute salon`);
+  } finally {
+    forward?.kill();
+  }
+}
+
+// Applies the root Application (gitops/root.yaml), following `revision`. For a branch, every
+// Application that reads our repository follows it too (a Kustomize patch the root app applies
+// to them), so the whole setup can be tried before it reaches main (18 §3.6).
+function applyRoot(revision) {
+  const [root] = parse(readFileSync(ROOT_APP, 'utf8'));
+  if (revision !== 'main') {
+    say(
+      `Argo CD will follow branch ${revision}, not main. Run k8s:up again without --revision to go back.`,
+    );
+    root.spec.source.targetRevision = revision;
+    root.spec.source.kustomize = {
+      patches: [
+        {
+          target: { kind: 'Application', labelSelector: 'straight-salon/source=git' },
+          patch: JSON.stringify([
+            { op: 'replace', path: '/spec/source/targetRevision', value: revision },
+          ]),
+        },
+      ],
+    };
+  }
+  say(`Pointing Argo CD at the repository (${ROOT_APP}, ${revision})`);
+  kubectl(['apply', '--server-side', '--force-conflicts', '--field-manager=k8s-up', '-f', '-'], {
+    input: JSON.stringify(root),
+  });
+}
+
+// Argo CD deploys what's on GitHub, not this working copy (18 §2.2). Say so when they differ.
+function warnIfNotPushed(revision) {
+  try {
+    const changed = run(
+      'git',
+      [
+        'diff',
+        '--name-only',
+        `origin/${revision}`,
+        '--',
+        'infra/k8s',
+        'infra/docker/mongo-init.js',
+      ],
+      { capture: true, quiet: true },
+    ).trim();
+    if (changed)
+      say(`NOTE: Argo CD deploys origin/${revision}, and these files differ in this working copy
+(not committed, or not pushed, or not fetched yet). They won't be deployed until they're on ${revision}:
+${changed
+  .split('\n')
+  .map((f) => `  ${f}`)
+  .join('\n')}`);
+  } catch {
+    // no such remote branch locally: nothing to compare with
+  }
+}
+
+// Waits until Argo CD reports each Application Synced and Healthy, printing every change of
+// state on the way: the sync waves, the hooks, a canary's analysis and pause.
+async function waitForApps(names, { timeoutMinutes = 20 } = {}) {
+  say(
+    `Waiting for Argo CD: ${names.join(', ')} (Synced and Healthy). Watch it too: https://argocd.salon.localhost`,
+  );
+  const last = {};
+  const deadline = Date.now() + timeoutMinutes * 60_000;
+  while (Date.now() < deadline) {
+    const pending = names.filter((name) => {
+      const app = appStatus(name);
+      const line = app
+        ? `${app.sync} / ${app.health}${app.phase ? ` (sync ${app.phase}${app.phase !== 'Succeeded' && app.message ? `: ${app.message.slice(0, 160)}` : ''})` : ''}`
+        : 'not created yet';
+      if (last[name] !== line) process.stdout.write(`  ${name.padEnd(15)} ${line}\n`);
+      last[name] = line;
+      return !(app?.sync === 'Synced' && app?.health === 'Healthy');
+    });
+    if (pending.length === 0) return;
+    await sleep(5000);
+  }
+  fail(`Argo CD hasn't finished after ${timeoutMinutes} minutes. Look at https://argocd.salon.localhost or:
+  kubectl -n ${ARGOCD_NS} get applications`);
+}
+
+// The inner loop under GitOps (18 §3.6): run code that CI hasn't published in dev, by hand.
+// Dev's Application doesn't self-heal, so Argo CD shows dev OutOfSync and leaves it; the next
+// commit on main brings dev back to what git says. The Jobs (Argo CD hooks) run here too, so a
+// new migration runs before the new code, as it would in a real sync.
+async function deployLocal(e) {
+  const tags = buildLocalImages();
+  const objects = parse(renderWithLocalImages(e, tags));
+  say('Applying dev with the local images (by hand: Argo CD will show dev OutOfSync)');
+  kubectl(
+    ['apply', '--server-side', '--force-conflicts', '--field-manager=k8s-up-local', '-f', '-'],
+    {
+      input: objects
+        .filter((o) => o.kind !== 'Job')
+        .map((o) => JSON.stringify(o))
+        .join('\n'),
+    },
+  );
+  // The Jobs, in hook order (mongo-init and buckets, then migrate), without Argo CD's hook
+  // annotations: these runs are ours, not a sync's.
+  const jobs = objects
+    .filter((o) => o.kind === 'Job')
+    .sort(
+      (x, y) =>
+        Number(x.metadata.annotations?.['argocd.argoproj.io/sync-wave'] ?? 0) -
+        Number(y.metadata.annotations?.['argocd.argoproj.io/sync-wave'] ?? 0),
+    );
+  for (const job of jobs) {
+    delete job.metadata.annotations;
+    kubectl(['-n', e.namespace, 'delete', 'job', job.metadata.name, '--ignore-not-found']);
+    kubectl(['create', '-f', '-'], { input: JSON.stringify(job) });
+    kubectl([
+      '-n',
+      e.namespace,
+      'wait',
+      '--for=condition=Complete',
+      `job/${job.metadata.name}`,
+      '--timeout=600s',
+    ]);
+  }
+  await waitForRollouts(e);
+  kubectl(['-n', e.namespace, 'rollout', 'status', 'deployment/worker', '--timeout=300s']);
+}
+
+// Until each Rollout's release has finished (status.phase Healthy), printing its progress.
+async function waitForRollouts(e) {
+  const last = {};
+  for (let i = 0; i < 180; i++) {
+    const live = liveRollouts(e.namespace);
+    const pending = Object.entries(live).filter(([image, r]) => {
+      const line = `${image.split('/').pop()}: ${r.phase}`;
+      if (last[image] !== line) process.stdout.write(`  ${line}\n`);
+      last[image] = line;
+      return r.phase !== 'Healthy';
+    });
+    if (pending.length === 0) return;
+    await sleep(5000);
+  }
+  fail(
+    `releases in ${e.namespace} haven't finished: kubectl -n ${e.namespace} get rollout -o wide`,
+  );
+}
+
+function revisionArg() {
+  const args = process.argv.slice(3);
+  const i = args.findIndex((a) => a === '--revision' || a.startsWith('--revision='));
+  if (i < 0) return 'main';
+  const value = args[i].includes('=') ? args[i].split('=')[1] : args[i + 1];
+  if (!value || !/^[\w./-]+$/.test(value)) fail('--revision needs a branch name');
+  return value;
 }
 
 async function up() {
   requireTools();
   checkInotifyLimits();
-  const env = envArg();
   const local = process.argv.includes('--local');
-  const latest = process.argv.includes('--latest');
-  if (local && latest) fail('use --latest or --local, not both');
-  // New builds enter at dev; staging and prod only get what was promoted to them (17 §2.5).
-  if ((local || latest) && env !== 'dev')
-    fail(
-      `--${local ? 'local' : 'latest'} is for dev only. ${env} gets builds by promotion: npm run k8s:promote -- ${ENVIRONMENTS[ENVIRONMENTS.indexOf(env) - 1]} ${env}`,
-    );
-  if (latest) pinLatest(env);
-  const e = describe(env);
-  const NS = e.namespace;
+  const revision = revisionArg();
+  // Without --env: every environment (k8s:up only deploys what git says, so there's no
+  // dangerous default to avoid any more).
+  const only = process.argv.some((a) => a.startsWith('--env')) ? envArg() : null;
+  if (process.argv.includes('--latest'))
+    fail('--latest is gone: CI pins every build on main into overlays/dev itself (18 §3.7)');
+  if (local && only && only !== 'dev')
+    fail(`--local is for dev only. ${only} gets builds by promotion (npm run k8s:promote).`);
+  const environments = ENVIRONMENTS.map(describe);
 
   if (clusterExists()) {
     say(`Cluster ${CLUSTER} exists`);
   } else {
     say(`Creating kind cluster ${CLUSTER} (1 control plane + 3 workers)`);
-    run('kind', ['create', 'cluster', '--config', 'infra/k8s/kind-config.yaml']);
+    if (CLUSTER === MAIN_CLUSTER)
+      run('kind', ['create', 'cluster', '--config', 'infra/k8s/kind-config.yaml']);
+    else {
+      // The same nodes without the host ports, which belong to the main cluster.
+      const [config] = parse(readFileSync('infra/k8s/kind-config.yaml', 'utf8'));
+      for (const node of config.nodes) delete node.extraPortMappings;
+      run('kind', ['create', 'cluster', '--name', CLUSTER, '--config', '-'], {
+        input: JSON.stringify({ ...config, name: CLUSTER }),
+      });
+    }
   }
-  installAddons();
-  installPlatform();
-  const localTags = local ? buildLocalImages() : null;
+  installArgoCD();
+  removePreEnvironmentEdge();
+  removeKubectlLeftovers(environments.map((e) => e.namespace));
 
-  say(`${env}: namespace ${NS}, secrets and the mongo-init script`);
-  kubectl(['apply', '--server-side', '--field-manager=k8s-up', '-f', '-'], {
-    input: JSON.stringify(e.objects.find((o) => o.kind === 'Namespace')),
-  });
-  ensureSecrets(e);
-  const initScript = kubectl(
-    [
-      '-n',
-      NS,
-      'create',
-      'configmap',
-      'mongo-init',
-      '--from-file=mongo-init.js=infra/docker/mongo-init.js',
-      '--dry-run=client',
-      '-o',
-      'yaml',
-    ],
-    { capture: true, quiet: true },
-  );
-  kubectl(['apply', '--server-side', '--field-manager=k8s-up', '-f', '-'], {
-    input: initScript,
-    capture: true,
-  });
-
-  // A Job's pod template can't change after creation, so every Job is replaced on each deploy:
-  // the migration runs once per deploy, and mongo-init and buckets are idempotent.
-  const jobs = e.objects.filter((o) => o.kind === 'Job').map((o) => `job/${o.metadata.name}`);
-  kubectl(['-n', NS, 'delete', ...jobs, '--ignore-not-found']);
-  // Before step 4 the backend config had a fixed name; now it's generated with a hash (17 §2.6).
-  // Apply doesn't delete the old one (17 §2.7), so it's removed here.
-  kubectl(['-n', NS, 'delete', 'configmap', 'backend-config', '--ignore-not-found']);
-
-  say(`Applying ${overlayDir(env)} (server-side apply${local ? ', local images' : ''})`);
-  const applyArgs = ['apply', '--server-side', '--force-conflicts', '--field-manager=k8s-up'];
-  if (localTags) kubectl([...applyArgs, '-f', '-'], { input: renderWithLocalImages(e, localTags) });
-  else kubectl([...applyArgs, '-k', overlayDir(env)]);
-
-  say('Waiting for the rollout');
-  const named = (kind) => e.objects.filter((o) => o.kind === kind).map((o) => o.metadata.name);
-  for (const job of named('Job')) {
-    kubectl(['-n', NS, 'wait', '--for=condition=Complete', `job/${job}`, '--timeout=600s']);
+  // What git can't hold (until step 7): each environment's secrets. Made for all three before
+  // Argo CD starts, since it deploys all three.
+  for (const e of environments) {
+    say(`${e.env}: namespace ${e.namespace} and its secrets`);
+    kubectl(['apply', '--server-side', '--field-manager=k8s-up', '-f', '-'], {
+      input: JSON.stringify(e.objects.find((o) => o.kind === 'Namespace')),
+      capture: true,
+    });
+    ensureSecrets(e);
   }
-  for (const workload of [
-    ...named('StatefulSet').map((n) => `statefulset/${n}`),
-    ...named('Deployment').map((n) => `deployment/${n}`),
-  ]) {
-    kubectl(['-n', NS, 'rollout', 'status', workload, '--timeout=300s']);
-  }
-  kubectl(['-n', NS, 'get', 'pods', '-o', 'wide']);
-  await smokeTest(e);
 
-  const flag = env === 'dev' ? '' : ` -- --env ${env}`;
-  say(`Ready: ${e.url}  (${env}, namespace ${NS})
-  Demo data:     npm run k8s:seed${flag}
-  Emails:        kubectl -n ${NS} port-forward svc/mailpit 8025   → http://localhost:8025
-  Look around:   kubectl -n ${NS} get pods,svc,httproute
-${e.backups ? `  Backups:       npm run k8s:backup${flag} && npm run k8s:restore-drill${flag}\n` : ''}\
-  Next step:     ${env === 'prod' ? 'nothing to promote to: prod is the end of the line' : `npm run k8s:promote -- ${env} ${ENVIRONMENTS[ENVIRONMENTS.indexOf(env) + 1]}`}
-  Exercises:     docs/specs/15 §6, 16 §6, 17 §6`);
+  applyRoot(revision);
+  warnIfNotPushed(revision);
+  const targets = only ? environments.filter((e) => e.env === only) : environments;
+  await waitForApps([
+    'cert-manager',
+    'envoy-gateway',
+    'metrics-server',
+    'argo-rollouts',
+    'platform',
+    'argocd-config',
+    ...targets.map((e) => e.env),
+  ]);
+  for (const e of targets) {
+    removeReplacedDeployments(e);
+    await smokeTest(e);
+  }
+  if (local) {
+    const dev = environments.find((e) => e.env === 'dev');
+    await deployLocal(dev);
+    await smokeTest(dev);
+  }
+
+  say(`Ready. Argo CD keeps the cluster at what ${revision} says.
+${targets.map((e) => `  ${e.env.padEnd(8)} ${e.url}`).join('\n')}
+  Argo CD   https://argocd.salon.localhost  (user admin; password:
+            kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)
+  Demo data:     npm run k8s:seed -- --env <name>
+  Releases:      kubectl -n straight-salon-dev get rollout -o wide
+  Promote:       npm run k8s:promote -- dev staging, then commit and push
+  Exercises:     docs/specs/15 §6, 16 §6, 17 §6, 18 §6`);
 }
 
 // ---- seed, backups, restore -----------------------------------------------------------------
@@ -880,15 +1151,19 @@ function diffCommand() {
   }
 }
 
+// Deletes the whole cluster. One environment can't be removed with a command any more: Argo CD
+// would put it back (staging and prod self-heal, and the root app recreates the Application).
+// Removing an environment is a git change (18 §3.6).
 function down() {
   requireTools();
-  if (!process.argv.some((a) => a.startsWith('--env'))) {
-    run('kind', ['delete', 'cluster', '--name', CLUSTER]);
-    return;
+  if (process.argv.some((a) => a.startsWith('--env'))) {
+    const e = describe(envArg());
+    fail(`Argo CD deploys ${e.env} from git, so it would recreate anything deleted here. To remove it:
+  delete its Application from infra/k8s/gitops/apps/environments.yaml, push and merge, then
+  kubectl delete namespace ${e.namespace}
+(Or delete the whole cluster: npm run k8s:down)`);
   }
-  const e = describe(envArg());
-  say(`Deleting ${e.env} (namespace ${e.namespace}): its pods, volumes, data and secrets`);
-  kubectl(['delete', 'namespace', e.namespace, '--ignore-not-found']);
+  run('kind', ['delete', 'cluster', '--name', CLUSTER]);
 }
 
 // ---- main ---------------------------------------------------------------------------------
@@ -905,6 +1180,7 @@ function target({ needsBackups = false } = {}) {
 const command = process.argv[2];
 const [first, second] = positional();
 if (command === 'up') await up();
+else if (command === 'pin') pin(envArg(), positional());
 else if (command === 'promote') promote(first, second);
 else if (command === 'render') renderCommand();
 else if (command === 'diff') diffCommand();
@@ -924,5 +1200,5 @@ else if (command === 'seed') {
 } else if (command === 'down') down();
 else
   fail(
-    'usage: node scripts/k8s.mjs up [--latest|--local] | promote <from> <to> | render | diff | seed | backup | restore-drill | restore [archive collection] | down, each with [--env dev|staging|prod]',
+    'usage: node scripts/k8s.mjs up [--local] [--revision <branch>] | pin <image@digest>... | promote <from> <to> | render | diff | seed | backup | restore-drill | restore [archive collection] | down, each with [--env dev|staging|prod]',
   );

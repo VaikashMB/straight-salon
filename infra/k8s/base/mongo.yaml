@@ -109,9 +109,13 @@ spec:
     matchLabels: { app.kubernetes.io/name: mongo }
 ---
 # Forms the replica set from the three members and creates the users (infra/docker/mongo-init.js,
-# shared with Compose; loaded into the ConfigMap `mongo-init` by `npm run k8s:up`). Connects to
-# mongo-0 as root. Kubernetes has no depends_on (15 §2.11): until mongo-0 answers, the Job fails
-# and is retried. Idempotent: re-running it changes nothing.
+# shared with Compose; the ConfigMap `mongo-init` is generated from it, base/kustomization.yaml).
+# Connects to mongo-0 as root. Kubernetes has no depends_on (15 §2.11): until mongo-0 answers,
+# the Job fails and is retried. Idempotent: re-running it changes nothing.
+#
+# An Argo CD sync hook (18 §2.6): a new run on every sync, after the data stores (wave 0) and
+# before the migration (wave 2). BeforeHookCreation deletes the previous run first, because a
+# Job's pod template can't be changed in place (17 §2.10).
 #
 # The manifests don't know their namespace (each environment sets it, 17 §3.2). Connecting needs
 # no namespace: `mongo-0.mongo` resolves inside the pod's own one. The replica-set member names
@@ -122,6 +126,10 @@ kind: Job
 metadata:
   name: mongo-init
   labels: { app.kubernetes.io/name: mongo-init, app.kubernetes.io/part-of: straight-salon }
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
 spec:
   backoffLimit: 30
   template:
@@ -133,7 +141,7 @@ spec:
         - name: mongo-init
           image: mongo:8.2
           # First run: no replica set yet, so talk to mongo-0 alone and let the script form it.
-          # Every later run (k8s:up re-runs this Job on each deploy, 17 §3.4): any member may be
+          # Every later run (each sync runs this hook again, 18 §2.6): any member may be
           # primary, and after a failover it usually isn't mongo-0, so connect through the set,
           # which finds the primary. (Talking to mongo-0 alone, the script would wait for
           # mongo-0 to become primary, forever.)

@@ -1,0 +1,92 @@
+# Cluster add-ons: other people's software, installed from their Helm charts at pinned versions
+# ("Kustomize for what you own, Helm for what you consume", 17 §2.8). Argo CD renders each chart
+# with our values (`helm template`) and applies the result like any other manifests: no Helm
+# release, no `helm upgrade`. Upgrading an add-on is changing targetRevision here, in a commit.
+#
+# Until step 4 these were release manifests applied by `npm run k8s:up`. The charts render the
+# same objects with the same names, so Argo CD takes over the running ones in place (18 §2.10).
+# Server-side apply because some CRDs are too big for client-side apply's annotation.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cert-manager
+  annotations: { argocd.argoproj.io/sync-wave: '-2' }
+spec:
+  project: platform
+  source:
+    repoURL: https://charts.jetstack.io
+    chart: cert-manager
+    targetRevision: v1.21.2
+    helm:
+      releaseName: cert-manager
+      valuesObject:
+        crds: { enabled: true }
+  destination: { server: https://kubernetes.default.svc, namespace: cert-manager }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true, CreateNamespace=true]
+---
+# The Gateway API implementation (15 §2.5). Its chart is an OCI artifact on Docker Hub
+# (argocd/repositories.yaml). The release name `eg` is the one its install manifest uses.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+  annotations: { argocd.argoproj.io/sync-wave: '-2' }
+spec:
+  project: platform
+  source:
+    repoURL: docker.io/envoyproxy
+    chart: gateway-helm
+    targetRevision: v1.9.2
+    helm:
+      releaseName: eg
+  destination: { server: https://kubernetes.default.svc, namespace: envoy-gateway-system }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true, CreateNamespace=true]
+---
+# CPU and memory metrics for the HorizontalPodAutoscaler (15 §2.10). kind's kubelet
+# certificates aren't signed for it, hence --kubelet-insecure-tls (never on a real cluster):
+# now a chart value, where k8s:up used to edit the manifest's text (17 §6, exercise 7).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  annotations: { argocd.argoproj.io/sync-wave: '-2' }
+spec:
+  project: platform
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    chart: metrics-server
+    targetRevision: 3.14.0
+    helm:
+      releaseName: metrics-server
+      valuesObject:
+        args: [--kubelet-insecure-tls]
+  destination: { server: https://kubernetes.default.svc, namespace: kube-system }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true]
+---
+# Canary and blue-green releases (18 §2.5): the Rollout and AnalysisTemplate kinds, and the
+# controller that runs them. One controller replica (the chart's default is two, for failover).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  annotations: { argocd.argoproj.io/sync-wave: '-2' }
+spec:
+  project: platform
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.43.7 # Argo Rollouts v1.10.1
+    helm:
+      releaseName: argo-rollouts
+      valuesObject:
+        controller: { replicas: 1 }
+  destination: { server: https://kubernetes.default.svc, namespace: argo-rollouts }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true, CreateNamespace=true]

@@ -1,0 +1,84 @@
+# The three environments (17 §3.2), each its overlay on `main`. What runs in an environment is
+# what its overlay says: a deploy is a commit (18 §2.2).
+#
+#   dev      CI commits every new build's digests to overlays/dev (18 §3.7). selfHeal off: a
+#            developer may try something by hand (`npm run k8s:up -- --local`); the next commit
+#            on main puts dev back to what git says.
+#   staging  `npm run k8s:promote -- dev staging`, reviewed and merged. selfHeal on: a change
+#   prod     made by hand is reverted within seconds, so git stays the truth (18 §2.3).
+#
+# Automated sync in prod too: the decision to release is the reviewed commit, so syncing it is
+# no further decision. Teams that want a person to press "Sync" for prod drop `automated` there
+# (and then the UI shows prod OutOfSync until they do).
+#
+# Server-side apply, and retries: on a fresh cluster the first sync can come before the
+# Gateway's CRDs or the secrets exist.
+#
+# ignoreDifferences: during a release Argo Rollouts adds `rollouts-pod-template-hash` to the
+# selectors of the Services it switches (frontend, frontend-preview, backend-canary). A Service's
+# selector is replaced as a whole, so without this Argo CD would see drift on every compare, and
+# where it self-heals it would remove the key and send traffic to old and new pods alike, then
+# Rollouts would add it back, forever. RespectIgnoreDifferences keeps the live key when syncing
+# (18 §2.10).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: dev
+  labels: { straight-salon/source: git, straight-salon/environment: dev }
+spec:
+  project: straight-salon
+  source:
+    repoURL: https://github.com/VaikashMB/straight-salon.git
+    targetRevision: main
+    path: infra/k8s/overlays/dev
+  destination: { server: https://kubernetes.default.svc, namespace: straight-salon-dev }
+  ignoreDifferences:
+    - { kind: Service, jsonPointers: [/spec/selector/rollouts-pod-template-hash] }
+  syncPolicy:
+    automated: { prune: true, selfHeal: false }
+    syncOptions: [ServerSideApply=true, RespectIgnoreDifferences=true]
+    retry:
+      limit: 10
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: staging
+  labels: { straight-salon/source: git, straight-salon/environment: staging }
+spec:
+  project: straight-salon
+  source:
+    repoURL: https://github.com/VaikashMB/straight-salon.git
+    targetRevision: main
+    path: infra/k8s/overlays/staging
+  destination: { server: https://kubernetes.default.svc, namespace: straight-salon-staging }
+  ignoreDifferences:
+    - { kind: Service, jsonPointers: [/spec/selector/rollouts-pod-template-hash] }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true, RespectIgnoreDifferences=true]
+    retry:
+      limit: 10
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: prod
+  labels: { straight-salon/source: git, straight-salon/environment: prod }
+spec:
+  project: straight-salon
+  source:
+    repoURL: https://github.com/VaikashMB/straight-salon.git
+    targetRevision: main
+    path: infra/k8s/overlays/prod
+  destination: { server: https://kubernetes.default.svc, namespace: straight-salon }
+  ignoreDifferences:
+    - { kind: Service, jsonPointers: [/spec/selector/rollouts-pod-template-hash] }
+  syncPolicy:
+    automated: { prune: true, selfHeal: true }
+    syncOptions: [ServerSideApply=true, RespectIgnoreDifferences=true]
+    retry:
+      limit: 10
+      backoff: { duration: 10s, factor: 2, maxDuration: 3m }

@@ -1,5 +1,6 @@
-# HTTPS for https://salon.localhost and the other environments' hosts (15 §2.6, 17 §3.3): the backend's refresh cookie is `Secure` in
-# production, and browsers only send Secure cookies over HTTPS.
+# HTTPS for https://salon.localhost, the other environments' hosts and Argo CD's UI (15 §2.6,
+# 17 §3.3, 18 §3.2): the backend's refresh cookie is `Secure` in production, and browsers only
+# send Secure cookies over HTTPS.
 #
 # cert-manager makes a tiny private certificate authority, the way a client's internal CA
 # would work: a self-signed issuer creates the CA certificate (in cert-manager's namespace,
@@ -43,6 +44,6 @@ metadata:
   namespace: straight-salon-gateway
 spec:
   secretName: salon-tls
-  dnsNames: [salon.localhost, staging.salon.localhost, dev.salon.localhost]
+  dnsNames: [salon.localhost, staging.salon.localhost, dev.salon.localhost, argocd.salon.localhost]
   privateKey: { algorithm: ECDSA, size: 256 }
   issuerRef: { kind: ClusterIssuer, name: salon-local-ca, group: cert-manager.io }

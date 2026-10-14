@@ -1,6 +1,12 @@
 # Database migrations, once per deploy (15 §2.11): with several api replicas starting at once,
-# migrating on startup (MIGRATE_ON_START, off in production) would race. A Job's pod template
-# can't be changed after creation, so `npm run k8s:up` deletes the previous run before applying.
+# migrating on startup (MIGRATE_ON_START, off in production) would race.
+#
+# An Argo CD sync hook in wave 2 (18 §2.6): every sync runs it after mongo-init (wave 1) and
+# before the new api and worker start (wave 3). If it fails, the sync stops there and the old
+# code keeps running against the old schema. Migrations must therefore be backwards compatible
+# (expand, then contract, 18 §2.7): the old code is still serving while this runs, and during a
+# canary old and new code serve side by side.
+#
 # The init container waits until the replica set has a primary (no depends_on in Kubernetes);
 # `hello` needs no login. The app user itself is created by mongo-init.
 apiVersion: batch/v1
@@ -8,6 +14,10 @@ kind: Job
 metadata:
   name: migrate
   labels: { app.kubernetes.io/name: migrate, app.kubernetes.io/part-of: straight-salon }
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '2'
 spec:
   backoffLimit: 3
   template:

@@ -1,0 +1,16 @@
+# Every Application in the cluster, deployed by the root Application (gitops/root.yaml).
+#
+# Order, by sync wave (18 §3.4): the add-ons first (-2: they bring the CRDs everything else
+# uses), then the platform and Argo CD's settings (-1: Gateway, certificates, projects), then
+# the environments (0). Each wave waits until the previous one is healthy.
+#
+# No Application has the resources-finalizer: deleting an Application (or removing it from this
+# folder) stops Argo CD managing its objects but leaves them running. Deleting the cert-manager
+# Application must never take every certificate with it, nor the prod one the database.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources:
+  - addons.yaml
+  - platform.yaml
+  - environments.yaml

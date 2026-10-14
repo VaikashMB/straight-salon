@@ -1,0 +1,22 @@
+# Teaches Kustomize where an Argo Rollout refers to ConfigMaps and Secrets (18 §2.10), so a
+# generated name (backend-config-<hash>) is rewritten inside Rollouts as it is inside
+# Deployments. Only the fields our Rollouts use; Argo Rollouts documents a complete version.
+nameReference:
+  - kind: ConfigMap
+    version: v1
+    fieldSpecs:
+      - path: spec/template/spec/containers/envFrom/configMapRef/name
+        kind: Rollout
+      - path: spec/template/spec/containers/env/valueFrom/configMapKeyRef/name
+        kind: Rollout
+      - path: spec/template/spec/volumes/configMap/name
+        kind: Rollout
+  - kind: Secret
+    version: v1
+    fieldSpecs:
+      - path: spec/template/spec/containers/envFrom/secretRef/name
+        kind: Rollout
+      - path: spec/template/spec/containers/env/valueFrom/secretKeyRef/name
+        kind: Rollout
+      - path: spec/template/spec/volumes/secret/secretName
+        kind: Rollout

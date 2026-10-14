@@ -1,0 +1,76 @@
+# Deployments (18 §3.7). A change to an overlay is a deployment: once it's on main, Argo CD
+# applies it. CI ignores commits that change nothing but overlays (there's no new code to build),
+# so this workflow is what checks them, on the pull request and again on main.
+#
+# On main it also tags what each environment now pins: `dev`, `staging` and `prod` in GHCR,
+# moved like `main` (14 §3.2), only onto images this repository's CI signed. A tag is a pointer
+# a person can read ("what's in prod?": the `prod` tag), and it keeps the image: the weekly
+# cleanup deletes images whose only tags are sha-* (ghcr-cleanup.yml), which would leave an
+# environment pinned to a digest that no longer exists, failing on its next pod restart.
+name: Deployments
+
+on:
+  pull_request:
+    paths: ['infra/k8s/**', 'infra/docker/mongo-init.js', 'scripts/k8s*.mjs']
+  push:
+    branches: [main]
+    paths: ['infra/k8s/**', 'infra/docker/mongo-init.js', 'scripts/k8s*.mjs']
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: ./.github/actions/setup-deps
+      - name: kubectl v1.37.0 (checksum verified)
+        run: |
+          curl -fLO --retry 5 --retry-all-errors https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl
+          echo "$(curl -fsL --retry 5 https://dl.k8s.io/release/v1.37.0/bin/linux/amd64/kubectl.sha256)  kubectl" | sha256sum -c -
+          chmod +x kubectl && sudo mv kubectl /usr/local/bin/
+      - name: Every environment renders and follows the rules (17 §3.5, 18 §3.8)
+        run: npm run k8s:check
+
+  tag:
+    if: github.event_name == 'push'
+    needs: check
+    runs-on: ubuntu-latest
+    # The newest push wins; tags for an older one would only be moved again.
+    concurrency:
+      group: deployment-tags
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        env: [staging, prod] # dev is tagged by CI's deploy-dev, whose commits start no workflow
+    steps:
+      - uses: actions/checkout@v7
+      - name: Digests ${{ matrix.env }} pins
+        id: pinned
+        run: |
+          file="infra/k8s/overlays/${{ matrix.env }}/kustomization.yaml"
+          for app in backend frontend; do
+            image="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/straight-salon-${app}"
+            digest="$(grep -A1 "name: ${image}$" "$file" | grep -o 'sha256:[0-9a-f]\{64\}')"
+            echo "${app}=${image}@${digest}" >> "$GITHUB_OUTPUT"
+          done
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag backend `${{ matrix.env }}`
+        uses: ./.github/actions/promote-image
+        with:
+          source: ${{ steps.pinned.outputs.backend }}
+          tags: ${{ matrix.env }}
+      - name: Tag frontend `${{ matrix.env }}`
+        uses: ./.github/actions/promote-image
+        with:
+          source: ${{ steps.pinned.outputs.frontend }}
+          tags: ${{ matrix.env }}

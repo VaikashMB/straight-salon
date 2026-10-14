@@ -5,6 +5,11 @@
 > Same shape as specs 14–16: concepts (§2), decisions (§3), exercises (§6), questions (§7).
 > Free and local, on the kind cluster of steps 2 and 3. Decision 2026-10-14: this step comes
 > before going live, so the live deployment can use the prod overlay.
+>
+> **Since step 5 (18):** Argo CD applies the overlays from `main`; `k8s:up` no longer applies
+> them itself, `--latest` is replaced by CI's `deploy-dev` job, `k8s:promote` also checks Argo CD
+> and the Rollouts, `k8s:down -- --env` is refused, and the add-ons are Argo CD applications from
+> their Helm charts (§3.6). The rest of this spec describes step 4 as it was built.
 
 ## 1. Goal in one paragraph
 

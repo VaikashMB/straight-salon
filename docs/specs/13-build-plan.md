@@ -68,7 +68,7 @@ These will get their own spec files later (`14-…` onwards). Listed here so v1 
 2. **Kubernetes basics** — Deployments (api, worker, frontend), Services, Ingress + TLS, ConfigMaps/Secrets, probes mapped to `/health/*`, resource requests/limits, HPA on api. Spec: `15-kubernetes-basics.md` (drafted 2026-10-13).
 3. **Stateful dependencies** — managed MongoDB Atlas & managed Redis vs. StatefulSets; backups and restore drills. Spec: `16-stateful-services.md` (drafted 2026-10-13; local and free, no managed services).
 4. **Helm or Kustomize** — environment overlays (dev/staging/prod). Spec: `17-environments-kustomize.md` (drafted 2026-10-14; Kustomize for the app, Helm explained and practised; done before going live, decision 2026-10-14).
-5. **CD & GitOps** — GitHub Actions → Argo CD; rolling, blue-green, canary releases; migrations as Jobs.
+5. **CD & GitOps** — GitHub Actions → Argo CD; rolling, blue-green, canary releases; migrations as Jobs. Spec: `18-cd-gitops.md` (2026-10-14; Argo CD v3.5 and Argo Rollouts in the kind cluster, CI commits builds into dev, add-ons as Helm-sourced Argo CD applications).
 6. **Observability stack** — OpenTelemetry tracing, Prometheus + Grafana dashboards, Loki for logs, alerts (SLOs on booking latency & error rate).
 7. **Secrets management** — External Secrets / Vault / cloud secret managers.
 8. **Messaging at scale** — swap EventBus adapter to RabbitMQ or Kafka.

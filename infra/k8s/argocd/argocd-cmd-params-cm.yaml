@@ -1,0 +1,16 @@
+# Command-line settings of Argo CD's components. A change here needs the component restarted
+# (`kubectl -n argocd rollout restart deployment argocd-server`); `npm run k8s:up` does it when
+# it changes these on bootstrap.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cmd-params-cm
+  labels: { app.kubernetes.io/name: argocd-cmd-params-cm, app.kubernetes.io/part-of: argocd }
+data:
+  # TLS ends at the Gateway (platform/gateway.yaml), like for the app; argocd-server speaks
+  # plain HTTP inside the cluster.
+  server.insecure: 'true'
+  # Ask the API server what an apply would change, instead of guessing in Argo CD (18 §3.3):
+  # defaults the server fills in and fields other controllers own (Argo Rollouts edits the
+  # Services' selectors) then don't show up as differences.
+  controller.diff.server.side: 'true'

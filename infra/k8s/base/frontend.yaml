@@ -1,5 +1,10 @@
 # The Next.js frontend. It forwards /api/* to the backend Service inside the cluster (05 §5),
 # so the browser only ever talks to the environment's own hostname.
+#
+# Released blue-green (18 §2.5, §3.5) by Argo Rollouts: a complete second set of pods starts
+# with the new version behind `frontend-preview`, the http-check analysis asks those, and only
+# then does `frontend` (what the Gateway sends visitors to) switch over, all at once. The old
+# pods stay up for a minute afterwards, so going back is a switch, not a redeploy.
 apiVersion: v1
 kind: Service
 metadata:
@@ -12,17 +17,41 @@ spec:
       port: 3000
       targetPort: http
 ---
-apiVersion: apps/v1
-kind: Deployment
+# The new version's pods during a release (Argo Rollouts sets the selector's pod-template-hash).
+# Not on the Gateway: only the analysis, and you with a port-forward, look at it.
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend-preview
+  labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: straight-salon }
+spec:
+  selector: { app.kubernetes.io/name: frontend }
+  ports:
+    - name: http
+      port: 3000
+      targetPort: http
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: frontend
   labels: { app.kubernetes.io/name: frontend, app.kubernetes.io/part-of: straight-salon }
+  annotations:
+    argocd.argoproj.io/sync-wave: '3'
 spec:
   replicas: 2
   revisionHistoryLimit: 5
   strategy:
-    type: RollingUpdate
-    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+    blueGreen:
+      activeService: frontend
+      previewService: frontend-preview
+      prePromotionAnalysis:
+        templates: [{ templateName: http-check }]
+        args:
+          - name: urls
+            value: http://frontend-preview:3000/
+      autoPromotionEnabled: true # promote as soon as the analysis passes
+      scaleDownDelaySeconds: 60 # old pods stay a minute after the switch
   selector:
     matchLabels: { app.kubernetes.io/name: frontend }
   template:
