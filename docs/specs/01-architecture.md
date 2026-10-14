@@ -136,6 +136,6 @@ straight-salon/
 - Health probes already exist → Kubernetes liveness/readiness.
 - Graceful shutdown on `SIGTERM` (stop accepting requests, drain, close Mongo/Redis/queues within 10 s) → zero-downtime rolling deploys.
 - Separate api/worker/relay entrypoints → independent scaling.
-- No local file storage; images go to an `ObjectStorage` interface (local disk adapter in dev, S3-compatible later).
+- No local file storage; images go to an `ObjectStorage` interface: a local-disk adapter (Compose) and an S3-compatible one (`STORAGE_DRIVER=s3`, the Kubernetes cluster's SeaweedFS since FDE step 3, 16 §3.4).
 - `EventBus` interface → swap BullMQ for RabbitMQ/Kafka without touching modules.
 - Prometheus metrics endpoint `/metrics` (prom-client) exposed but not scraped in v1.

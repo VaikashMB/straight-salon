@@ -15,7 +15,7 @@ import {
   type ShutdownStep,
 } from './shared/lifecycle/index.js';
 import { createMetrics } from './shared/metrics/index.js';
-import { createLocalStorage } from './shared/storage/objectStorage.js';
+import { createObjectStorage } from './shared/storage/objectStorage.js';
 import { systemClock } from './shared/time/clock.js';
 import { buildConsumerHandlers } from './workers/consumers/index.js';
 import { startOutboxRelay } from './workers/outboxRelay.js';
@@ -42,7 +42,7 @@ const services = buildServices({
   clock,
   logger,
   metrics: createMetrics({ defaultMetrics: false }), // not exposed: the worker has no HTTP port
-  storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
+  storage: createObjectStorage(env),
   config: servicesConfigFromEnv(env),
 });
 

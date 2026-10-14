@@ -118,7 +118,12 @@ All validated at boot in `config/env.ts`. Example values in `.env.example`. `env
 | `RUN_RELAY_IN_WORKER` | `true` | |
 | `OUTBOX_ENCRYPTION_KEY` | (32-byte base64) | encrypts secrets in outbox payloads (see 09 §7) |
 | `UPLOADS_DIR` | `uploads` | local ObjectStorage directory (relative to `backend/`; `/app/backend/uploads` volume in Docker), served by the API at `/uploads` (Phase 4) |
-| `UPLOADS_PUBLIC_URL` | `http://localhost:4000/uploads` | required; browser-facing URL of `/uploads`, stored in `services.imageUrl` / `staff.photoUrl`. An S3 adapter would use a bucket/CDN URL instead |
+| `UPLOADS_PUBLIC_URL` | `http://localhost:4000/uploads` | required; browser-facing base URL of stored objects, saved in `services.imageUrl` / `staff.photoUrl`: the API's `/uploads` (local driver) or the bucket's public URL (S3 driver) |
+| `STORAGE_DRIVER` | `local` | `local` (disk, served by the API at `/uploads`; Compose) or `s3` (S3-compatible object storage; the Kubernetes cluster's SeaweedFS, 16 §3.4) |
+| `S3_ENDPOINT` | `http://seaweedfs:8333` | S3 driver: endpoint URL; unset = AWS S3 itself |
+| `S3_REGION` | `us-east-1` | S3 driver: region (default `us-east-1`) |
+| `S3_BUCKET` / `S3_ACCESS_KEY_ID` / `S3_SECRET_ACCESS_KEY` | `uploads` / … | S3 driver: required when `STORAGE_DRIVER=s3` (env validation fails otherwise) |
+| `S3_FORCE_PATH_STYLE` | `true` | S3 driver: bucket in the path (`/bucket/key`), as SeaweedFS and MinIO expect; `false` for virtual-hosted AWS buckets |
 | `SWAGGER_ENABLED` | `true` | false in prod unless protected |
 | `METRICS_ENABLED` | `true` | |
 

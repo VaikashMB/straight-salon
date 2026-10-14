@@ -1,7 +1,8 @@
 # Database migrations, once per deploy (15 §2.11): with several api replicas starting at once,
 # migrating on startup (MIGRATE_ON_START, off in production) would race. A Job's pod template
 # can't be changed after creation, so `npm run k8s:up` deletes the previous run before applying.
-# The init container waits for the replica set to accept writes (no depends_on in Kubernetes).
+# The init container waits until the replica set has a primary (no depends_on in Kubernetes);
+# `hello` needs no login. The app user itself is created by mongo-init.
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -23,8 +24,8 @@ spec:
             - -c
             - >
               until mongosh --quiet --host mongo-0.mongo.straight-salon.svc.cluster.local:27017
-              --eval 'quit(db.hello().isWritablePrimary ? 0 : 1)'; do
-              echo "waiting for the replica set primary"; sleep 3; done
+              --eval 'quit(db.hello().primary ? 0 : 1)'; do
+              echo "waiting for the replica set to elect a primary"; sleep 3; done
           resources:
             requests: { cpu: 50m, memory: 64Mi }
             limits: { cpu: 500m, memory: 256Mi }

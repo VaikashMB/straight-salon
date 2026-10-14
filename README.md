@@ -67,25 +67,26 @@ The specs are written to be **stack-agnostic where possible**. Anything stack-sp
 
 ## Spec index
 
-| File                                    | Purpose                                                                             |
-| --------------------------------------- | ----------------------------------------------------------------------------------- |
-| `AGENTS.md`                             | Rules for the AI coding agent. Point your AI tool at this first.                    |
-| `docs/specs/00-product-requirements.md` | What we're building and why: personas, features, user stories, acceptance criteria  |
-| `docs/specs/01-architecture.md`         | System design, repo layout, module boundaries, cross-cutting concerns               |
-| `docs/specs/02-database.md`             | Collections, fields, indexes, constraints, seed data                                |
-| `docs/specs/03-backend.md`              | Backend structure, layers, modules, business rules, config                          |
-| `docs/specs/04-api-contract.md`         | Every endpoint: method, path, auth, request, response, errors; OpenAPI rules        |
-| `docs/specs/05-frontend.md`             | Pages, routes, components, state, forms, UX rules                                   |
-| `docs/specs/06-auth-and-security.md`    | JWT flow, roles and permissions, security controls                                  |
-| `docs/specs/07-logging-and-auditing.md` | Log format, levels, correlation, audit trail                                        |
-| `docs/specs/08-caching.md`              | What is cached, keys, TTLs, invalidation, rate limiting                             |
-| `docs/specs/09-events-and-messaging.md` | Domain events, outbox pattern, workers, retries, idempotency                        |
-| `docs/specs/10-testing-and-quality.md`  | Test strategy, coverage, SonarQube setup and quality gate                           |
-| `docs/specs/11-docker-local-dev.md`     | Dockerfiles and docker-compose for local development                                |
-| `docs/specs/12-automation-and-ci.md`    | Git hooks, scripts, CI pipeline, scheduled jobs                                     |
-| `docs/specs/13-build-plan.md`           | Phased build order with ready-to-use prompts for the AI                             |
-| `docs/specs/15-kubernetes-basics.md`    | FDE step 2: the app on a local Kubernetes cluster (concepts + decisions)            |
-| `docs/specs/14-container-registry.md`   | FDE step 1: publishing, promoting and signing images in GHCR (concepts + decisions) |
+| File                                    | Purpose                                                                                    |
+| --------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `AGENTS.md`                             | Rules for the AI coding agent. Point your AI tool at this first.                           |
+| `docs/specs/00-product-requirements.md` | What we're building and why: personas, features, user stories, acceptance criteria         |
+| `docs/specs/01-architecture.md`         | System design, repo layout, module boundaries, cross-cutting concerns                      |
+| `docs/specs/02-database.md`             | Collections, fields, indexes, constraints, seed data                                       |
+| `docs/specs/03-backend.md`              | Backend structure, layers, modules, business rules, config                                 |
+| `docs/specs/04-api-contract.md`         | Every endpoint: method, path, auth, request, response, errors; OpenAPI rules               |
+| `docs/specs/05-frontend.md`             | Pages, routes, components, state, forms, UX rules                                          |
+| `docs/specs/06-auth-and-security.md`    | JWT flow, roles and permissions, security controls                                         |
+| `docs/specs/07-logging-and-auditing.md` | Log format, levels, correlation, audit trail                                               |
+| `docs/specs/08-caching.md`              | What is cached, keys, TTLs, invalidation, rate limiting                                    |
+| `docs/specs/09-events-and-messaging.md` | Domain events, outbox pattern, workers, retries, idempotency                               |
+| `docs/specs/10-testing-and-quality.md`  | Test strategy, coverage, SonarQube setup and quality gate                                  |
+| `docs/specs/11-docker-local-dev.md`     | Dockerfiles and docker-compose for local development                                       |
+| `docs/specs/12-automation-and-ci.md`    | Git hooks, scripts, CI pipeline, scheduled jobs                                            |
+| `docs/specs/13-build-plan.md`           | Phased build order with ready-to-use prompts for the AI                                    |
+| `docs/specs/16-stateful-services.md`    | FDE step 3: replica set, backups and restore drills, object storage (concepts + decisions) |
+| `docs/specs/15-kubernetes-basics.md`    | FDE step 2: the app on a local Kubernetes cluster (concepts + decisions)                   |
+| `docs/specs/14-container-registry.md`   | FDE step 1: publishing, promoting and signing images in GHCR (concepts + decisions)        |
 
 ## Getting started (local development)
 
@@ -153,7 +154,14 @@ The seed also adds the salon settings, 4 categories with about 15 services, sche
 
 ### Run on Kubernetes (local)
 
-FDE step 2 ([spec 15](docs/specs/15-kubernetes-basics.md)) runs the published images on a local three-node [kind](https://kind.sigs.k8s.io) cluster at `https://salon.localhost`. It doesn't touch the Compose stack; both can run at once.
+FDE steps 2 and 3 ([spec 15](docs/specs/15-kubernetes-basics.md), [spec 16](docs/specs/16-stateful-services.md)) run the published images on a local [kind](https://kind.sigs.k8s.io) cluster (one control plane, three workers) at `https://salon.localhost`: a three-member MongoDB replica set with authentication, nightly backups with an automatic restore drill, and SeaweedFS object storage for uploads. It doesn't touch the Compose stack; both can run at once.
+
+Four kind nodes need more file watchers than Linux allows by default (`k8s:up` warns if yours are too low). Raise them once:
+
+```sh
+sudo sysctl fs.inotify.max_user_instances=512 fs.inotify.max_user_watches=524288
+printf 'fs.inotify.max_user_instances=512\nfs.inotify.max_user_watches=524288\n' | sudo tee /etc/sysctl.d/99-kind.conf
+```
 
 Install kind and kubectl once (Linux x86-64; other platforms: [kind](https://kind.sigs.k8s.io/docs/user/quick-start/#installation), [kubectl](https://kubernetes.io/docs/tasks/tools/)):
 
@@ -174,6 +182,10 @@ npm run k8s:seed               # demo data (same accounts as "Demo accounts")
 kubectl -n straight-salon get pods -o wide
 kubectl -n straight-salon port-forward svc/mailpit 8025   # emails at http://localhost:8025
 npm run k8s:up -- --latest     # move the pinned image digests to what `main` points at, then deploy
+npm run k8s:up -- --local      # build this checkout's images and run them (unpublished code)
+npm run k8s:backup             # back up MongoDB now (also nightly at 02:00 UTC)
+npm run k8s:restore-drill      # restore the newest backup into a scratch database and check it
+npm run k8s:restore            # list backups; `-- <archive> <collection>` puts one collection back
 npm run k8s:down               # delete the cluster
 ```
 
@@ -184,7 +196,14 @@ kubectl -n cert-manager get secret salon-local-ca -o jsonpath='{.data.ca\.crt}' 
 certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "Straight Salon local CA" -i salon-local-ca.crt
 ```
 
-The CA is recreated with each new cluster, so trust it again after `k8s:down` / `k8s:up`. Run the e2e suite against the cluster with `E2E_BASE_URL=https://salon.localhost E2E_IGNORE_HTTPS_ERRORS=true E2E_RESET_RATE_LIMITS=false npm run test:e2e`. Exercises: spec 15 §6.
+MongoDB as admin (the root password is generated per cluster):
+
+```sh
+ROOT=$(kubectl -n straight-salon get secret mongo-auth -o jsonpath='{.data.root-password}' | base64 -d)
+kubectl -n straight-salon exec -it mongo-0 -c mongo -- mongosh -u root -p "$ROOT" --authenticationDatabase admin
+```
+
+The CA is recreated with each new cluster, so trust it again after `k8s:down` / `k8s:up`. Run the e2e suite against the cluster with `E2E_BASE_URL=https://salon.localhost E2E_IGNORE_HTTPS_ERRORS=true E2E_REDIS_CLI="kubectl -n straight-salon exec redis-0 -- redis-cli" npm run test:e2e` (behind the cluster's gateway every browser shares one client IP, so the suite resets the rate limits in the cluster's Redis first). Exercises: spec 15 §6.
 
 ### Useful commands
 
@@ -308,6 +327,7 @@ Kubernetes, Helm, cloud deployment, managed databases, horizontal scaling, obser
 | Date       | Change                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Specs touched                                              |
 | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------- |
 | 2026-10-06 | Phase 0 review: resolved ambiguities and contradictions. Key changes: staff-day guard document so BR-004 holds under concurrency without relying on Redis; `ss_session` indicator cookie for frontend route protection; runtime `/api/*` proxy in `proxy.ts` (Next 16) instead of build-time rewrites; root-context Docker builds for the workspace lockfile; `directConnection=true` for host-mode Mongo; lead-time filter applied after the availability cache; walk-in `checkInNow`; 422 `ACTIVE_BOOKINGS_EXIST` + `force` semantics for holidays/time-off; new error codes; extended permission map; image upload endpoint API-027; `booking.reminder_due` event (EVT-017); outbox `PUBLISHING`/`claimedAt`; incremental seed; Sonar test exclusions; explicit commit scopes.                                                                                                    | AGENTS, 00, 01, 02, 03, 04, 05, 06, 08, 09, 10, 11, 12, 13 |
+| 2026-10-13 | FDE step 3 (spec 16): three-member MongoDB replica set with keyFile auth, anti-affinity and a PDB on a fourth kind node; nightly `mongodump` backups to SeaweedFS with an automatic restore drill and `k8s:restore`; uploads in S3-compatible object storage (`STORAGE_DRIVER=s3`, backend S3 adapter, `@aws-sdk/client-s3`); `k8s:up -- --local` inner loop; inotify pre-flight check; footer no longer prefetches `/account` (cached sign-in redirect after registering); Redis without a PDB. Free and local (no cloud account).                                                                                                                                                                                                                                                                                                                                                  | 01, 03, 05, 12, 13, 15, 16, README                         |
 | 2026-10-13 | FDE step 2 (spec 15): local kind cluster (1 control plane + 2 workers) running the GHCR images by digest; Gateway API with Envoy Gateway (ingress-nginx is retired), cert-manager local CA for HTTPS, metrics-server and a backend HPA; Mongo/Redis StatefulSets, mongo-init and migrate Jobs; `npm run k8s:up/seed/down`; opt-in `E2E_IGNORE_HTTPS_ERRORS` for e2e against the cluster.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | 11, 12, 13, 15, README                                     |
 | 2026-10-13 | FDE step 1 (spec 14): images are built once, pushed to GHCR as `sha-<commit>` with SBOM and provenance, scanned after pulling back by digest, signed keylessly with cosign, and promoted to `main` (all CI green) and to release tags (`release.yml` `publish`) without rebuilding; weekly GHCR cleanup; `npm run images:verify`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | 12, 13, 14, README                                         |
 | 2026-10-13 | Auth pages get a photo panel beside the form (scenes per page); the customer's soonest booking leads `/account` as a "next visit" card (photo, countdown, add to calendar, directions); the booking services step gets photo cards, category chips and a sticky "Your visit" panel; Open Graph share images for every page via `next/og` (`sharp` added as an explicit frontend dependency, TTF fonts under `public/fonts/og`); new `NEXT_PUBLIC_SITE_URL`.                                                                                                                                                                                                                                                                                                                                                                                                                          | 05, README                                                 |

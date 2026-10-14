@@ -43,7 +43,6 @@ spec:
         runAsNonRoot: true
         runAsUser: 1000
         runAsGroup: 1000
-        fsGroup: 1000 # volumes are made writable for group 1000
         seccompProfile: { type: RuntimeDefault }
       containers:
         - name: backend
@@ -80,29 +79,19 @@ spec:
             readOnlyRootFilesystem: true
             capabilities: { drop: [ALL] }
           volumeMounts:
-            - name: uploads
-              mountPath: /app/backend/uploads
             - name: tmp
               mountPath: /tmp
+      # No uploads volume any more: images go to object storage (16 §3.3), so api pods can run
+      # on any node, and the scheduler spreads them.
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: kubernetes.io/hostname
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: { app.kubernetes.io/name: backend }
       volumes:
-        # Node-local and ReadWriteOnce on kind: every api pod has to run on the node holding
-        # it (15 §2.12). Object storage removes that limit (step 3).
-        - name: uploads
-          persistentVolumeClaim:
-            claimName: uploads
         - name: tmp
           emptyDir: {}
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: uploads
-  namespace: straight-salon
-  labels: { app.kubernetes.io/name: backend, app.kubernetes.io/part-of: straight-salon }
-spec:
-  accessModes: [ReadWriteOnce]
-  resources:
-    requests: { storage: 1Gi }
 ---
 # Keeps average CPU near 70 % of the pods' requests by adding or removing api pods (15 §2.10).
 # Reads CPU from metrics-server.

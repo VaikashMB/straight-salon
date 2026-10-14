@@ -1,4 +1,9 @@
-# Redis with append-only persistence, one pod (15 §2.12; managed Redis vs in-cluster is step 3).
+# Redis, one pod with append-only persistence (16 §2.8). It holds the cache (harmless to lose)
+# and the BullMQ job queues (not harmless: queued jobs live only here), so it keeps its data on
+# a volume, but no failover: why is explained in 16 §2.8. Deliberately no PodDisruptionBudget:
+# for a single pod, a budget that forbids eviction would block every node drain forever
+# (upgrades, maintenance), a common anti-pattern; a drain simply restarts Redis, which keeps
+# its data.
 apiVersion: v1
 kind: Service
 metadata:
@@ -29,7 +34,7 @@ spec:
       containers:
         - name: redis
           image: redis:7.4-alpine
-          args: ['redis-server', '--appendonly', 'yes']
+          args: ['redis-server', '--appendonly', 'yes', '--appendfsync', 'everysec']
           ports:
             - name: redis
               containerPort: 6379

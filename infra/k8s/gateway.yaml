@@ -89,7 +89,8 @@ spec:
             statusCode: 301
 ---
 # The app's routes. /api/* needs no rule: the frontend forwards it to the backend itself, so
-# the API stays same-origin (no CORS). Uploaded images are served by the backend directly.
+# the API stays same-origin (no CORS). Uploaded images are read straight from object storage:
+# /uploads/<key> is the S3 path of <key> in the public bucket `uploads` (16 §3.3).
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -104,8 +105,8 @@ spec:
     - matches:
         - path: { type: PathPrefix, value: /uploads }
       backendRefs:
-        - name: backend
-          port: 4000
+        - name: seaweedfs
+          port: 8333
     - matches:
         - path: { type: PathPrefix, value: / }
       backendRefs:

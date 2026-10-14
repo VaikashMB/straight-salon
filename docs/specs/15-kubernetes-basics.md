@@ -86,7 +86,9 @@ Gateway sets `externalTrafficPolicy: Local` by default: a node only answers if a
 IP and saves a hop, and a cloud load balancer copes by health-checking nodes; `Cluster` lets any
 node accept and forward, but the app sees a node's IP instead of the visitor's. We use
 `Cluster`. The same choice shows up on every cloud cluster, usually when someone asks why the
-logs show the wrong client IPs.
+logs show the wrong client IPs. Step 3 found the sharper consequence: the API's rate limiter
+keys on the client IP, so behind `Cluster` every visitor shares the node's IP and one bucket
+(16 §2.10).
 
 ### 2.6 TLS, and why this app needs it even locally
 

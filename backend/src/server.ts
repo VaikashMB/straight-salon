@@ -17,7 +17,7 @@ import { CONSUMER_SUBSCRIPTIONS } from './shared/events/subscriptions.js';
 import { basicAuth } from './shared/http/basicAuth.js';
 import { createProcessLogger, loadEnvOrExit, registerShutdown } from './shared/lifecycle/index.js';
 import { createMetrics } from './shared/metrics/index.js';
-import { createLocalStorage } from './shared/storage/objectStorage.js';
+import { createObjectStorage } from './shared/storage/objectStorage.js';
 import { systemClock } from './shared/time/clock.js';
 
 const env = loadEnvOrExit('api');
@@ -35,6 +35,7 @@ logger.info(
     metricsEnabled: env.METRICS_ENABLED,
     migrateOnStart: env.MIGRATE_ON_START,
     cookieSecure: env.COOKIE_SECURE,
+    storageDriver: env.STORAGE_DRIVER,
     uploadsDir: env.UPLOADS_DIR,
     bullBoardEnabled: env.BULL_BOARD_ENABLED,
   },
@@ -73,7 +74,7 @@ const modulesDeps: ModulesDeps = {
   clock: systemClock,
   logger,
   metrics,
-  storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
+  storage: createObjectStorage(env),
   config: {
     ...servicesConfigFromEnv(env),
     cookies: { secure: env.COOKIE_SECURE, domain: env.COOKIE_DOMAIN },
@@ -109,7 +110,8 @@ const app = createApp({
     corsOrigins: env.CORS_ORIGINS,
     swaggerEnabled: env.SWAGGER_ENABLED,
     metricsEnabled: env.METRICS_ENABLED,
-    uploadsDir: env.UPLOADS_DIR,
+    // Only the local adapter's files are served by the API; S3 objects are read from the bucket.
+    ...(env.STORAGE_DRIVER === 'local' ? { uploadsDir: env.UPLOADS_DIR } : {}),
   },
   apiRouter: buildApiRouter(modulesDeps, services),
   ...(queues && env.BULL_BOARD_ENABLED
