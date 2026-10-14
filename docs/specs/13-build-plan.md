@@ -66,7 +66,7 @@ Decision 2026-10-09: the `v1.0.0` tag and its GitHub Release come from the manua
 These will get their own spec files later (`14-…` onwards). Listed here so v1 decisions stay compatible:
 1. **Container registry & image hygiene** — GHCR, tagging strategy, SBOM, signing. Spec: `14-container-registry.md` (drafted 2026-10-13).
 2. **Kubernetes basics** — Deployments (api, worker, frontend), Services, Ingress + TLS, ConfigMaps/Secrets, probes mapped to `/health/*`, resource requests/limits, HPA on api. Spec: `15-kubernetes-basics.md` (drafted 2026-10-13).
-3. **Stateful dependencies** — managed MongoDB Atlas & managed Redis vs. StatefulSets; backups and restore drills.
+3. **Stateful dependencies** — managed MongoDB Atlas & managed Redis vs. StatefulSets; backups and restore drills. Spec: `16-stateful-services.md` (drafted 2026-10-13; local and free, no managed services).
 4. **Helm or Kustomize** — environment overlays (dev/staging/prod).
 5. **CD & GitOps** — GitHub Actions → Argo CD; rolling, blue-green, canary releases; migrations as Jobs.
 6. **Observability stack** — OpenTelemetry tracing, Prometheus + Grafana dashboards, Loki for logs, alerts (SLOs on booking latency & error rate).

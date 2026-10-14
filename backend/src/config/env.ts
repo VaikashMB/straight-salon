@@ -91,6 +91,15 @@ const envSchema = z
         }),
       )
       .transform((value) => trimEndChar(value, '/')),
+    // Which ObjectStorage adapter (16 §3.4): local disk (Compose) or S3-compatible (Kubernetes).
+    STORAGE_DRIVER: z.enum(['local', 's3']).default('local'),
+    // S3 settings, required when STORAGE_DRIVER=s3. Endpoint unset = AWS S3 itself.
+    S3_ENDPOINT: z.url({ protocol: /^https?$/, error: 'Must be an http(s) URL' }).optional(),
+    S3_REGION: z.string().min(1).default('us-east-1'),
+    S3_BUCKET: z.string().optional(),
+    S3_ACCESS_KEY_ID: z.string().optional(),
+    S3_SECRET_ACCESS_KEY: z.string().optional(),
+    S3_FORCE_PATH_STYLE: booleanFlag(true),
     // ---- Notifications (09 §8) ----
     // Browser-facing frontend URL, used for links in emails (booking pages, password reset).
     APP_BASE_URL: z
@@ -114,6 +123,13 @@ const envSchema = z
         path: ['BCRYPT_COST'],
         message: 'Costs below 10 are only allowed when NODE_ENV=test (NFR-009 requires 12)',
       });
+    }
+    if (env.STORAGE_DRIVER === 's3') {
+      for (const key of ['S3_BUCKET', 'S3_ACCESS_KEY_ID', 'S3_SECRET_ACCESS_KEY'] as const) {
+        if (!env[key]?.trim()) {
+          ctx.addIssue({ code: 'custom', path: [key], message: 'Required when STORAGE_DRIVER=s3' });
+        }
+      }
     }
     if (env.EMAIL_PROVIDER === 'smtp' && !env.SMTP_HOST?.trim()) {
       ctx.addIssue({

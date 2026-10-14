@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { LOOKS } from '@/features/gallery/looks';
+import { isProtectedPath } from '@/lib/auth/roles';
 import { publicEnv } from '@/lib/env';
 import { Brand } from './brand';
 
@@ -99,7 +100,12 @@ export function SiteFooter() {
             <ul className="grid gap-1">
               {group.items.map((item) => (
                 <li key={item.href}>
-                  <Link href={item.href} className={linkClass}>
+                  {/* Never prefetch a signed-in area: see isProtectedPath. */}
+                  <Link
+                    href={item.href}
+                    prefetch={isProtectedPath(item.href) ? false : undefined}
+                    className={linkClass}
+                  >
                     {item.label}
                   </Link>
                 </li>

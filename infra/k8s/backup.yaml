@@ -1,0 +1,188 @@
+# Backups and the restore drill (16 §2.6, §3.5). A replica set copies mistakes to every member
+# within milliseconds; only a backup undoes them, and only a backup you have restored counts.
+#
+# mongo-backup         nightly mongodump of the app database, uploaded to s3:backups/mongo/,
+#                      keeping the newest 7. Reads from a secondary, so the primary isn't loaded.
+# mongo-restore-drill  restores the newest archive into straight_salon_restore_check and checks
+#                      it: no failed documents, every live collection present, and the
+#                      collections the app can't run without not empty. Fails loudly otherwise.
+#
+# Run either now: npm run k8s:backup / npm run k8s:restore-drill.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-backup
+  namespace: straight-salon
+  labels: { app.kubernetes.io/name: mongo-backup, app.kubernetes.io/part-of: straight-salon }
+spec:
+  schedule: '0 2 * * *' # 02:00 UTC
+  concurrencyPolicy: Forbid # never two backups at once
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        metadata:
+          labels:
+            { app.kubernetes.io/name: mongo-backup, app.kubernetes.io/part-of: straight-salon }
+        spec:
+          restartPolicy: Never
+          initContainers:
+            # 1. Dump. A logical backup: every document, compressed. Not a point-in-time snapshot
+            #    across collections (writes during the dump can land in some collections and not
+            #    others); that needs oplog-based backups (16 §8).
+            - name: dump
+              image: mongo:8.2
+              command:
+                - bash
+                - -c
+                - >
+                  mongodump --uri "$BACKUP_URI" --db straight_salon --gzip
+                  --archive=/backup/dump.archive.gz && ls -l /backup
+              env:
+                - name: BACKUP_URI
+                  valueFrom: { secretKeyRef: { name: mongo-auth, key: backup-uri } }
+              resources:
+                requests: { cpu: 100m, memory: 128Mi }
+                limits: { cpu: '1', memory: 512Mi }
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            # 2. Upload under a UTC timestamp, then keep only the newest 7.
+            - name: upload
+              image: rclone/rclone:1.75.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  name="$(date -u +%Y-%m-%dT%H%M%SZ).archive.gz"
+                  rclone copyto /backup/dump.archive.gz "s3:backups/mongo/$name"
+                  echo "uploaded backups/mongo/$name"
+                  rclone lsf s3:backups/mongo/ | sort -r | tail -n +8 | while read -r old; do
+                    rclone deletefile "s3:backups/mongo/$old" && echo "pruned $old"
+                  done
+              envFrom:
+                - secretRef: { name: rclone-s3 }
+              resources:
+                requests: { cpu: 25m, memory: 32Mi }
+                limits: { cpu: 500m, memory: 128Mi }
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          volumes:
+            - name: backup
+              emptyDir: {}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongo-restore-drill
+  namespace: straight-salon
+  labels: { app.kubernetes.io/name: mongo-restore-drill, app.kubernetes.io/part-of: straight-salon }
+spec:
+  schedule: '0 3 * * *' # 03:00 UTC, an hour after the backup
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 0 # a failed drill is the signal; don't retry it away
+      template:
+        metadata:
+          labels:
+            {
+              app.kubernetes.io/name: mongo-restore-drill,
+              app.kubernetes.io/part-of: straight-salon,
+            }
+        spec:
+          restartPolicy: Never
+          initContainers:
+            # 1. Fetch the newest backup.
+            - name: fetch
+              image: rclone/rclone:1.75.1
+              command:
+                - sh
+                - -c
+                - |
+                  set -e
+                  newest="$(rclone lsf s3:backups/mongo/ | sort -r | head -n 1)"
+                  [ -n "$newest" ] || { echo "no backups found"; exit 1; }
+                  echo "restoring $newest"
+                  rclone copyto "s3:backups/mongo/$newest" /backup/dump.archive.gz
+              envFrom:
+                - secretRef: { name: rclone-s3 }
+              resources:
+                requests: { cpu: 25m, memory: 32Mi }
+                limits: { cpu: 500m, memory: 128Mi }
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+          containers:
+            # 2. Restore into a scratch database and check it.
+            - name: restore-and-check
+              image: mongo:8.2
+              command:
+                - bash
+                - -c
+                - |
+                  set -eo pipefail
+                  mongosh --quiet "$BACKUP_URI" --eval \
+                    "db.getSiblingDB('straight_salon_restore_check').dropDatabase()" > /dev/null
+                  mongorestore --uri "$BACKUP_URI" --gzip --archive=/backup/dump.archive.gz \
+                    --nsFrom 'straight_salon.*' --nsTo 'straight_salon_restore_check.*' 2>&1 \
+                    | tee /tmp/restore.log
+                  grep -q ' 0 document(s) failed to restore' /tmp/restore.log \
+                    || { echo "DRILL FAILED: some documents did not restore"; exit 1; }
+                  mongosh --quiet "$BACKUP_URI" /scripts/check.js
+              env:
+                - name: BACKUP_URI
+                  valueFrom: { secretKeyRef: { name: mongo-auth, key: backup-uri } }
+              resources:
+                requests: { cpu: 100m, memory: 256Mi }
+                limits: { cpu: '1', memory: 1Gi }
+              volumeMounts:
+                - name: backup
+                  mountPath: /backup
+                - name: scripts
+                  mountPath: /scripts
+          volumes:
+            - name: backup
+              emptyDir: {}
+            - name: scripts
+              configMap:
+                name: restore-drill
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: restore-drill
+  namespace: straight-salon
+data:
+  # Compares the restored copy with the live database. Counts can't be compared one to one (the
+  # live data keeps changing after the backup), so it checks what a good backup must give you:
+  # every live collection exists in the copy, and the app's essential collections aren't empty.
+  check.js: |
+    const live = db.getSiblingDB('straight_salon');
+    const copy = db.getSiblingDB('straight_salon_restore_check');
+    const essential = ['users', 'services', 'service_categories', 'staff', 'settings'];
+    const restored = new Set(copy.getCollectionNames());
+    let failed = false;
+    // The essential ones are checked even if they're gone from the live database too: a backup
+    // taken after someone dropped `users` must fail the drill, not pass it.
+    const names = new Set([...live.getCollectionNames().filter((n) => !n.startsWith('system.')), ...essential]);
+    for (const name of [...names].sort()) {
+      const liveCount = live.getCollection(name).estimatedDocumentCount();
+      const copyCount = restored.has(name) ? copy.getCollection(name).countDocuments() : -1;
+      const problem =
+        copyCount < 0 ? 'MISSING' : essential.includes(name) && copyCount === 0 ? 'EMPTY' : '';
+      if (problem) failed = true;
+      print(`${name.padEnd(24)} live ${String(liveCount).padStart(6)}  restored ${String(copyCount).padStart(6)}  ${problem}`);
+    }
+    if (failed) {
+      print('DRILL FAILED: the newest backup would not give you a working database');
+      quit(1);
+    }
+    print('DRILL PASSED: the newest backup restores into a usable database');

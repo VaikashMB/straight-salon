@@ -49,6 +49,9 @@ describe('parseEnv', () => {
       RATE_LIMIT_MAX: 300,
       MIGRATE_ON_START: true,
       UPLOADS_DIR: 'uploads',
+      STORAGE_DRIVER: 'local',
+      S3_REGION: 'us-east-1',
+      S3_FORCE_PATH_STYLE: true,
       EMAIL_PROVIDER: 'mock',
       SMS_PROVIDER: 'mock',
       EMAIL_FROM: 'Straight Salon <no-reply@straightsalon.local>',
@@ -110,6 +113,28 @@ describe('parseEnv', () => {
       { path: 'UPLOADS_PUBLIC_URL', message: 'Required' },
       { path: 'APP_BASE_URL', message: 'Required' },
     ]);
+  });
+
+  it('storage: the S3 driver needs a bucket and credentials (16 §3.4)', () => {
+    expect(issuesOf({ ...required, STORAGE_DRIVER: 's3' })).toEqual([
+      { path: 'S3_BUCKET', message: 'Required when STORAGE_DRIVER=s3' },
+      { path: 'S3_ACCESS_KEY_ID', message: 'Required when STORAGE_DRIVER=s3' },
+      { path: 'S3_SECRET_ACCESS_KEY', message: 'Required when STORAGE_DRIVER=s3' },
+    ]);
+    expect(issuesOf({ ...required, S3_ENDPOINT: 'ftp://x' })).toEqual([
+      { path: 'S3_ENDPOINT', message: 'Must be an http(s) URL' },
+    ]);
+    expect(
+      parseEnv({
+        ...required,
+        STORAGE_DRIVER: 's3',
+        S3_ENDPOINT: 'http://seaweedfs-s3:8333',
+        S3_BUCKET: 'uploads',
+        S3_ACCESS_KEY_ID: 'id',
+        S3_SECRET_ACCESS_KEY: 'secret',
+        S3_FORCE_PATH_STYLE: 'false',
+      }),
+    ).toMatchObject({ STORAGE_DRIVER: 's3', S3_BUCKET: 'uploads', S3_FORCE_PATH_STYLE: false });
   });
 
   it('notifications: SMTP needs a host; links use APP_BASE_URL without a trailing slash', () => {

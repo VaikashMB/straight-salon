@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { isProtectedPath } from '@/lib/auth/roles';
 
 // Next 16 proxy (formerly middleware), 05 §5:
 // 1. /api/* is forwarded to the backend at request time (API_INTERNAL_URL is read per request,
@@ -8,7 +9,6 @@ import { NextResponse, type NextRequest } from 'next/server';
 //    (06 §1), else sign in first. Roles are checked in the area layouts; the API enforces them.
 
 export const SESSION_COOKIE = 'ss_session';
-const PROTECTED = /^\/(account|staff|admin)(\/|$)/;
 
 export function proxy(request: NextRequest): NextResponse {
   const { pathname, search } = request.nextUrl;
@@ -30,7 +30,7 @@ export function proxy(request: NextRequest): NextResponse {
     return NextResponse.rewrite(new URL(`${pathname}${search}`, backend));
   }
 
-  if (PROTECTED.test(pathname) && !request.cookies.has(SESSION_COOKIE)) {
+  if (isProtectedPath(pathname) && !request.cookies.has(SESSION_COOKIE)) {
     const login = new URL('/login', request.url);
     login.searchParams.set('next', `${pathname}${search}`);
     return NextResponse.redirect(login);

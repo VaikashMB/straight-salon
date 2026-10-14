@@ -72,7 +72,18 @@ jobs:
         with:
           path: ~/.cache/mongodb-binaries
           key: mongodb-binaries-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+      # S3 adapter integration test (16 §3.4). A step, not a service container: services can't
+      # take the arguments SeaweedFS needs.
+      - name: Start SeaweedFS (S3)
+        run: |
+          printf '%s' '{"identities":[{"name":"ci","credentials":[{"accessKey":"testkey","secretKey":"testsecret"}],"actions":["Admin","Read","Write","List"]},{"name":"anonymous","actions":["Read:uploads"]}]}' > "$RUNNER_TEMP/s3.json"
+          docker run -d --name seaweedfs -p 127.0.0.1:8333:8333 -v "$RUNNER_TEMP/s3.json:/etc/s3.json:ro" \
+            chrislusf/seaweedfs:4.48 server -s3 -s3.config=/etc/s3.json -dir=/data
+          for _ in $(seq 1 60); do curl -s -o /dev/null http://127.0.0.1:8333/ && exit 0; sleep 1; done
+          docker logs seaweedfs; exit 1
       - run: npm run test:coverage -w backend
+        env:
+          S3_TEST_ENDPOINT: http://127.0.0.1:8333
       - if: always()
         uses: actions/upload-artifact@v7
         with:

@@ -2,7 +2,7 @@ import { buildServices, servicesConfigFromEnv } from '../modules/index.js';
 import { closeRedis, createRedisClient } from '../shared/cache/redis.js';
 import { createProcessLogger, loadEnvOrExit } from '../shared/lifecycle/index.js';
 import { createMetrics } from '../shared/metrics/index.js';
-import { createLocalStorage } from '../shared/storage/objectStorage.js';
+import { createObjectStorage } from '../shared/storage/objectStorage.js';
 import { systemClock } from '../shared/time/clock.js';
 import { connectMongo, disconnectMongo } from './connect.js';
 import { parseRebuildArgs, rebuildStats } from './statsRebuild.js';
@@ -24,7 +24,7 @@ try {
     clock: systemClock,
     logger,
     metrics: createMetrics({ defaultMetrics: false }),
-    storage: createLocalStorage({ dir: env.UPLOADS_DIR, publicUrl: env.UPLOADS_PUBLIC_URL }),
+    storage: createObjectStorage(env),
     config: servicesConfigFromEnv(env),
   });
   const result = await rebuildStats(services.reports, range);

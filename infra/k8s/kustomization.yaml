@@ -12,6 +12,8 @@ resources:
   - mongo.yaml
   - redis.yaml
   - mailpit.yaml
+  - seaweedfs.yaml
+  - backup.yaml
   - migrate.yaml
   - backend.yaml
   - worker.yaml
