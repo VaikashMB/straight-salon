@@ -62,14 +62,18 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # to find the newest commit that built images
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # Release only what passed CI: the commit's sha-<commit> image must be the one CI's
-      # `promote` job moved `main` to. If CI is still running (or failed), stop here.
+      # Release only what passed CI: the build's sha-<commit> image must be the one CI's
+      # `promote` job moved `main` to. If CI is still running (or failed), stop here. The build
+      # is the newest commit that changed anything but the overlays: commits that only deploy
+      # (CI's deploy-dev, promotions) build nothing (18 §3.7).
       - name: Find the tested images and the release tags
         id: plan
         env:
@@ -78,9 +82,11 @@ jobs:
           set -euo pipefail
           ns="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
           digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
+          build="$(git log -1 --format=%H -- . ':(exclude)infra/k8s/overlays')"
+          echo "Releasing the images built from ${build}"
           for app in backend frontend; do
             repo="${ns}/straight-salon-${app}"
-            built="$(digest "${repo}:sha-${GITHUB_SHA::7}")"
+            built="$(digest "${repo}:sha-${build::7}")"
             main="$(digest "${repo}:main")"
             if [ "$built" != "$main" ]; then
               echo "::error::${repo}:main is not this commit's image yet. Wait for CI on main to finish (and pass), then publish by re-running this job."

@@ -111,6 +111,20 @@ spec:
           from: Selector
           selector:
             matchLabels: { kubernetes.io/metadata.name: straight-salon-dev }
+    # Argo CD's web UI (18 §3.2). Not an environment: the platform's own tool, so only routes
+    # from the argocd namespace may use this name.
+    - name: https-argocd
+      protocol: HTTPS
+      port: 443
+      hostname: argocd.salon.localhost
+      tls:
+        mode: Terminate
+        certificateRefs: [{ name: salon-tls }]
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels: { kubernetes.io/metadata.name: argocd }
 ---
 # Plain HTTP only redirects to HTTPS, for every hostname.
 apiVersion: gateway.networking.k8s.io/v1

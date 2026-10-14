@@ -37,6 +37,7 @@
     "audit": "node scripts/audit.mjs",
     "images:verify": "node scripts/verify-images.mjs",
     "k8s:up": "node scripts/k8s.mjs up",
+    "k8s:pin": "node scripts/k8s.mjs pin",
     "k8s:down": "node scripts/k8s.mjs down",
     "k8s:seed": "node scripts/k8s.mjs seed",
     "k8s:backup": "node scripts/k8s.mjs backup",

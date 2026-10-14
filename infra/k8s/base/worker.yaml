@@ -1,11 +1,16 @@
 # Queue consumers, scheduled jobs and the outbox relay (RUN_RELAY_IN_WORKER): the backend image
 # with another command (01 §1). One replica: several relays at once aren't designed for (15 §3.2).
 # No HTTP server, so no HTTP probes; Kubernetes restarts it if the process exits (15 §2.8).
+#
+# A plain Deployment, not a Rollout: it serves no traffic, so there's nothing to split or
+# switch. Recreate is its release strategy (18 §2.5).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: worker
   labels: { app.kubernetes.io/name: worker, app.kubernetes.io/part-of: straight-salon }
+  annotations:
+    argocd.argoproj.io/sync-wave: '3' # after the migration, like the api
 spec:
   replicas: 1
   # Recreate, not RollingUpdate: never two workers (two relays) at the same time.

@@ -1,0 +1,14 @@
+# Where Argo CD may fetch from without asking. Our git repository is public, so it needs no
+# entry (and no credentials). Envoy Gateway publishes its chart only as an OCI artifact on
+# Docker Hub, which Argo CD reads as a Helm repository once it's declared here with enableOCI.
+# A Secret because that's where Argo CD looks for repositories; nothing in it is secret.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-envoyproxy-helm
+  labels: { argocd.argoproj.io/secret-type: repository }
+stringData:
+  type: helm
+  name: envoyproxy
+  url: docker.io/envoyproxy
+  enableOCI: 'true'

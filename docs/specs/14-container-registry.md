@@ -82,6 +82,7 @@ Every published image gets several tags that point at the same digest:
 | `1.2.3` | promoted from the released commit's image | The exact release. Never moves (semver tags are never re-pushed). Kept forever. |
 | `1.2`, `1` | same | "Latest patch of 1.2", "latest 1.x". Move on each release in that line. |
 | `latest` | same | Only for people trying the app by hand. **Never used by our deployments.** |
+| `dev`, `staging`, `prod` | when that environment's overlay pins the digest on `main` (18 §3.7) | "What this environment runs." Readable by people; deployments still pin the digest. Keeps the image from the 30-day cleanup while it's deployed. Moves on every deploy. |
 
 Pull requests build and scan images but do not push: code from a PR has not been reviewed, and
 a PR from a fork must never get write access to the registry.

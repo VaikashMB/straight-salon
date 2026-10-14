@@ -43,7 +43,7 @@ Scripts whose implementation belonged to a later phase existed from Phase 0 as s
 
 ## 3. CI pipeline (GitHub Actions)
 
-`.github/workflows/ci.yml` — triggers: pull requests and pushes to `main`.
+`.github/workflows/ci.yml` — triggers: pull requests and pushes to `main`, except changes to nothing but `infra/k8s/overlays/**` (deployments, checked by `deployments.yml`, 18 §3.7).
 
 ```
 jobs:
@@ -65,7 +65,10 @@ jobs:
                  → docker compose up, seed, Playwright, upload report/videos on failure
   promote      : main only; needs every job above → move the `main` tag to the tested
                  digests (14 §3.2)
+  deploy-dev   : main only; needs promote → k8s:pin the digests into overlays/dev, k8s:check,
+                 commit to main (Argo CD deploys it), tag the digests `dev` (18 §3.7)
 ```
+`.github/workflows/deployments.yml` (18 §3.7) — on changes to `infra/k8s/**`: `k8s:check`; on `main` also tags what staging and prod pin (`staging`, `prod`).
 Implementation notes (Phase 11, decision 2026-10-08):
 - `setup` installs once and caches `node_modules` (all workspaces) keyed by `.nvmrc` + lockfile; the other jobs restore it through the composite action `.github/actions/setup-deps` (`npm ci` only on a miss, `HUSKY=0`).
 - `security` runs `npm run audit` (high and above, with the reviewed allowlist, 10 §6) and gitleaks `v8.30.1` (Docker image) over the full history, with accepted findings in `.gitleaksignore`.
@@ -77,13 +80,13 @@ Implementation notes (Phase 11, decision 2026-10-08):
 - Repository settings that cannot live in the repo (set them once in GitHub): branch protection for `main` as below, with the CI jobs as required checks; the `SONAR_TOKEN` secret and `SONAR_ORGANIZATION` variable; an `e2e` label.
 
 Rules:
-- Branch protection on `main`: all jobs green, 1 review (even if self-review while learning), linear history, squash merge.
+- Branch protection on `main`: all jobs green, 1 review (even if self-review while learning), linear history, squash merge. Exception (18 §3.7): CI's `deploy-dev` job pushes its deploy commit to `main` directly, so GitHub Actions must be allowed to bypass the rule (or the job changed to open and auto-merge a pull request).
 - Concurrency group per branch with cancel-in-progress.
 - Secrets: `SONAR_TOKEN`, `SONAR_HOST_URL` (GitHub Actions secrets). No other secrets needed for CI (test env uses generated values; GHCR pushes use the job's `GITHUB_TOKEN` and signing is keyless, 14 §3.3).
 - Status badges in README: CI, coverage, quality gate.
 
 ### Reserved for the deployment phase
-Running them on Kubernetes locally is FDE step 2 (`15-kubernetes-basics.md`, `npm run k8s:up`); dev, staging and prod overlays with promotion by digest are step 4 (`17-environments-kustomize.md`, `npm run k8s:promote`). Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Still to come, `cd.yml`: on tag/release → deploy to staging (Kubernetes via Helm/Kustomize or Argo CD) → smoke tests → manual approval → production. The CI above is structured so that adding CD is just appending jobs after `docker-build`.
+Running them on Kubernetes locally is FDE step 2 (`15-kubernetes-basics.md`, `npm run k8s:up`); dev, staging and prod overlays with promotion by digest are step 4 (`17-environments-kustomize.md`, `npm run k8s:promote`). Publishing images is done (FDE step 1, `14-container-registry.md`): `ci.yml` pushes and promotes, `release.yml` adds release tags, `ghcr-cleanup.yml` prunes. Continuous delivery is FDE step 5 (`18-cd-gitops.md`): Argo CD in the cluster deploys whatever `main` says. CI's `deploy-dev` job commits every green build's digests into `infra/k8s/overlays/dev` (dev is continuous deployment); staging and prod move by a reviewed promotion commit. Commits that change only overlays skip CI (they build nothing) and run `deployments.yml` instead, which checks the manifests and moves the `dev`/`staging`/`prod` image tags. CI never connects to the cluster (pull-based, 18 §2.3).
 
 ## 4. In-app automation summary
 Specified in 09 §7: reminders (24 h, 2 h), auto no-show, outbox cleanup (Phase 6), daily stats reconcile (Phase 7). Plus:

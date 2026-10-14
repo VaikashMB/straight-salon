@@ -276,7 +276,9 @@ non-root user, `readOnlyRootFilesystem` where the image allows it.
   `kustomization.yaml`. `npm run k8s:up -- --latest` first moves them to what `main` points at
   (signature checked with cosign when installed) and rewrites the file, so the change shows up
   in `git diff`: the deployed version is a decision recorded in git, the core idea of GitOps
-  (step 5). `npm run k8s:down` deletes the cluster.
+  (step 5). `npm run k8s:down` deletes the cluster. *(Since step 5, 18 §3.6: Argo CD applies
+  everything from git, the add-ons included; `k8s:up` installs Argo CD and the secrets and waits.
+  `--latest` is gone: CI pins every green build into dev.)*
 - `npm run k8s:seed`: demo data. The production image refuses to seed (03 §3), so like the CI
   e2e job it runs from your machine: `kubectl port-forward` to `mongo-0` (local port 27018) and
   Redis (6380), then `npm run db:seed` with the cluster's Secret values (the outbox key must be

@@ -1,0 +1,38 @@
+# Argo CD's main settings. Only the keys we change: the release manifest ships this ConfigMap
+# empty, and server-side apply merges our keys into it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+  labels: { app.kubernetes.io/name: argocd-cm, app.kubernetes.io/part-of: argocd }
+data:
+  # The address of the UI, for links Argo CD prints.
+  url: https://argocd.salon.localhost
+  # How often Argo CD asks GitHub for new commits (default 120 s). GitHub can't call a cluster
+  # on a laptop (no webhook), so polling is how changes arrive (18 §2.3). 60 s keeps the
+  # exercises quick; a busy installation with many apps would rather use a webhook.
+  timeout.reconciliation: 60s
+  # The base reads infra/docker/mongo-init.js from outside its own folder (base/kustomization.yaml).
+  # Kustomize refuses that by default; this is the same flag scripts/k8s-manifests.mjs passes.
+  kustomize.buildOptions: --load-restrictor LoadRestrictionsNone
+  # Sync waves wait for each wave to be healthy before the next. For Applications (app of
+  # apps: the add-ons before the platform before the environments) that only works if Argo CD
+  # knows when an Application is healthy. Since v1.8 it doesn't by default. Its documentation's
+  # check ("as healthy as what it deployed") calls a new, empty Application Healthy before its
+  # first sync, so the next wave started before the CRDs it needs existed (18 §2.10). Here an
+  # Application is healthy only once it's also Synced.
+  resource.customizations.health.argoproj.io_Application: |
+    hs = {}
+    hs.status = "Progressing"
+    hs.message = ""
+    if obj.status ~= nil and obj.status.health ~= nil then
+      hs.status = obj.status.health.status
+      if obj.status.health.message ~= nil then
+        hs.message = obj.status.health.message
+      end
+      if hs.status == "Healthy" and (obj.status.sync == nil or obj.status.sync.status ~= "Synced") then
+        hs.status = "Progressing"
+        hs.message = "not synced yet"
+      end
+    end
+    return hs

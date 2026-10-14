@@ -78,12 +78,14 @@ straight-salon/
 │   └── package.json
 ├── infra/
 │   ├── docker/                 # mongo init (replica set), sonar config
-│   └── k8s/                    # empty in v1; FDE steps 2–4 (15, 16, 17 §3.1): kind-config.yaml,
+│   └── k8s/                    # empty in v1; FDE steps 2–5 (15, 16, 17 §3.1, 18 §3.1): kind-config.yaml,
+│       ├── argocd/             #   Argo CD's settings and projects
+│       ├── gitops/             #   root Application + the Applications it deploys
 │       ├── platform/           #   shared Gateway + certificates
 │       ├── base/               #   the app as every environment runs it
 │       └── overlays/           #   dev / staging / prod
 ├── scripts/                    # repo tooling (git-hook helpers, env/contract/audit/sonar/k8s scripts)
-├── .github/                    # workflows (CI, release), setup-deps action, PR/issue templates, CODEOWNERS, dependabot
+├── .github/                    # workflows (CI, deployments, release, GHCR cleanup), setup-deps action, PR/issue templates, CODEOWNERS, dependabot
 ├── .husky/                     # git hooks (12 §1)
 ├── docker-compose.yml          # base stack (production-style images)
 ├── docker-compose.override.yml # dev overrides, auto-loaded: dev targets, hot reload, inspector

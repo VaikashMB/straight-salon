@@ -70,11 +70,16 @@ spec:
 ---
 # Creates the two buckets: `uploads` (public read, set in s3.json) and `backups` (private).
 # rclone reads its whole configuration from RCLONE_CONFIG_S3_* variables, so no config file.
+# A sync hook like mongo-init (18 §2.6): idempotent, re-run on every sync, before the app starts.
 apiVersion: batch/v1
 kind: Job
 metadata:
   name: buckets
   labels: { app.kubernetes.io/name: buckets, app.kubernetes.io/part-of: straight-salon }
+  annotations:
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: '1'
 spec:
   backoffLimit: 20
   template:

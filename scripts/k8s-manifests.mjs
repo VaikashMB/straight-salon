@@ -8,6 +8,10 @@ import { parseAllDocuments } from 'yaml';
 
 export const K8S_DIR = 'infra/k8s';
 export const PLATFORM_DIR = `${K8S_DIR}/platform`;
+// GitOps (18 §3.1): Argo CD's own settings, and the Applications the root app deploys.
+export const ARGOCD_DIR = `${K8S_DIR}/argocd`;
+export const APPS_DIR = `${K8S_DIR}/gitops/apps`;
+export const ROOT_APP = `${K8S_DIR}/gitops/root.yaml`;
 // Also the promotion order: a build moves dev → staging → prod, one step at a time.
 export const ENVIRONMENTS = ['dev', 'staging', 'prod'];
 export const OUR_IMAGES = ['backend', 'frontend'].map(
@@ -23,8 +27,10 @@ export function overlaysOnDisk() {
     .map((entry) => entry.name);
 }
 
+// The base reads infra/docker/mongo-init.js, outside its folder; Kustomize allows that only with
+// this flag. Argo CD passes the same one (argocd/argocd-cm.yaml), so both render alike.
 export function render(dir) {
-  return execFileSync('kubectl', ['kustomize', dir], {
+  return execFileSync('kubectl', ['kustomize', '--load-restrictor', 'LoadRestrictionsNone', dir], {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'inherit'],
   });
@@ -44,16 +50,22 @@ export const find = (objects, kind, name) =>
       (name instanceof RegExp ? name.test(o.metadata.name) : o.metadata.name === name),
   );
 
-// Every container (init containers too) of every workload kind we use.
+// Every container (init containers too) of every workload kind we use, the Jobs an
+// AnalysisTemplate starts included.
 export function containers(objects) {
   return objects.flatMap((o) => {
-    const pod =
-      o.kind === 'CronJob' ? o.spec.jobTemplate.spec.template.spec : o.spec?.template?.spec;
-    if (!pod) return [];
-    return [...(pod.initContainers ?? []), ...(pod.containers ?? [])].map((c) => ({
-      owner: `${o.kind}/${o.metadata.name}`,
-      ...c,
-    }));
+    const pods =
+      o.kind === 'CronJob'
+        ? [o.spec.jobTemplate.spec.template.spec]
+        : o.kind === 'AnalysisTemplate'
+          ? o.spec.metrics.map((m) => m.provider?.job?.spec.template.spec).filter(Boolean)
+          : [o.spec?.template?.spec].filter(Boolean);
+    return pods.flatMap((pod) =>
+      [...(pod.initContainers ?? []), ...(pod.containers ?? [])].map((c) => ({
+        owner: `${o.kind}/${o.metadata.name}`,
+        ...c,
+      })),
+    );
   });
 }
 

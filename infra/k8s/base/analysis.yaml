@@ -1,0 +1,53 @@
+# The check a release must pass before it gets all the traffic (18 §2.5, §3.5), used by both
+# Rollouts: the api's canary asks the canary pods, the frontend's blue-green asks the preview
+# (new) pods. A Job in the environment's namespace, so short Service names resolve.
+#
+# Six rounds, five seconds apart: every URL must answer 2xx each time. One failure fails the
+# analysis, and Argo Rollouts aborts the release: all traffic back to the stable version, the
+# new pods scaled away. Nothing about the old version changed, so the abort is instant.
+#
+# Without metrics (step 6 adds Prometheus) this is a smoke test, not a comparison: it catches a
+# release that can't start, can't reach its database or answers errors, not one that is slower
+# or fails 1 % of requests. With Prometheus, the same template gets a metric like "error rate of
+# the canary below 1 %".
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: http-check
+  labels: { app.kubernetes.io/part-of: straight-salon }
+spec:
+  args:
+    - name: urls # space-separated
+  metrics:
+    - name: http-check
+      provider:
+        job:
+          spec:
+            backoffLimit: 0
+            ttlSecondsAfterFinished: 3600
+            template:
+              spec:
+                restartPolicy: Never
+                securityContext:
+                  runAsNonRoot: true
+                  runAsUser: 100
+                  seccompProfile: { type: RuntimeDefault }
+                containers:
+                  - name: check
+                    image: curlimages/curl:8.22.0
+                    command: [sh, -c]
+                    args:
+                      - |
+                        for round in 1 2 3 4 5 6; do
+                          for url in {{args.urls}}; do
+                            curl -fsS --max-time 5 -o /dev/null -w "round $round: %{http_code} $url\n" "$url" || exit 1
+                          done
+                          sleep 5
+                        done
+                    resources:
+                      requests: { cpu: 10m, memory: 16Mi }
+                      limits: { cpu: 100m, memory: 64Mi }
+                    securityContext:
+                      allowPrivilegeEscalation: false
+                      readOnlyRootFilesystem: true
+                      capabilities: { drop: [ALL] }

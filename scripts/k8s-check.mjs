@@ -11,13 +11,23 @@
 //   - an autoscaled Deployment doesn't also set `replicas`
 //   - staging and prod are identical apart from namespace, hostname and image digests
 //     (environment parity, 17 §2.4)
+//   - every ConfigMap a workload refers to exists (a generated name not rewritten in a Rollout,
+//     18 §2.10), every Job is an Argo CD hook, every Rollout's Services and analysis exist
+//   - GitOps (18 §3.8): every Application is allowed by its project, follows main (or pins a
+//     chart version), has no finalizer; one per environment at its overlay; staging and prod
+//     sync alike; every HTTPS hostname is on the certificate
+import { existsSync, readFileSync } from 'node:fs';
 import {
+  APPS_DIR,
+  ARGOCD_DIR,
   ENVIRONMENTS,
   OUR_IMAGES,
   PLATFORM_DIR,
+  ROOT_APP,
   containers,
   describe,
   find,
+  overlayDir,
   overlaysOnDisk,
   parse,
   render,
@@ -119,6 +129,79 @@ function checkEnvironment(e, platform) {
       );
   }
 
+  // References: a generated ConfigMap's name has a hash, and Kustomize rewrites references to
+  // it only where it knows to look (18 §2.10). A reference it missed names nothing.
+  const configMaps = new Set(
+    objects.filter((o) => o.kind === 'ConfigMap').map((o) => o.metadata.name),
+  );
+  for (const o of objects) {
+    const pod =
+      o.kind === 'CronJob' ? o.spec.jobTemplate.spec.template.spec : o.spec?.template?.spec;
+    if (!pod) continue;
+    const refs = [
+      ...(pod.volumes ?? []).map((v) => v.configMap?.name),
+      ...[...(pod.initContainers ?? []), ...(pod.containers ?? [])].flatMap((c) => [
+        ...(c.envFrom ?? []).map((f) => f.configMapRef?.name),
+        ...(c.env ?? []).map((v) => v.valueFrom?.configMapKeyRef?.name),
+      ]),
+    ].filter(Boolean);
+    for (const ref of refs)
+      if (!configMaps.has(ref))
+        problem(
+          where,
+          `${o.kind}/${o.metadata.name} refers to ConfigMap ${ref}, which isn't rendered`,
+        );
+  }
+
+  // Jobs: a Job's pod template can't change, so Argo CD must replace each one (a hook with
+  // BeforeHookCreation), never update it in place (18 §2.6).
+  for (const job of objects.filter((o) => o.kind === 'Job')) {
+    const a = job.metadata.annotations ?? {};
+    if (
+      !a['argocd.argoproj.io/hook'] ||
+      a['argocd.argoproj.io/hook-delete-policy'] !== 'BeforeHookCreation'
+    )
+      problem(
+        where,
+        `Job/${job.metadata.name} must be an Argo CD hook with hook-delete-policy BeforeHookCreation`,
+      );
+  }
+
+  // Rollouts: the Services they switch and the analyses they run must exist.
+  const services = new Set(objects.filter((o) => o.kind === 'Service').map((o) => o.metadata.name));
+  const templates = new Set(
+    objects.filter((o) => o.kind === 'AnalysisTemplate').map((o) => o.metadata.name),
+  );
+  for (const rollout of objects.filter((o) => o.kind === 'Rollout')) {
+    const { canary, blueGreen } = rollout.spec.strategy;
+    const strategy = canary ?? blueGreen;
+    const named = [
+      canary?.canaryService,
+      canary?.stableService,
+      blueGreen?.activeService,
+      blueGreen?.previewService,
+    ].filter(Boolean);
+    for (const service of named)
+      if (!services.has(service))
+        problem(
+          where,
+          `Rollout/${rollout.metadata.name} uses Service ${service}, which doesn't exist`,
+        );
+    const analyses = [
+      ...(canary?.steps ?? []).flatMap((step) => step.analysis?.templates ?? []),
+      ...(blueGreen?.prePromotionAnalysis?.templates ?? []),
+      ...(blueGreen?.postPromotionAnalysis?.templates ?? []),
+    ];
+    for (const t of analyses)
+      if (!templates.has(t.templateName))
+        problem(
+          where,
+          `Rollout/${rollout.metadata.name} runs analysis ${t.templateName}, which doesn't exist`,
+        );
+    if (!strategy)
+      problem(where, `Rollout/${rollout.metadata.name} has no canary or blueGreen strategy`);
+  }
+
   // Autoscaling
   for (const hpa of objects.filter((o) => o.kind === 'HorizontalPodAutoscaler')) {
     const target = find(objects, hpa.spec.scaleTargetRef.kind, hpa.spec.scaleTargetRef.name);
@@ -140,7 +223,7 @@ function normalise(e) {
     .replace(new RegExp(`\\b${escape(e.host)}\\b`, 'g'), '<host>')
     .replace(new RegExp(`(namespace|name): ${escape(e.namespace)}$`, 'gm'), '$1: <namespace>')
     .replace(/@sha256:[0-9a-f]{64}/g, '@<digest>')
-    .replace(/backend-config-[a-z0-9]{10}\b/g, 'backend-config-<hash>');
+    .replace(/(backend-config|mongo-init)-[a-z0-9]{10}\b/g, '$1-<hash>');
 }
 
 function checkParity(staging, prod) {
@@ -152,6 +235,88 @@ function checkParity(staging, prod) {
       differences.push(`line ${i + 1}: staging "${a[i] ?? ''}" / prod "${b[i] ?? ''}"`);
   }
   for (const d of differences) problem('staging vs prod', d);
+}
+
+// GitOps (18 §3.8): what Argo CD is told to deploy, checked like the manifests themselves.
+function checkGitOps(environments, platform) {
+  const where = 'gitops';
+  const settings = parse(render(ARGOCD_DIR));
+  const [root] = parse(readFileSync(ROOT_APP, 'utf8'));
+  const apps = [root, ...parse(render(APPS_DIR))];
+  const projects = Object.fromEntries(
+    settings.filter((o) => o.kind === 'AppProject').map((p) => [p.metadata.name, p.spec]),
+  );
+  const ourRepo = root.spec.source.repoURL;
+
+  for (const app of apps) {
+    const name = `Application/${app.metadata.name}`;
+    const { source, destination, project } = app.spec;
+    const allowed = projects[project];
+    if (!allowed) problem(where, `${name} uses project ${project}, which argocd/ doesn't define`);
+    else {
+      if (!allowed.sourceRepos.includes(source.repoURL))
+        problem(where, `${name} reads ${source.repoURL}, which project ${project} doesn't allow`);
+      if (!allowed.destinations.some((d) => d.namespace === destination.namespace))
+        problem(
+          where,
+          `${name} deploys to ${destination.namespace}, which project ${project} doesn't allow`,
+        );
+    }
+    if (app.metadata.finalizers?.length)
+      problem(where, `${name} has finalizers: deleting it would delete what it deployed`);
+    if (source.repoURL === ourRepo) {
+      if (source.targetRevision !== 'main')
+        problem(where, `${name} follows ${source.targetRevision}; everything follows main`);
+      if (!existsSync(source.path))
+        problem(where, `${name} deploys ${source.path}, which doesn't exist`);
+      if (app !== root && app.metadata.labels?.['straight-salon/source'] !== 'git')
+        problem(
+          where,
+          `${name} needs the label straight-salon/source: git (k8s:up --revision patches by it)`,
+        );
+    } else if (!source.chart || !/^v?\d+\.\d+\.\d+$/.test(source.targetRevision ?? ''))
+      problem(where, `${name}: a chart from another repository must pin an exact version`);
+  }
+
+  // One Application per environment, at its overlay, in its namespace.
+  for (const e of environments) {
+    const app = apps.find((a) => a.metadata.name === e.env);
+    if (!app) {
+      problem(where, `no Application for ${e.env}`);
+      continue;
+    }
+    if (app.spec.source.path !== overlayDir(e.env))
+      problem(
+        where,
+        `Application/${e.env} deploys ${app.spec.source.path}, not ${overlayDir(e.env)}`,
+      );
+    if (app.spec.destination.namespace !== e.namespace)
+      problem(
+        where,
+        `Application/${e.env} deploys to ${app.spec.destination.namespace}, its overlay to ${e.namespace}`,
+      );
+  }
+  // Delivery parity: staging is released the way prod is (17 §2.4), and both self-heal.
+  const policy = (env) =>
+    JSON.stringify(apps.find((a) => a.metadata.name === env)?.spec.syncPolicy);
+  if (policy('staging') !== policy('prod'))
+    problem(where, 'staging and prod must have the same syncPolicy');
+  const prod = apps.find((a) => a.metadata.name === 'prod');
+  if (!prod?.spec.syncPolicy?.automated?.selfHeal || !prod.spec.syncPolicy.automated.prune)
+    problem(where, 'prod must self-heal and prune: git is the truth there');
+
+  // Every HTTPS listener's hostname is on the certificate; Kustomize renders as Argo CD does.
+  const certificate = find(platform, 'Certificate', 'salon-tls');
+  for (const l of find(platform, 'Gateway', 'salon').spec.listeners)
+    if (l.protocol === 'HTTPS' && !certificate.spec.dnsNames.includes(l.hostname))
+      problem(where, `listener ${l.name}: the certificate doesn't cover ${l.hostname}`);
+  const cm = find(settings, 'ConfigMap', 'argocd-cm');
+  if (!cm?.data?.['kustomize.buildOptions']?.includes('LoadRestrictionsNone'))
+    problem(
+      where,
+      'argocd-cm must render with --load-restrictor LoadRestrictionsNone, like k8s-manifests.mjs',
+    );
+  return apps.length;
 }
 
 const onDisk = overlaysOnDisk().sort();
@@ -172,6 +337,7 @@ checkParity(
   environments.find((e) => e.env === 'staging'),
   environments.find((e) => e.env === 'prod'),
 );
+const applications = checkGitOps(environments, platform);
 
 for (const e of environments)
   process.stdout.write(
@@ -184,5 +350,5 @@ if (problems.length) {
   process.exit(1);
 }
 process.stdout.write(
-  'k8s:check: platform and every environment are consistent; staging matches prod\n',
+  `k8s:check: platform, ${applications} Argo CD Applications and every environment are consistent; staging matches prod\n`,
 );

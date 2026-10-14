@@ -1,7 +1,8 @@
-# One api pod and one frontend pod. Without the autoscaler (deleted below), the Deployment's
-# own `replicas` decides again.
-apiVersion: apps/v1
-kind: Deployment
+# One api pod and one frontend pod. Without the autoscaler (deleted below), the Rollout's
+# own `replicas` decides again. The release strategies stay: a canary of one pod next to one,
+# a blue-green of one and one.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: backend
 spec:
@@ -13,8 +14,8 @@ kind: HorizontalPodAutoscaler
 metadata:
   name: backend
 ---
-apiVersion: apps/v1
-kind: Deployment
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
 metadata:
   name: frontend
 spec:

@@ -1,0 +1,26 @@
+# The root Application ("app of apps", 18 §2.4): the one object `npm run k8s:up` applies by hand.
+# It deploys the folder gitops/apps, which holds every other Application: add-ons, platform,
+# Argo CD's settings, and the three environments. From here on, the cluster is whatever that
+# folder on `main` says.
+#
+# It isn't in gitops/apps itself on purpose: something has to point Argo CD at the repository
+# first (the bootstrap, 18 §2.9). `npm run k8s:up -- --revision <branch>` applies it pointing at a
+# branch instead, to try a change to the GitOps setup itself before merging it (18 §3.6).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: root
+  namespace: argocd
+spec:
+  project: platform
+  source:
+    repoURL: https://github.com/VaikashMB/straight-salon.git
+    targetRevision: main
+    path: infra/k8s/gitops/apps
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true # an Application removed from the folder is removed (not what it deployed: no finalizers)
+      selfHeal: true
