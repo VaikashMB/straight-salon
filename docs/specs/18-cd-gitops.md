@@ -248,6 +248,13 @@ What it found:
 - **The first Deployments run on `main` tagged prod but not staging**: both matrix jobs shared one
   concurrency group with cancel-in-progress, so one cancelled the other. The group is per
   environment now.
+- **Moving the step 4 cluster over stalled staging and prod** (found by the user's own
+  `k8s:up`): the HPA had no sync wave, so it sat in wave 0 while its Rollout was in wave 3. Argo CD
+  counted it unhealthy ("unable to get the target's current scale"), wave 0 never finished, and
+  the Rollouts were never created. Nothing broke, since the old Deployments kept serving, but the
+  sync retried forever. Dev has no HPA, and the one-node test cluster could only run dev, which is
+  why testing missed it. The HPA is now in wave 3, and `k8s:check` fails when an HPA's wave is
+  earlier than its target's.
 - **The production cluster wasn't used for testing.** The step 4 cluster holds prod's data, and
   taking it over is the user's call (§3.9 is the one-time migration it runs).
 

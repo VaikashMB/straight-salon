@@ -205,6 +205,12 @@ function checkEnvironment(e, platform) {
   // Autoscaling
   for (const hpa of objects.filter((o) => o.kind === 'HorizontalPodAutoscaler')) {
     const target = find(objects, hpa.spec.scaleTargetRef.kind, hpa.spec.scaleTargetRef.name);
+    const wave = (o) => Number(o?.metadata.annotations?.['argocd.argoproj.io/sync-wave'] ?? 0);
+    if (target && wave(hpa) < wave(target))
+      problem(
+        where,
+        `HPA ${hpa.metadata.name} is in sync wave ${wave(hpa)}, before its target's ${wave(target)}: that wave can never become healthy`,
+      );
     if (!target)
       problem(where, `HPA ${hpa.metadata.name} targets a missing ${hpa.spec.scaleTargetRef.name}`);
     else if (target.spec.replicas !== undefined)
