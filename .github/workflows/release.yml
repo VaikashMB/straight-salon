@@ -82,7 +82,10 @@ jobs:
           set -euo pipefail
           ns="ghcr.io/${GITHUB_REPOSITORY_OWNER,,}"
           digest() { docker buildx imagetools inspect "$1" --format '{{json .Manifest}}' | jq -r .digest; }
-          build="$(git log -1 --format=%H -- . ':(exclude)infra/k8s/overlays')"
+          # --first-parent: CI tags the commit pushed to main (the merge). Without it, git's path
+          # simplification skips a merge that matches its branch side and names the branch commit,
+          # which has no images.
+          build="$(git log -1 --first-parent --format=%H -- . ':(exclude)infra/k8s/overlays')"
           echo "Releasing the images built from ${build}"
           for app in backend frontend; do
             repo="${ns}/straight-salon-${app}"
